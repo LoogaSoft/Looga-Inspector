@@ -1,0 +1,12 @@
+{
+  "displayName": "Looga Inspector",
+  "name": "com.loogasoft.loogainspector",
+  "description": "A custom inspector with tons of attributes for many use cases",
+  "version": "0.1.0",
+  "author": {
+    "name": "LoogaSoft"
+  },
+  "dependencies": {
+    "com.unity.ugui": "1.0.0"
+  }
+}

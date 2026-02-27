@@ -1,0 +1,20 @@
+{
+    "name": "LoogaSoft.Inspector.Editor",
+    "rootNamespace": "LoogaSoft.Inspector.Editor",
+    "references": [
+        "GUID:f51ebe6a0ceec4240a699833d6309b23",
+        "GUID:a1c2ca2f0ddffe9469bec46cade81d5a",
+        "GUID:64fffafd5203e504f93879c21ccfebac"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

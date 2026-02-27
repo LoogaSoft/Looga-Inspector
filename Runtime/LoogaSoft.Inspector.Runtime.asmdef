@@ -1,0 +1,20 @@
+{
+    "name": "LoogaSoft.Inspector.Runtime",
+    "rootNamespace": "LoogaSoft.Inspector.Runtime",
+    "references": [
+        "GUID:f51ebe6a0ceec4240a699833d6309b23"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [
+        "EmbeddedLinux",
+        "QNX",
+        "VisionOS"
+    ],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
