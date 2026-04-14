@@ -104,7 +104,7 @@ namespace LoogaSoft.Inspector.Editor
                     
                     TabGroupDefinition groupDefinition = layout.tabGroups[currentTabGroupIndex];
                     
-                    int newIndex = GUILayout.Toolbar(currentTabIndex, groupDefinition.tabNames.ToArray());
+                    int newIndex = DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray());
 
                     if (newIndex != currentTabIndex)
                     {
@@ -505,6 +505,92 @@ namespace LoogaSoft.Inspector.Editor
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Draws a toolbar that wraps tab buttons onto new rows instead of clipping when the
+        /// inspector window is too narrow to fit all buttons at their minimum content width.
+        /// Buttons shrink freely until they would clip their label, then overflow to the next line.
+        /// </summary>
+        private int DrawWrappingToolbar(int selectedIndex, string[] tabNames)
+        {
+            if (tabNames == null || tabNames.Length == 0)
+                return selectedIndex;
+
+            GUIStyle buttonStyle = EditorStyles.toolbarButton;
+            float availableWidth = EditorGUIUtility.currentViewWidth
+                                   - EditorStyles.helpBox.padding.horizontal
+                                   - EditorStyles.helpBox.margin.horizontal
+                                   - 4f; // small fudge for scroll bars / borders
+
+            // --- compute minimum width (text + padding) for each button ---
+            float[] minWidths = new float[tabNames.Length];
+            for (int i = 0; i < tabNames.Length; i++)
+            {
+                Vector2 contentSize = buttonStyle.CalcSize(new GUIContent(tabNames[i]));
+                minWidths[i] = contentSize.x;
+            }
+
+            // --- build rows: greedily pack buttons left-to-right ---
+            // Each row stores the indices of buttons it contains.
+            var rows = new List<List<int>>();
+            var currentRow = new List<int>();
+            float rowWidth = 0f;
+
+            for (int i = 0; i < tabNames.Length; i++)
+            {
+                if (currentRow.Count > 0 && rowWidth + minWidths[i] > availableWidth)
+                {
+                    // this button doesn't fit on the current row — start a new one
+                    rows.Add(currentRow);
+                    currentRow = new List<int>();
+                    rowWidth = 0f;
+                }
+                currentRow.Add(i);
+                rowWidth += minWidths[i];
+            }
+            if (currentRow.Count > 0)
+                rows.Add(currentRow);
+
+            // --- draw each row ---
+            int newSelectedIndex = selectedIndex;
+            float buttonHeight = buttonStyle.CalcSize(new GUIContent("A")).y;
+
+            foreach (var row in rows)
+            {
+                // Compute how much width this row's buttons want in total (sum of min widths)
+                float totalMinWidth = 0f;
+                foreach (int idx in row) totalMinWidth += minWidths[idx];
+
+                // Each button gets a share of available width proportional to its min width,
+                // but never less than its min width (they always fit on their assigned row).
+                EditorGUILayout.BeginHorizontal(GUILayout.Height(buttonHeight));
+
+                foreach (int idx in row)
+                {
+                    // distribute available width proportionally
+                    float share = minWidths[idx] / totalMinWidth * availableWidth;
+                    // clamp so a single button never takes more than the whole row
+                    share = Mathf.Max(share, minWidths[idx]);
+
+                    bool wasSelected = (idx == selectedIndex);
+                    bool nowSelected = GUILayout.Toggle(
+                        wasSelected,
+                        tabNames[idx],
+                        buttonStyle,
+                        GUILayout.Width(share),
+                        GUILayout.Height(buttonHeight));
+
+                    if (nowSelected && !wasSelected)
+                        newSelectedIndex = idx;
+                    else if (!nowSelected && wasSelected && newSelectedIndex == idx)
+                        newSelectedIndex = idx; // keep selection if nothing else was clicked
+                }
+
+                EditorGUILayout.EndHorizontal();
+            }
+
+            return newSelectedIndex;
         }
 
         private void HandleListDragAndDrop(SerializedProperty property, Rect dropArea, FieldInfo fieldInfo)
