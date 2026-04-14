@@ -518,10 +518,12 @@ namespace LoogaSoft.Inspector.Editor
                 return selectedIndex;
 
             GUIStyle buttonStyle = EditorStyles.toolbarButton;
-            float availableWidth = EditorGUIUtility.currentViewWidth
-                                   - EditorStyles.helpBox.padding.horizontal
-                                   - EditorStyles.helpBox.margin.horizontal
-                                   - 4f; // small fudge for scroll bars / borders
+            float buttonHeight = buttonStyle.CalcSize(new GUIContent("A")).y;
+
+            // Let the layout system tell us the true available width — this automatically
+            // accounts for helpBox padding, indent level, scroll bars, etc.
+            Rect measureRect = EditorGUILayout.GetControlRect(false, 0f, GUIStyle.none);
+            float availableWidth = measureRect.width;
 
             // --- compute minimum width (text + padding) for each button ---
             float[] minWidths = new float[tabNames.Length];
@@ -532,7 +534,6 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             // --- build rows: greedily pack buttons left-to-right ---
-            // Each row stores the indices of buttons it contains.
             var rows = new List<List<int>>();
             var currentRow = new List<int>();
             float rowWidth = 0f;
@@ -541,7 +542,6 @@ namespace LoogaSoft.Inspector.Editor
             {
                 if (currentRow.Count > 0 && rowWidth + minWidths[i] > availableWidth)
                 {
-                    // this button doesn't fit on the current row — start a new one
                     rows.Add(currentRow);
                     currentRow = new List<int>();
                     rowWidth = 0f;
@@ -552,42 +552,37 @@ namespace LoogaSoft.Inspector.Editor
             if (currentRow.Count > 0)
                 rows.Add(currentRow);
 
-            // --- draw each row ---
+            // --- draw each row using Rect-based drawing so we control width exactly ---
             int newSelectedIndex = selectedIndex;
-            float buttonHeight = buttonStyle.CalcSize(new GUIContent("A")).y;
 
             foreach (var row in rows)
             {
-                // Compute how much width this row's buttons want in total (sum of min widths)
                 float totalMinWidth = 0f;
                 foreach (int idx in row) totalMinWidth += minWidths[idx];
 
-                // Each button gets a share of available width proportional to its min width,
-                // but never less than its min width (they always fit on their assigned row).
-                EditorGUILayout.BeginHorizontal(GUILayout.Height(buttonHeight));
+                // Reserve a rect for this entire row
+                Rect rowRect = EditorGUILayout.GetControlRect(false, buttonHeight, GUIStyle.none);
+                float x = rowRect.x;
 
-                foreach (int idx in row)
+                for (int r = 0; r < row.Count; r++)
                 {
-                    // distribute available width proportionally
-                    float share = minWidths[idx] / totalMinWidth * availableWidth;
-                    // clamp so a single button never takes more than the whole row
-                    share = Mathf.Max(share, minWidths[idx]);
+                    int idx = row[r];
+                    // Distribute available width proportionally; last button gets remaining pixels
+                    float share = (r == row.Count - 1)
+                        ? rowRect.xMax - x
+                        : Mathf.Round(minWidths[idx] / totalMinWidth * availableWidth);
 
+                    Rect btnRect = new Rect(x, rowRect.y, share, buttonHeight);
+                    x += share;
+
+                    // GUI.Toggle with toolbarButton style correctly renders the active/selected
+                    // state with the blue highlight, matching Unity's native Toolbar look.
                     bool wasSelected = (idx == selectedIndex);
-                    bool nowSelected = GUILayout.Toggle(
-                        wasSelected,
-                        tabNames[idx],
-                        buttonStyle,
-                        GUILayout.Width(share),
-                        GUILayout.Height(buttonHeight));
+                    bool nowSelected = GUI.Toggle(btnRect, wasSelected, tabNames[idx], buttonStyle);
 
                     if (nowSelected && !wasSelected)
                         newSelectedIndex = idx;
-                    else if (!nowSelected && wasSelected && newSelectedIndex == idx)
-                        newSelectedIndex = idx; // keep selection if nothing else was clicked
                 }
-
-                EditorGUILayout.EndHorizontal();
             }
 
             return newSelectedIndex;
