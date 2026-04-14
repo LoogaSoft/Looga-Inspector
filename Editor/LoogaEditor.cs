@@ -104,7 +104,7 @@ namespace LoogaSoft.Inspector.Editor
                     
                     TabGroupDefinition groupDefinition = layout.tabGroups[currentTabGroupIndex];
                     
-                    int newIndex = DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray());
+                    int newIndex = DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray(), $"{basePath}_{currentTabGroupIndex}_toolbar");
 
                     if (newIndex != currentTabIndex)
                     {
@@ -512,27 +512,31 @@ namespace LoogaSoft.Inspector.Editor
         /// inspector window is too narrow to fit all buttons at their minimum content width.
         /// Buttons shrink freely until they would clip their label, then overflow to the next line.
         /// </summary>
-        private int DrawWrappingToolbar(int selectedIndex, string[] tabNames)
+        // Cached toolbar width per tab group key, populated during Repaint.
+        private readonly Dictionary<string, float> _toolbarWidthCache = new();
+
+        private int DrawWrappingToolbar(int selectedIndex, string[] tabNames, string cacheKey)
         {
             if (tabNames == null || tabNames.Length == 0)
                 return selectedIndex;
 
             GUIStyle buttonStyle = EditorStyles.toolbarButton;
 
-            // compute minimum width (text + padding) for each button
+            // Compute minimum content width for each button.
             float[] minWidths = new float[tabNames.Length];
             for (int i = 0; i < tabNames.Length; i++)
             {
-                Vector2 contentSize = buttonStyle.CalcSize(new GUIContent(tabNames[i]));
-                minWidths[i] = contentSize.x;
+                Vector2 sz = buttonStyle.CalcSize(new GUIContent(tabNames[i]));
+                minWidths[i] = sz.x;
             }
 
-            // Peek at the available width using a zero-height layout rect.
-            // This does not consume any visible space or affect content positioning.
-            float availableWidth = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true)).width;
+            // Use the cached width from the previous Repaint frame.
+            // Fall back to a large value so all buttons land on one row until we know better.
+            _toolbarWidthCache.TryGetValue(cacheKey, out float availableWidth);
+            if (availableWidth <= 0f)
+                availableWidth = float.MaxValue;
 
-            // Build rows greedily: add buttons left-to-right until one would overflow,
-            // then start a new row.
+            // Build rows greedily.
             var rows = new List<List<int>>();
             var currentRow = new List<int>();
             float rowWidth = 0f;
@@ -551,9 +555,9 @@ namespace LoogaSoft.Inspector.Editor
             if (currentRow.Count > 0)
                 rows.Add(currentRow);
 
-            // Draw each row using GUILayout.Toolbar so we get the native blue-selected
-            // styling for free. We remap the global selectedIndex to a per-row local index.
+            // Draw each row with GUILayout.Toolbar for native blue-selected styling.
             int newSelectedIndex = selectedIndex;
+            bool firstRow = true;
 
             foreach (var row in rows)
             {
@@ -561,12 +565,19 @@ namespace LoogaSoft.Inspector.Editor
                 for (int r = 0; r < row.Count; r++)
                     rowLabels[r] = tabNames[row[r]];
 
-                // Local selected index: -1 if the selected tab is on a different row
                 int localSelected = -1;
                 for (int r = 0; r < row.Count; r++)
                     if (row[r] == selectedIndex) { localSelected = r; break; }
 
                 int localResult = GUILayout.Toolbar(localSelected, rowLabels);
+
+                // On the first row, record the actual rendered width for the next frame.
+                if (firstRow && Event.current.type == EventType.Repaint)
+                {
+                    Rect lastRect = GUILayoutUtility.GetLastRect();
+                    _toolbarWidthCache[cacheKey] = lastRect.width;
+                    firstRow = false;
+                }
 
                 if (localResult >= 0 && localResult != localSelected)
                     newSelectedIndex = row[localResult];
