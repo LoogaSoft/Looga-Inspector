@@ -518,14 +518,8 @@ namespace LoogaSoft.Inspector.Editor
                 return selectedIndex;
 
             GUIStyle buttonStyle = EditorStyles.toolbarButton;
-            float buttonHeight = buttonStyle.CalcSize(new GUIContent("A")).y;
 
-            // Let the layout system tell us the true available width — this automatically
-            // accounts for helpBox padding, indent level, scroll bars, etc.
-            Rect measureRect = EditorGUILayout.GetControlRect(false, 0f, GUIStyle.none);
-            float availableWidth = measureRect.width;
-
-            // --- compute minimum width (text + padding) for each button ---
+            // compute minimum width (text + padding) for each button
             float[] minWidths = new float[tabNames.Length];
             for (int i = 0; i < tabNames.Length; i++)
             {
@@ -533,7 +527,12 @@ namespace LoogaSoft.Inspector.Editor
                 minWidths[i] = contentSize.x;
             }
 
-            // --- build rows: greedily pack buttons left-to-right ---
+            // Peek at the available width using a zero-height layout rect.
+            // This does not consume any visible space or affect content positioning.
+            float availableWidth = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true)).width;
+
+            // Build rows greedily: add buttons left-to-right until one would overflow,
+            // then start a new row.
             var rows = new List<List<int>>();
             var currentRow = new List<int>();
             float rowWidth = 0f;
@@ -552,43 +551,31 @@ namespace LoogaSoft.Inspector.Editor
             if (currentRow.Count > 0)
                 rows.Add(currentRow);
 
-            // --- draw each row using Rect-based drawing so we control width exactly ---
+            // Draw each row using GUILayout.Toolbar so we get the native blue-selected
+            // styling for free. We remap the global selectedIndex to a per-row local index.
             int newSelectedIndex = selectedIndex;
 
             foreach (var row in rows)
             {
-                float totalMinWidth = 0f;
-                foreach (int idx in row) totalMinWidth += minWidths[idx];
-
-                // Reserve a rect for this entire row
-                Rect rowRect = EditorGUILayout.GetControlRect(false, buttonHeight, GUIStyle.none);
-                float x = rowRect.x;
-
+                string[] rowLabels = new string[row.Count];
                 for (int r = 0; r < row.Count; r++)
-                {
-                    int idx = row[r];
-                    // Distribute available width proportionally; last button gets remaining pixels
-                    float share = (r == row.Count - 1)
-                        ? rowRect.xMax - x
-                        : Mathf.Round(minWidths[idx] / totalMinWidth * availableWidth);
+                    rowLabels[r] = tabNames[row[r]];
 
-                    Rect btnRect = new Rect(x, rowRect.y, share, buttonHeight);
-                    x += share;
+                // Local selected index: -1 if the selected tab is on a different row
+                int localSelected = -1;
+                for (int r = 0; r < row.Count; r++)
+                    if (row[r] == selectedIndex) { localSelected = r; break; }
 
-                    // GUI.Toggle with toolbarButton style correctly renders the active/selected
-                    // state with the blue highlight, matching Unity's native Toolbar look.
-                    bool wasSelected = (idx == selectedIndex);
-                    bool nowSelected = GUI.Toggle(btnRect, wasSelected, tabNames[idx], buttonStyle);
+                int localResult = GUILayout.Toolbar(localSelected, rowLabels);
 
-                    if (nowSelected && !wasSelected)
-                        newSelectedIndex = idx;
-                }
+                if (localResult >= 0 && localResult != localSelected)
+                    newSelectedIndex = row[localResult];
             }
 
             return newSelectedIndex;
         }
 
-        private void HandleListDragAndDrop(SerializedProperty property, Rect dropArea, FieldInfo fieldInfo)
+                private void HandleListDragAndDrop(SerializedProperty property, Rect dropArea, FieldInfo fieldInfo)
         {
             //validate mouse position/action
             Event e = Event.current;
