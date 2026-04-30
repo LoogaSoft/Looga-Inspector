@@ -87,10 +87,19 @@ namespace LoogaSoft.Inspector.Editor
                     continue;
                 
                 int currentTabIndex = 0;
+                TabGroupDefinition groupDefinition = null;
                 if (element.inTabGroup)
                 {
-                    string stateKey = $"{basePath}_{currentTabGroupIndex}_tab";
+                    if (currentTabGroupIndex >= layout.tabGroups.Count)
+                        continue;
+
+                    groupDefinition = layout.tabGroups[currentTabGroupIndex];
+                    if (groupDefinition.tabNames.Count == 0)
+                        continue;
+
+                    string stateKey = GetTabStateKey(scopeType, basePath, currentTabGroupIndex);
                     currentTabIndex = SessionState.GetInt(stateKey, 0);
+                    currentTabIndex = Mathf.Clamp(currentTabIndex, 0, groupDefinition.tabNames.Count - 1);
                 }
 
                 if (element.inTabGroup && !inTabGroup)
@@ -102,13 +111,11 @@ namespace LoogaSoft.Inspector.Editor
                     Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
                     
-                    TabGroupDefinition groupDefinition = layout.tabGroups[currentTabGroupIndex];
-                    
                     int newIndex = DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray(), $"{basePath}_{currentTabGroupIndex}_toolbar");
 
                     if (newIndex != currentTabIndex)
                     {
-                        string stateKey = $"{basePath}_{currentTabGroupIndex}_tab";
+                        string stateKey = GetTabStateKey(scopeType, basePath, currentTabGroupIndex);
                         SessionState.SetInt(stateKey, newIndex);
                         currentTabIndex = newIndex;
                     }
@@ -121,7 +128,7 @@ namespace LoogaSoft.Inspector.Editor
                     currentTabGroupIndex++;
                 }
                 
-                if (!element.inTabGroup || layout.tabGroups[currentTabGroupIndex].tabNames[currentTabIndex] == element.tabName)
+                if (!element.inTabGroup || groupDefinition.tabNames[currentTabIndex] == element.tabName)
                     DrawCustomPropertyField(property);
             }
             
@@ -520,6 +527,8 @@ namespace LoogaSoft.Inspector.Editor
             if (tabNames == null || tabNames.Length == 0)
                 return selectedIndex;
 
+            selectedIndex = Mathf.Clamp(selectedIndex, 0, tabNames.Length - 1);
+
             GUIStyle buttonStyle = EditorStyles.toolbarButton;
 
             // Compute minimum content width for each button.
@@ -584,6 +593,12 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             return newSelectedIndex;
+        }
+
+        private static string GetTabStateKey(Type scopeType, string basePath, int tabGroupIndex)
+        {
+            string typeKey = scopeType != null ? scopeType.FullName : "UnknownType";
+            return $"{typeKey}_{basePath}_{tabGroupIndex}_tab";
         }
 
                 private void HandleListDragAndDrop(SerializedProperty property, Rect dropArea, FieldInfo fieldInfo)
