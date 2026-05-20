@@ -7,6 +7,15 @@ public static class AnimatorHelper
 {
     public static AnimatorController GetAnimatorController(SerializedProperty property, string controllerName)
     {
+        SerializedProperty controllerProperty = FindRelativeProperty(property, controllerName);
+        if (controllerProperty != null)
+        {
+            if (controllerProperty.objectReferenceValue is AnimatorController controller)
+                return controller;
+            if (controllerProperty.objectReferenceValue is Animator animator)
+                return animator.runtimeAnimatorController as AnimatorController;
+        }
+
         var targetObj = property.serializedObject.targetObject;
         var targetType = targetObj.GetType();
             
@@ -23,5 +32,23 @@ public static class AnimatorHelper
         }
             
         return null;
+    }
+
+    private static SerializedProperty FindRelativeProperty(SerializedProperty property, string controllerName)
+    {
+        if (property == null || string.IsNullOrEmpty(controllerName))
+            return null;
+
+        string path = property.propertyPath;
+        int lastDot = path.LastIndexOf('.');
+        if (lastDot >= 0)
+        {
+            string relativePath = $"{path.Substring(0, lastDot + 1)}{controllerName}";
+            SerializedProperty relativeProperty = property.serializedObject.FindProperty(relativePath);
+            if (relativeProperty != null)
+                return relativeProperty;
+        }
+
+        return property.serializedObject.FindProperty(controllerName);
     }
 }

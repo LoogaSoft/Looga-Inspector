@@ -65,7 +65,7 @@ namespace LoogaSoft.Inspector.Editor
             InspectorLayout layout = GetLayoutForType(scopeType);
             
             if (layout.HasTabs)
-                DrawPropertiesWithTabs(properties, layout, basePath);
+                DrawPropertiesWithTabs(properties, layout, scopeType, basePath);
             else
             {
                 foreach (var property in properties)
@@ -73,7 +73,7 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private void DrawPropertiesWithTabs(List<SerializedProperty> properties, InspectorLayout layout, string basePath)
+        private void DrawPropertiesWithTabs(List<SerializedProperty> properties, InspectorLayout layout, Type scopeType, string basePath)
         {
             int currentTabGroupIndex = 0;
             bool inTabGroup = false;
@@ -111,7 +111,7 @@ namespace LoogaSoft.Inspector.Editor
                     Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                     EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
                     
-                    int newIndex = DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray(), $"{basePath}_{currentTabGroupIndex}_toolbar");
+                    int newIndex = LoogaEditorTabs.DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray(), $"{basePath}_{currentTabGroupIndex}_toolbar");
 
                     if (newIndex != currentTabIndex)
                     {
@@ -157,27 +157,72 @@ namespace LoogaSoft.Inspector.Editor
                     
                     bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
                     
-                    EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), false);
-
-                    if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
-                        property.hasVisibleChildren && property.isExpanded)
+                    bool customNestedFoldout = ShouldDrawNestedFoldout(property, hasCustomDrawer);
+                    if (customNestedFoldout)
                     {
-                        var childProperties = GetNestedSerializedProperties(property);
-                        Type nestedType = CustomDrawerUtil.GetTargetType(property);
-                        
-                        if (nestedType != null)
-                            DrawPropertiesScope(childProperties, nestedType, property.propertyPath);
-                        else
-                        {
-                            foreach (var childProperty in childProperties)
-                                DrawCustomPropertyField(childProperty);
-                        }
+                        DrawNestedFoldoutProperty(property);
+                    }
+                    else
+                    {
+                        EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), false);
+
+                        if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
+                            property.hasVisibleChildren && property.isExpanded)
+                            DrawNestedPropertyChildren(property);
                     }
                     
                     if (EditorGUI.EndChangeCheck())
                         PropertyUtils.CallOnFieldChangedCallbacks(property);
                 }
             }
+        }
+
+        private bool ShouldDrawNestedFoldout(SerializedProperty property, bool hasCustomDrawer)
+        {
+            return !hasCustomDrawer
+                && property.propertyType == SerializedPropertyType.Generic
+                && property.hasVisibleChildren;
+        }
+
+        private void DrawNestedFoldoutProperty(SerializedProperty property)
+        {
+            property.isExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(
+                PropertyUtils.GetLabel(property),
+                property.isExpanded,
+                () =>
+                {
+                    EditorGUI.indentLevel++;
+                    DrawNestedPropertyChildren(property);
+                    EditorGUI.indentLevel--;
+                },
+                property);
+        }
+
+        private void DrawNestedPropertyChildren(SerializedProperty property)
+        {
+            var childProperties = GetNestedSerializedProperties(property);
+
+            if (TryGetInlineNestedTabType(property, childProperties, out Type nestedType))
+            {
+                DrawPropertiesScope(childProperties, nestedType, property.propertyPath);
+                return;
+            }
+
+            foreach (var childProperty in childProperties)
+                DrawCustomPropertyField(childProperty);
+        }
+
+        private bool TryGetInlineNestedTabType(SerializedProperty property, List<SerializedProperty> childProperties, out Type nestedType)
+        {
+            nestedType = CustomDrawerUtil.GetTargetType(property);
+
+            if (nestedType == null)
+                return false;
+
+            InspectorLayout nestedLayout = GetLayoutForType(nestedType);
+            return nestedLayout.HasTabs
+                && childProperties.Count > 0
+                && childProperties.All(child => nestedLayout.elements.Any(element => element.propertyName == child.name));
         }
 
         private void DrawButtons(InspectorLayout layout, bool drawTop)
@@ -512,87 +557,6 @@ namespace LoogaSoft.Inspector.Editor
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// Draws a toolbar that wraps tab buttons onto new rows instead of clipping when the
-        /// inspector window is too narrow to fit all buttons at their minimum content width.
-        /// Buttons shrink freely until they would clip their label, then overflow to the next line.
-        /// </summary>
-        // Cached toolbar width per tab group key, populated during Repaint.
-        private readonly Dictionary<string, float> _toolbarWidthCache = new();
-
-        private int DrawWrappingToolbar(int selectedIndex, string[] tabNames, string cacheKey)
-        {
-            if (tabNames == null || tabNames.Length == 0)
-                return selectedIndex;
-
-            selectedIndex = Mathf.Clamp(selectedIndex, 0, tabNames.Length - 1);
-
-            GUIStyle buttonStyle = EditorStyles.toolbarButton;
-
-            // Compute minimum content width for each button.
-            float[] minWidths = new float[tabNames.Length];
-            for (int i = 0; i < tabNames.Length; i++)
-            {
-                Vector2 sz = buttonStyle.CalcSize(new GUIContent(tabNames[i]));
-                minWidths[i] = sz.x;
-            }
-
-            // Use the cached width from the previous Repaint frame.
-            // Fall back to a large value so all buttons land on one row until we know better.
-            _toolbarWidthCache.TryGetValue(cacheKey, out float availableWidth);
-            if (availableWidth <= 0f)
-                availableWidth = float.MaxValue;
-
-            // Build rows greedily.
-            var rows = new List<List<int>>();
-            var currentRow = new List<int>();
-            float rowWidth = 0f;
-
-            for (int i = 0; i < tabNames.Length; i++)
-            {
-                if (currentRow.Count > 0 && rowWidth + minWidths[i] > availableWidth)
-                {
-                    rows.Add(currentRow);
-                    currentRow = new List<int>();
-                    rowWidth = 0f;
-                }
-                currentRow.Add(i);
-                rowWidth += minWidths[i];
-            }
-            if (currentRow.Count > 0)
-                rows.Add(currentRow);
-
-            // Draw each row with GUILayout.Toolbar for native blue-selected styling.
-            int newSelectedIndex = selectedIndex;
-            bool firstRow = true;
-
-            foreach (var row in rows)
-            {
-                string[] rowLabels = new string[row.Count];
-                for (int r = 0; r < row.Count; r++)
-                    rowLabels[r] = tabNames[row[r]];
-
-                int localSelected = -1;
-                for (int r = 0; r < row.Count; r++)
-                    if (row[r] == selectedIndex) { localSelected = r; break; }
-
-                int localResult = GUILayout.Toolbar(localSelected, rowLabels);
-
-                // On the first row, record the actual rendered width for the next frame.
-                if (firstRow && Event.current.type == EventType.Repaint)
-                {
-                    Rect lastRect = GUILayoutUtility.GetLastRect();
-                    _toolbarWidthCache[cacheKey] = lastRect.width;
-                    firstRow = false;
-                }
-
-                if (localResult >= 0 && localResult != localSelected)
-                    newSelectedIndex = row[localResult];
-            }
-
-            return newSelectedIndex;
         }
 
         private static string GetTabStateKey(Type scopeType, string basePath, int tabGroupIndex)
