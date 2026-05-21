@@ -78,26 +78,47 @@ namespace LoogaSoft.Inspector.Editor
 
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
+            int oldIndent = EditorGUI.indentLevel;
+            Rect indentedPosition = EditorGUI.IndentedRect(position);
+            bool newExpanded;
 
-            Rect boxRect = new(
-                position.x,
-                position.y,
-                position.width,
-                position.height + spacing - SmallBoxGap);
-            GUI.Box(boxRect, GUIContent.none, _smallBox);
+            try
+            {
+                EditorGUI.indentLevel = 0;
 
-            Rect headerRect = new(
-                position.x + SmallPaddingX - SmallHoverExtraWidth * 0.5f,
-                position.y + 2f,
-                position.width - SmallPaddingX * 2f + SmallHoverExtraWidth,
-                lineHeight + 2f);
-            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, label, expanded, property);
+                Rect boxRect = new(
+                    indentedPosition.x,
+                    indentedPosition.y,
+                    indentedPosition.width,
+                    indentedPosition.height + spacing - SmallBoxGap);
+                GUI.Box(boxRect, GUIContent.none, _smallBox);
 
-            contentRect = new Rect(
-                position.x + SmallPaddingX,
-                headerRect.yMax + spacing,
-                position.width - SmallPaddingX * 2f,
-                position.height - headerRect.height - SmallPaddingY);
+                Rect headerRect = new(
+                    boxRect.x + SmallPaddingX,
+                    boxRect.y + 2f,
+                    boxRect.width - SmallPaddingX * 2f,
+                    lineHeight + 2f);
+                bool allowHoverOverflow = Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout;
+                Rect hoverRect = allowHoverOverflow
+                    ? new Rect(
+                        headerRect.x - SmallHoverExtraWidth * 0.5f,
+                        headerRect.y,
+                        headerRect.width + SmallHoverExtraWidth,
+                        headerRect.height)
+                    : headerRect;
+
+                newExpanded = LoogaFoldoutSmallHeader(headerRect, hoverRect, label, expanded, property);
+
+                contentRect = new Rect(
+                    boxRect.x + SmallPaddingX,
+                    headerRect.yMax + spacing,
+                    boxRect.width - SmallPaddingX * 2f,
+                    boxRect.height - headerRect.height - SmallPaddingY);
+            }
+            finally
+            {
+                EditorGUI.indentLevel = oldIndent;
+            }
 
             return newExpanded;
         }
@@ -116,7 +137,7 @@ namespace LoogaSoft.Inspector.Editor
             full.width += 12f;
             full.x -= 6f;
 
-            bool newExpanded = LoogaFoldoutSmallHeader(full, label, expanded, property);
+            bool newExpanded = LoogaFoldoutSmallHeader(full, full, label, expanded, property);
 
             if (newExpanded)
             {
@@ -134,22 +155,27 @@ namespace LoogaSoft.Inspector.Editor
 
         public static bool LoogaFoldoutSmallHeader(Rect headerRect, GUIContent label, bool expanded, SerializedProperty property = null)
         {
+            return LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
+        }
+
+        private static bool LoogaFoldoutSmallHeader(Rect headerRect, Rect clickRect, GUIContent label, bool expanded, SerializedProperty property = null)
+        {
             EnsureStyles();
 
-            Rect textRect = new(headerRect.x + 2f, headerRect.y, headerRect.width - 18f, headerRect.height);
-            Rect arrowRect = new(headerRect.xMax - 4f, headerRect.y, 15f, headerRect.height);
+            Rect textRect = new(headerRect.x + 2f, headerRect.y, headerRect.width - 22f, headerRect.height);
+            Rect arrowRect = new(headerRect.xMax - 17f, headerRect.y, 15f, headerRect.height);
 
             if (property != null)
-                EditorGUI.BeginProperty(headerRect, label, property);
+                EditorGUI.BeginProperty(clickRect, label, property);
 
-            if (headerRect.Contains(Event.current.mousePosition))
-                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
+            if (clickRect.Contains(Event.current.mousePosition))
+                EditorGUI.DrawRect(clickRect, new Color(1f, 1f, 1f, 0.05f));
 
             GUI.Label(textRect, label, _smallHeader);
 
             bool newExpanded = EditorGUI.Foldout(arrowRect, expanded, GUIContent.none);
             Event current = Event.current;
-            bool containsMouse = headerRect.Contains(current.mousePosition);
+            bool containsMouse = clickRect.Contains(current.mousePosition);
 
             if (property != null && current.type == EventType.ContextClick && containsMouse)
             {
