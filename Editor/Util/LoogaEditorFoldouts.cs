@@ -13,6 +13,7 @@ namespace LoogaSoft.Inspector.Editor
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
         private const float SmallHoverExtraWidth = 4f;
         private const float SmallBoxGap = 2f;
+        private const float LargeFoldoutGap = 2f;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -34,6 +35,7 @@ namespace LoogaSoft.Inspector.Editor
 
             bool show = EditorPrefs.GetBool(prefKey, defaultShow);
 
+            EditorGUILayout.Space(LargeFoldoutGap);
             EditorGUILayout.BeginVertical(_largeBox);
             Rect full = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
             full.height += 6f;
@@ -70,6 +72,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(LargeFoldoutGap);
         }
 
         public static bool LoogaFoldoutSmall(Rect position, GUIContent label, bool expanded, out Rect contentRect, SerializedProperty property = null)
