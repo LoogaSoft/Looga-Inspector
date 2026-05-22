@@ -35,7 +35,6 @@ namespace LoogaSoft.Inspector.Editor
 
             bool show = EditorPrefs.GetBool(prefKey, defaultShow);
 
-            EditorGUILayout.Space(LargeFoldoutGap);
             EditorGUILayout.BeginVertical(_largeBox);
             Rect full = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
             full.height += 6f;
