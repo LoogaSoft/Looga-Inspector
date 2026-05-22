@@ -94,9 +94,9 @@ namespace LoogaSoft.Inspector.Editor
                 GUI.Box(boxRect, GUIContent.none, _smallBox);
 
                 Rect headerRect = new(
-                    boxRect.x + SmallPaddingX,
+                    boxRect.x,
                     boxRect.y + 2f,
-                    boxRect.width - SmallPaddingX * 2f,
+                    boxRect.width,
                     lineHeight + 2f);
                 bool allowHoverOverflow = Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout;
                 Rect hoverRect = allowHoverOverflow
