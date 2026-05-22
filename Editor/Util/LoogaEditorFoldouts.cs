@@ -162,8 +162,8 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureStyles();
 
-            Rect textRect = new(headerRect.x + 2f, headerRect.y, headerRect.width - 22f, headerRect.height);
-            Rect arrowRect = new(headerRect.xMax - 17f, headerRect.y, 15f, headerRect.height);
+            Rect textRect = new(headerRect.x + 2f, headerRect.y + 1f, headerRect.width - 22f, headerRect.height);
+            Rect arrowRect = new(headerRect.xMax - 10f, headerRect.y, 15f, headerRect.height);
 
             if (property != null)
                 EditorGUI.BeginProperty(clickRect, label, property);
