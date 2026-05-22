@@ -162,7 +162,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureStyles();
 
-            Rect textRect = new(headerRect.x + 2f, headerRect.y + 1f, headerRect.width - 22f, headerRect.height);
+            Rect textRect = new(headerRect.x + SmallPaddingX + 2f, headerRect.y + 1f, headerRect.width - SmallPaddingX - 22f, headerRect.height);
             Rect arrowRect = new(headerRect.xMax - 10f, headerRect.y, 15f, headerRect.height);
 
             if (property != null)
