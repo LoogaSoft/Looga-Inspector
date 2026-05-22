@@ -107,7 +107,7 @@ namespace LoogaSoft.Inspector.Editor
                         headerRect.height)
                     : headerRect;
 
-                newExpanded = LoogaFoldoutSmallHeader(headerRect, hoverRect, label, expanded, property, SmallPaddingX + 2f);
+                newExpanded = LoogaFoldoutSmallHeader(headerRect, hoverRect, label, expanded, property);
 
                 contentRect = new Rect(
                     boxRect.x + SmallPaddingX,
@@ -159,10 +159,11 @@ namespace LoogaSoft.Inspector.Editor
         }
 
         private static bool LoogaFoldoutSmallHeader(Rect headerRect, Rect clickRect, GUIContent label, bool expanded,
-            SerializedProperty property = null, float textInset = 2f)
+            SerializedProperty property = null)
         {
             EnsureStyles();
 
+            const float textInset = 4f;
             Rect textRect = new(headerRect.x + textInset, headerRect.y + 1f, headerRect.width - textInset - 20f, headerRect.height);
             Rect arrowRect = new(headerRect.xMax - 10f, headerRect.y, 15f, headerRect.height);
 
