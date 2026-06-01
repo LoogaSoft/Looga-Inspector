@@ -21,6 +21,7 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallBox;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
+        private static int _containedFoldoutDepth;
 
         public static GUIStyle SmallBoxStyle
         {
@@ -38,15 +39,16 @@ namespace LoogaSoft.Inspector.Editor
             bool show = EditorPrefs.GetBool(prefKey, defaultShow);
 
             EditorGUILayout.BeginVertical(_largeBox);
-            Rect layoutRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            Rect full = layoutRect;
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
+            Rect full = baseRect;
             full.height += 6f;
             full.y -= 2f;
             full.width += 12f;
             full.x -= 6f;
 
-            Rect text = new(layoutRect.x + 4f, full.y + 1f, layoutRect.width - 28f, full.height);
-            Rect arrow = new(layoutRect.xMax - 16f, full.y, 14f, full.height);
+            Rect arrowAnchor = _containedFoldoutDepth > 0 ? baseRect : full;
+            Rect text = new(full.x + 4f, full.y + 1f, full.width - 24f, full.height);
+            Rect arrow = new(arrowAnchor.xMax - 10f, full.y, 15f, full.height);
 
             bool containsMouse = full.Contains(Event.current.mousePosition);
             RequestMouseMoveRepaint(containsMouse);
@@ -139,14 +141,16 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.BeginVertical(_smallBox);
 
-            Rect layoutRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect full = layoutRect;
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect full = baseRect;
             full.height += 4f;
             full.y -= 2f;
             full.width += 12f;
             full.x -= 6f;
 
-            Rect headerRect = new(layoutRect.x, full.y, layoutRect.width, full.height);
+            Rect headerRect = _containedFoldoutDepth > 0
+                ? new Rect(baseRect.x, full.y, baseRect.width, full.height)
+                : full;
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, full, label, expanded, property);
 
             if (newExpanded)
@@ -166,6 +170,12 @@ namespace LoogaSoft.Inspector.Editor
         public static bool LoogaFoldoutSmallHeader(Rect headerRect, GUIContent label, bool expanded, SerializedProperty property = null)
         {
             return LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
+        }
+
+        public static IDisposable ContainedFoldoutScope()
+        {
+            _containedFoldoutDepth++;
+            return new ContainedFoldoutScopeInstance();
         }
 
         private static bool LoogaFoldoutSmallHeader(Rect headerRect, Rect clickRect, GUIContent label, bool expanded,
@@ -220,6 +230,14 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse && Event.current.type != EventType.Layout)
             {
                 window.Repaint();
+            }
+        }
+
+        private sealed class ContainedFoldoutScopeInstance : IDisposable
+        {
+            public void Dispose()
+            {
+                _containedFoldoutDepth = Mathf.Max(0, _containedFoldoutDepth - 1);
             }
         }
 

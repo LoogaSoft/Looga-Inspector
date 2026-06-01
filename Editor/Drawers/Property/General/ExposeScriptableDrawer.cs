@@ -38,7 +38,10 @@ namespace LoogaSoft.Inspector.Editor
                 
                 UnityEditor.Editor.CreateCachedEditor(property.objectReferenceValue, null, ref _editor);
                 
-                _editor?.OnInspectorGUI();
+                using (LoogaEditorFoldouts.ContainedFoldoutScope())
+                {
+                    _editor?.OnInspectorGUI();
+                }
                 
                 EditorGUI.indentLevel--;
                 EditorGUILayout.EndVertical();
