@@ -19,6 +19,8 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
         private static GUIStyle _smallBox;
+        private static EditorWindow _trackedMouseMoveWindow;
+        private static bool _mouseMoveUpdateRegistered;
 
         public static GUIStyle SmallBoxStyle
         {
@@ -36,16 +38,20 @@ namespace LoogaSoft.Inspector.Editor
             bool show = EditorPrefs.GetBool(prefKey, defaultShow);
 
             EditorGUILayout.BeginVertical(_largeBox);
-            Rect full = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
+            Rect layoutRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
+            Rect full = layoutRect;
             full.height += 6f;
             full.y -= 2f;
             full.width += 12f;
             full.x -= 6f;
 
-            Rect text = new(full.x + 4f, full.y + 1f, full.width - 24f, full.height);
-            Rect arrow = new(full.xMax - 10f, full.y, 15f, full.height);
+            Rect text = new(layoutRect.x + 4f, full.y + 1f, layoutRect.width - 28f, full.height);
+            Rect arrow = new(layoutRect.xMax - 16f, full.y, 14f, full.height);
 
-            if (full.Contains(Event.current.mousePosition))
+            bool containsMouse = full.Contains(Event.current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
                 EditorGUI.DrawRect(full, new Color(1f, 1f, 1f, 0.05f));
 
             GUI.Label(text, title, _largeHeader);
@@ -133,13 +139,15 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.BeginVertical(_smallBox);
 
-            Rect full = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect layoutRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect full = layoutRect;
             full.height += 4f;
             full.y -= 2f;
             full.width += 12f;
             full.x -= 6f;
 
-            bool newExpanded = LoogaFoldoutSmallHeader(full, full, label, expanded, property);
+            Rect headerRect = new(layoutRect.x, full.y, layoutRect.width, full.height);
+            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, full, label, expanded, property);
 
             if (newExpanded)
             {
@@ -166,20 +174,22 @@ namespace LoogaSoft.Inspector.Editor
             EnsureStyles();
 
             const float textInset = 4f;
-            Rect textRect = new(headerRect.x + textInset, headerRect.y + 1f, headerRect.width - textInset - 20f, headerRect.height);
-            Rect arrowRect = new(headerRect.xMax - 10f, headerRect.y, 15f, headerRect.height);
+            Rect textRect = new(headerRect.x + textInset, headerRect.y + 1f, headerRect.width - textInset - 26f, headerRect.height);
+            Rect arrowRect = new(headerRect.xMax - 18f, headerRect.y, 14f, headerRect.height);
 
             if (property != null)
                 EditorGUI.BeginProperty(clickRect, label, property);
 
-            if (clickRect.Contains(Event.current.mousePosition))
+            Event current = Event.current;
+            bool containsMouse = clickRect.Contains(current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
                 EditorGUI.DrawRect(clickRect, new Color(1f, 1f, 1f, 0.05f));
 
             GUI.Label(textRect, label, _smallHeader);
 
             bool newExpanded = EditorGUI.Foldout(arrowRect, expanded, GUIContent.none);
-            Event current = Event.current;
-            bool containsMouse = clickRect.Contains(current.mousePosition);
 
             if (property != null && current.type == EventType.ContextClick && containsMouse)
             {
@@ -196,6 +206,48 @@ namespace LoogaSoft.Inspector.Editor
                 EditorGUI.EndProperty();
 
             return newExpanded;
+        }
+
+        private static void RequestMouseMoveRepaint(bool containsMouse)
+        {
+            EditorWindow window = EditorWindow.mouseOverWindow;
+            if (window == null)
+                return;
+
+            window.wantsMouseMove = true;
+            TrackMouseMoveWindow(window);
+
+            if (containsMouse && Event.current.type != EventType.Layout)
+            {
+                window.Repaint();
+            }
+        }
+
+        private static void TrackMouseMoveWindow(EditorWindow window)
+        {
+            _trackedMouseMoveWindow = window;
+
+            if (_mouseMoveUpdateRegistered)
+                return;
+
+            EditorApplication.update += RepaintTrackedMouseMoveWindow;
+            _mouseMoveUpdateRegistered = true;
+        }
+
+        private static void RepaintTrackedMouseMoveWindow()
+        {
+            if (_trackedMouseMoveWindow == null)
+            {
+                EditorApplication.update -= RepaintTrackedMouseMoveWindow;
+                _mouseMoveUpdateRegistered = false;
+                return;
+            }
+
+            if (EditorWindow.mouseOverWindow != _trackedMouseMoveWindow)
+                return;
+
+            _trackedMouseMoveWindow.wantsMouseMove = true;
+            _trackedMouseMoveWindow.Repaint();
         }
 
         private static void ShowPropertyContextMenu(SerializedProperty property)

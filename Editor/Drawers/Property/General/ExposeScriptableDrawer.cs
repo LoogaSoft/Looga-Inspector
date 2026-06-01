@@ -19,13 +19,14 @@ namespace LoogaSoft.Inspector.Editor
             float indentOffset = EditorGUI.indentLevel * 15f;
             float labelWidth = EditorGUIUtility.labelWidth - indentOffset;
 
+            Rect labelRect = new Rect(position.x, position.y, labelWidth, LineHeight);
             if (objectValid)
-            {
-                Rect foldoutRect = new Rect(position.x, position.y, labelWidth, LineHeight);
-                property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, label, true);
-            }
+                property.isExpanded = EditorGUI.Foldout(labelRect, property.isExpanded, label, true);
             else
+            {
                 property.isExpanded = false;
+                EditorGUI.LabelField(labelRect, label);
+            }
             
             Rect fieldRect = new Rect(position.x + labelWidth, position.y, position.width - labelWidth, LineHeight);
             EditorGUI.PropertyField(fieldRect, property, GUIContent.none);
