@@ -13,7 +13,7 @@ public static class AnimatorHelper
             if (controllerProperty.objectReferenceValue is AnimatorController controller)
                 return controller;
             if (controllerProperty.objectReferenceValue is Animator animator)
-                return animator.runtimeAnimatorController as AnimatorController;
+                return GetControllerFromAnimator(animator);
         }
 
         var targetObj = property.serializedObject.targetObject;
@@ -28,10 +28,29 @@ public static class AnimatorHelper
             if (value is AnimatorController controller) 
                 return controller;
             if (value is Animator animator)
-                return animator.runtimeAnimatorController as AnimatorController;
+                return GetControllerFromAnimator(animator);
         }
             
         return null;
+    }
+
+    private static AnimatorController GetControllerFromAnimator(Animator animator)
+    {
+        if (animator == null)
+            return null;
+
+        try
+        {
+            return animator.runtimeAnimatorController as AnimatorController;
+        }
+        catch (MissingReferenceException)
+        {
+            return null;
+        }
+        catch (UnassignedReferenceException)
+        {
+            return null;
+        }
     }
 
     private static SerializedProperty FindRelativeProperty(SerializedProperty property, string controllerName)
