@@ -35,17 +35,24 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
             
-            List<string> paramNames = controller.parameters
+            bool filterByParameterType = apAttribute.filterByParameterType || IsTriggerProperty(property);
+            AnimatorControllerParameterType parameterType = apAttribute.filterByParameterType
+                ? apAttribute.parameterType
+                : AnimatorControllerParameterType.Trigger;
+
+            IEnumerable<AnimatorControllerParameter> parameters = controller.parameters
                 #if ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
+                .Where(p => !filterByParameterType || p.type == parameterType);
+
+            List<AnimatorControllerParameter> parameterList = parameters.ToList();
+
+            List<string> paramNames = parameterList
                 .Select(p => p.name)
                 .ToList();
             
-            int[] paramHashes = controller.parameters
-                #if ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
+            int[] paramHashes = parameterList
                 .Select(p => p.nameHash)
                 .ToArray();
             
@@ -74,6 +81,13 @@ namespace LoogaSoft.Inspector.Editor
             }
             
             EditorGUI.EndProperty();
+        }
+
+        private static bool IsTriggerProperty(SerializedProperty property)
+        {
+            return property != null
+                && property.propertyType == SerializedPropertyType.String
+                && property.name.IndexOf("trigger", StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }
