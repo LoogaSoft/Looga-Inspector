@@ -14,6 +14,10 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallHoverExtraWidth = 4f;
         private const float SmallBoxGap = 2f;
         private const float LargeFoldoutGap = 2f;
+        private const float HeaderLeftInset = 6f;
+        private const float HeaderRightInset = 8f;
+        private const float HeaderArrowWidth = 14f;
+        private const float HeaderTextArrowGap = 6f;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -40,26 +44,25 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.BeginVertical(_largeBox);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            Rect full = baseRect;
-            full.height += 6f;
-            full.y -= 2f;
-            full.width += 12f;
-            full.x -= 6f;
+            Rect boxRect = ContentToBoxRect(baseRect, _largeBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _largeBox.padding.top + 2f);
+            Rect text = GetHeaderTextRect(headerRect, 1f);
+            Rect arrow = GetHeaderArrowRect(headerRect);
 
-            Rect arrowAnchor = _containedFoldoutDepth > 0 ? baseRect : full;
-            Rect text = new(full.x + 4f, full.y + 1f, full.width - 24f, full.height);
-            Rect arrow = new(arrowAnchor.xMax - 10f, full.y, 15f, full.height);
-
-            bool containsMouse = full.Contains(Event.current.mousePosition);
+            bool containsMouse = headerRect.Contains(Event.current.mousePosition);
             RequestMouseMoveRepaint(containsMouse);
 
             if (containsMouse)
-                EditorGUI.DrawRect(full, new Color(1f, 1f, 1f, 0.05f));
+                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
 
             GUI.Label(text, title, _largeHeader);
 
             bool newShow = EditorGUI.Foldout(arrow, show, GUIContent.none);
-            if (Event.current.type == EventType.MouseDown && full.Contains(Event.current.mousePosition) && Event.current.button == 0)
+            if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition) && Event.current.button == 0)
             {
                 newShow = !show;
                 Event.current.Use();
@@ -142,16 +145,13 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.BeginVertical(_smallBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect full = baseRect;
-            full.height += 4f;
-            full.y -= 2f;
-            full.width += 12f;
-            full.x -= 6f;
-
-            Rect headerRect = _containedFoldoutDepth > 0
-                ? new Rect(baseRect.x, full.y, baseRect.width, full.height)
-                : full;
-            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, full, label, expanded, property);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _smallBox.padding.top + 1f);
+            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
 
             if (newExpanded)
             {
@@ -183,9 +183,8 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureStyles();
 
-            const float textInset = 4f;
-            Rect textRect = new(headerRect.x + textInset, headerRect.y + 1f, headerRect.width - textInset - 26f, headerRect.height);
-            Rect arrowRect = new(headerRect.xMax - 18f, headerRect.y, 14f, headerRect.height);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f);
+            Rect arrowRect = GetHeaderArrowRect(headerRect);
 
             if (property != null)
                 EditorGUI.BeginProperty(clickRect, label, property);
@@ -231,6 +230,35 @@ namespace LoogaSoft.Inspector.Editor
             {
                 window.Repaint();
             }
+        }
+
+        private static Rect ContentToBoxRect(Rect contentRect, GUIStyle boxStyle)
+        {
+            RectOffset padding = boxStyle.padding;
+            return new Rect(
+                contentRect.x - padding.left,
+                contentRect.y - padding.top,
+                contentRect.width + padding.horizontal,
+                contentRect.height + padding.vertical);
+        }
+
+        private static Rect GetHeaderTextRect(Rect headerRect, float yOffset)
+        {
+            float reservedRight = HeaderRightInset + HeaderArrowWidth + HeaderTextArrowGap;
+            return new Rect(
+                headerRect.x + HeaderLeftInset,
+                headerRect.y + yOffset,
+                Mathf.Max(0f, headerRect.width - HeaderLeftInset - reservedRight),
+                headerRect.height);
+        }
+
+        private static Rect GetHeaderArrowRect(Rect headerRect)
+        {
+            return new Rect(
+                headerRect.xMax - HeaderRightInset - HeaderArrowWidth,
+                headerRect.y,
+                HeaderArrowWidth,
+                headerRect.height);
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
