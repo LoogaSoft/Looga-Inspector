@@ -24,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
             string stateKey = GetStateKey(property);
             bool editing = SessionState.GetBool(stateKey, false);
             string controlName = $"SecureString_{stateKey}";
+            SecureStringAttribute secureString = (SecureStringAttribute)attribute;
 
             Rect fieldArea = EditorGUI.PrefixLabel(position, label);
             Rect buttonRect = new(fieldArea.xMax - ButtonWidth, fieldArea.y, ButtonWidth, fieldArea.height);
@@ -38,7 +39,14 @@ namespace LoogaSoft.Inspector.Editor
                 }
                 else
                 {
-                    EditorGUI.PasswordField(valueRect, property.stringValue);
+                    if (secureString.Obscure)
+                    {
+                        EditorGUI.PasswordField(valueRect, property.stringValue);
+                    }
+                    else
+                    {
+                        EditorGUI.TextField(valueRect, property.stringValue);
+                    }
                 }
             }
 
