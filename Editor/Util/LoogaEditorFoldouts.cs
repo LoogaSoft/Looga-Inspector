@@ -15,7 +15,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderArrowSize = 12f;
+        private const float HeaderArrowSize = 6f;
+        private const float HeaderArrowLeftNudge = 5f;
         private const float HeaderTextArrowGap = 6f;
 
         private static GUIStyle _largeHeader;
@@ -83,6 +84,73 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(LargeFoldoutGap);
+        }
+
+        public static bool LoogaFoldoutLarge(Rect position, GUIContent label, bool expanded, out Rect contentRect, SerializedProperty property = null)
+        {
+            EnsureStyles();
+
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            int oldIndent = EditorGUI.indentLevel;
+            Rect indentedPosition = EditorGUI.IndentedRect(position);
+            bool newExpanded;
+
+            try
+            {
+                EditorGUI.indentLevel = 0;
+
+                GUI.Box(indentedPosition, GUIContent.none, _largeBox);
+
+                Rect headerRect = new(
+                    indentedPosition.x,
+                    indentedPosition.y + 2f,
+                    indentedPosition.width,
+                    lineHeight + _largeBox.padding.top + 2f);
+                Rect hoverRect = headerRect;
+                Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeBox);
+                Rect arrowRect = GetHeaderArrowRect(headerRect, _largeBox);
+
+                if (property != null)
+                    EditorGUI.BeginProperty(hoverRect, label, property);
+
+                Event current = Event.current;
+                bool containsMouse = hoverRect.Contains(current.mousePosition);
+                RequestMouseMoveRepaint(containsMouse);
+
+                if (containsMouse)
+                    EditorGUI.DrawRect(hoverRect, new Color(1f, 1f, 1f, 0.05f));
+
+                GUI.Label(textRect, label, _largeHeader);
+
+                newExpanded = expanded;
+                DrawFoldoutArrow(arrowRect, expanded);
+                if (property != null && current.type == EventType.ContextClick && containsMouse)
+                {
+                    ShowPropertyContextMenu(property);
+                    current.Use();
+                }
+                else if (current.type == EventType.MouseDown && containsMouse && current.button == 0)
+                {
+                    newExpanded = !expanded;
+                    current.Use();
+                }
+
+                if (property != null)
+                    EditorGUI.EndProperty();
+
+                contentRect = new Rect(
+                    indentedPosition.x + _largeBox.padding.left,
+                    headerRect.yMax + spacing,
+                    indentedPosition.width - _largeBox.padding.horizontal,
+                    indentedPosition.height - headerRect.height - _largeBox.padding.vertical - spacing);
+            }
+            finally
+            {
+                EditorGUI.indentLevel = oldIndent;
+            }
+
+            return newExpanded;
         }
 
         public static bool LoogaFoldoutSmall(Rect position, GUIContent label, bool expanded, out Rect contentRect, SerializedProperty property = null)
@@ -266,7 +334,7 @@ namespace LoogaSoft.Inspector.Editor
             float sideInset = GetHeaderSideInset(headerRect);
 
             return new Rect(
-                headerRect.xMax - sideInset - HeaderArrowSize,
+                headerRect.xMax - sideInset - HeaderArrowSize - HeaderArrowLeftNudge,
                 headerRect.y + sideInset,
                 HeaderArrowSize,
                 HeaderArrowSize);
