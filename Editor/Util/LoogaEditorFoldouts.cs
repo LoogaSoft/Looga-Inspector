@@ -249,7 +249,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect GetHeaderTextRect(Rect headerRect, float yOffset, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(boxStyle);
+            float sideInset = GetHeaderSideInset(headerRect, boxStyle);
             float reservedRight = sideInset + HeaderArrowWidth + HeaderTextArrowGap;
 
             return new Rect(
@@ -261,7 +261,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(boxStyle);
+            float sideInset = GetHeaderSideInset(headerRect, boxStyle);
 
             return new Rect(
                 headerRect.xMax - sideInset - HeaderArrowWidth,
@@ -270,12 +270,28 @@ namespace LoogaSoft.Inspector.Editor
                 headerRect.height);
         }
 
-        private static float GetHeaderSideInset(GUIStyle boxStyle)
+        private static float GetHeaderSideInset(Rect headerRect, GUIStyle boxStyle)
         {
             if (boxStyle == null)
                 return 0f;
 
-            return Mathf.Max(0f, boxStyle.padding.top);
+            float inspectorInset = Mathf.Max(1f, boxStyle.padding.top - 2f);
+            float editorWindowInset = Mathf.Max(8f, boxStyle.padding.top + 6f);
+            EditorWindow window = EditorWindow.focusedWindow ?? EditorWindow.mouseOverWindow;
+
+            if (window == null)
+                return inspectorInset;
+
+            string windowType = window.GetType().Name;
+            bool isInspector = windowType.Contains("Inspector");
+            if (isInspector)
+                return inspectorInset;
+
+            float distanceFromViewRight = EditorGUIUtility.currentViewWidth - headerRect.xMax;
+            if (distanceFromViewRight <= 16f)
+                return editorWindowInset;
+
+            return inspectorInset;
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
