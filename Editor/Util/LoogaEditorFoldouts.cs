@@ -15,7 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderArrowSize = 14f;
+        private const float HeaderArrowSize = 12f;
         private const float HeaderTextArrowGap = 6f;
 
         private static GUIStyle _largeHeader;
@@ -288,19 +288,20 @@ namespace LoogaSoft.Inspector.Editor
                 : new Color(0.28f, 0.28f, 0.28f, 1f);
 
             Vector2 center = arrowRect.center;
-            float half = HeaderArrowSize * 0.5f;
+            float radius = HeaderArrowSize * 0.5f;
+            float verticalRadius = radius * Mathf.Sqrt(3f) * 0.5f;
             Vector3[] points = expanded
                 ? new[]
                 {
-                    new Vector3(center.x - half, center.y - half * 0.45f, 0f),
-                    new Vector3(center.x + half, center.y - half * 0.45f, 0f),
-                    new Vector3(center.x, center.y + half * 0.55f, 0f)
+                    new Vector3(center.x - radius, center.y - verticalRadius * 0.5f, 0f),
+                    new Vector3(center.x + radius, center.y - verticalRadius * 0.5f, 0f),
+                    new Vector3(center.x, center.y + verticalRadius, 0f)
                 }
                 : new[]
                 {
-                    new Vector3(center.x - half * 0.35f, center.y - half, 0f),
-                    new Vector3(center.x - half * 0.35f, center.y + half, 0f),
-                    new Vector3(center.x + half * 0.55f, center.y, 0f)
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y - radius, 0f),
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y + radius, 0f),
+                    new Vector3(center.x + verticalRadius, center.y, 0f)
                 };
 
             Handles.BeginGUI();
