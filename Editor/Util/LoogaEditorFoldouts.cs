@@ -12,10 +12,9 @@ namespace LoogaSoft.Inspector.Editor
 
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
         private const float SmallHoverExtraWidth = 4f;
-        private const float SmallBoxGap = 2f;
+        private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderRightInset = 4f;
         private const float HeaderArrowWidth = 14f;
         private const float HeaderTextArrowGap = 6f;
 
@@ -49,9 +48,9 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _largeBox.padding.top);
-            Rect text = GetHeaderTextRect(headerRect);
-            Rect arrow = GetHeaderArrowRect(headerRect);
+                baseRect.height + _largeBox.padding.top + 2f);
+            Rect text = GetHeaderTextRect(headerRect, 1f, _largeBox);
+            Rect arrow = GetHeaderArrowRect(headerRect, _largeBox);
 
             bool containsMouse = headerRect.Contains(Event.current.mousePosition);
             RequestMouseMoveRepaint(containsMouse);
@@ -110,7 +109,7 @@ namespace LoogaSoft.Inspector.Editor
                     boxRect.x,
                     boxRect.y + 2f,
                     boxRect.width,
-                    lineHeight);
+                    lineHeight + 2f);
                 bool allowHoverOverflow = Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout;
                 Rect hoverRect = allowHoverOverflow
                     ? new Rect(
@@ -150,8 +149,8 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top);
-            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
+                baseRect.height + _smallBox.padding.top + 1f);
+            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property, _smallBox);
 
             if (newExpanded)
             {
@@ -169,7 +168,7 @@ namespace LoogaSoft.Inspector.Editor
 
         public static bool LoogaFoldoutSmallHeader(Rect headerRect, GUIContent label, bool expanded, SerializedProperty property = null)
         {
-            return LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
+            return LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property, _smallBox);
         }
 
         public static IDisposable ContainedFoldoutScope()
@@ -178,13 +177,19 @@ namespace LoogaSoft.Inspector.Editor
             return new ContainedFoldoutScopeInstance();
         }
 
-        private static bool LoogaFoldoutSmallHeader(Rect headerRect, Rect clickRect, GUIContent label, bool expanded,
-            SerializedProperty property = null)
+        private static bool LoogaFoldoutSmallHeader(
+            Rect headerRect,
+            Rect clickRect,
+            GUIContent label,
+            bool expanded,
+            SerializedProperty property = null,
+            GUIStyle boxStyle = null)
         {
             EnsureStyles();
 
-            Rect textRect = GetHeaderTextRect(headerRect);
-            Rect arrowRect = GetHeaderArrowRect(headerRect);
+            boxStyle ??= _smallBox;
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, boxStyle);
+            Rect arrowRect = GetHeaderArrowRect(headerRect, boxStyle);
 
             if (property != null)
                 EditorGUI.BeginProperty(clickRect, label, property);
@@ -242,29 +247,35 @@ namespace LoogaSoft.Inspector.Editor
                 contentRect.height + padding.vertical);
         }
 
-        private static Rect GetHeaderTextRect(Rect headerRect)
+        private static Rect GetHeaderTextRect(Rect headerRect, float yOffset, GUIStyle boxStyle)
         {
-            float reservedRight = HeaderRightInset + HeaderArrowWidth + HeaderTextArrowGap;
-            float lineHeight = EditorGUIUtility.singleLineHeight;
-            float y = headerRect.y + Mathf.Max(0f, (headerRect.height - lineHeight) * 0.5f);
+            float sideInset = GetHeaderSideInset(boxStyle);
+            float reservedRight = sideInset + HeaderArrowWidth + HeaderTextArrowGap;
 
             return new Rect(
                 headerRect.x + HeaderLeftInset,
-                y,
+                headerRect.y + yOffset,
                 Mathf.Max(0f, headerRect.width - HeaderLeftInset - reservedRight),
-                lineHeight);
+                headerRect.height);
         }
 
-        private static Rect GetHeaderArrowRect(Rect headerRect)
+        private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
-            float lineHeight = EditorGUIUtility.singleLineHeight;
-            float y = headerRect.y + Mathf.Max(0f, (headerRect.height - lineHeight) * 0.5f);
+            float sideInset = GetHeaderSideInset(boxStyle);
 
             return new Rect(
-                headerRect.xMax - HeaderRightInset - HeaderArrowWidth,
-                y,
+                headerRect.xMax - sideInset - HeaderArrowWidth,
+                headerRect.y,
                 HeaderArrowWidth,
-                lineHeight);
+                headerRect.height);
+        }
+
+        private static float GetHeaderSideInset(GUIStyle boxStyle)
+        {
+            if (boxStyle == null)
+                return 0f;
+
+            return Mathf.Max(0f, boxStyle.padding.top - 2f);
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
@@ -641,25 +652,25 @@ namespace LoogaSoft.Inspector.Editor
             _largeHeader = new GUIStyle(EditorStyles.boldLabel)
             {
                 fontSize = 13,
-                padding = new RectOffset(0, 0, 0, 0)
+                padding = new RectOffset(0, 0, 0, 4)
             };
 
             _smallHeader = new GUIStyle(EditorStyles.label)
             {
                 //fontSize = 13,
-                padding = new RectOffset(0, 0, 0, 0)
+                padding = new RectOffset(0, 0, 0, 3)
             };
 
             _largeBox = new GUIStyle("HelpBox")
             {
                 margin = new RectOffset(0, 0, 0, 0),
-                padding = new RectOffset(8, 8, 4, 6)
+                padding = new RectOffset(8, 8, 4, 4)
             };
 
             _smallBox = new GUIStyle("HelpBox")
             {
                 margin = new RectOffset(0, 0, 0, 0),
-                padding = new RectOffset(8, 8, 3, 3)
+                padding = new RectOffset(8, 8, 3, 1)
             };
         }
     }
