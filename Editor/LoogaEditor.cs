@@ -155,7 +155,7 @@ namespace LoogaSoft.Inspector.Editor
             for (int i = 0; i < elements.Count; i++)
             {
                 InspectorElement element = elements[i];
-                if (!element.inFoldoutGroup)
+                if (!element.inStyledGroup)
                 {
                     SerializedProperty property = properties.FirstOrDefault(p => p.name == element.propertyName);
                     if (property != null)
@@ -166,12 +166,15 @@ namespace LoogaSoft.Inspector.Editor
 
                 List<SerializedProperty> groupProperties = new();
                 InspectorElement groupStart = element;
-                string groupName = groupStart.foldoutGroupName;
+                string groupName = groupStart.styledGroupName;
+                bool isFoldout = groupStart.styledGroupIsFoldout;
 
                 while (i < elements.Count)
                 {
                     InspectorElement groupElement = elements[i];
-                    if (!groupElement.inFoldoutGroup || groupElement.foldoutGroupName != groupName)
+                    if (!groupElement.inStyledGroup
+                        || groupElement.styledGroupName != groupName
+                        || groupElement.styledGroupIsFoldout != isFoldout)
                     {
                         i--;
                         break;
@@ -181,14 +184,14 @@ namespace LoogaSoft.Inspector.Editor
                     if (groupProperty != null)
                         groupProperties.Add(groupProperty);
 
-                    if (groupElement.endsFoldoutGroup)
+                    if (groupElement.endsStyledGroup)
                         break;
 
                     i++;
                 }
 
                 if (groupProperties.Count > 0)
-                    DrawFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
+                    DrawStyledGroup(groupStart, groupProperties, scopeType, basePath);
             }
         }
 
@@ -211,10 +214,15 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     EditorGUI.BeginChangeCheck();
 
+                    LoogaBoxAttribute boxAttribute = PropertyUtils.GetAttribute<LoogaBoxAttribute>(property);
                     LoogaFoldoutAttribute foldoutAttribute = PropertyUtils.GetAttribute<LoogaFoldoutAttribute>(property);
                     if (foldoutAttribute != null)
                     {
                         DrawFoldoutProperty(property, foldoutAttribute);
+                    }
+                    else if (boxAttribute != null)
+                    {
+                        DrawBoxProperty(property, boxAttribute);
                     }
                     else
                     {
@@ -313,35 +321,97 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), true);
         }
 
+        private void DrawBoxProperty(SerializedProperty property, LoogaBoxAttribute boxAttribute)
+        {
+            string title = string.IsNullOrWhiteSpace(boxAttribute.Title)
+                ? PropertyUtils.GetLabel(property).text
+                : boxAttribute.Title;
+
+            if (boxAttribute.Style == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaBoxLarge(title, () => DrawBoxPropertyContent(property));
+                return;
+            }
+
+            LoogaEditorFoldouts.LoogaBoxSmall(new GUIContent(title), () => DrawBoxPropertyContent(property));
+        }
+
+        private void DrawBoxPropertyContent(SerializedProperty property)
+        {
+            bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
+            if (!hasCustomDrawer
+                && property.propertyType == SerializedPropertyType.Generic
+                && property.hasVisibleChildren
+                && !property.isArray)
+            {
+                EditorGUI.indentLevel++;
+                DrawNestedPropertyChildren(property);
+                EditorGUI.indentLevel--;
+                return;
+            }
+
+            EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), true);
+        }
+
+        private void DrawStyledGroup(
+            InspectorElement groupStart,
+            List<SerializedProperty> groupProperties,
+            Type scopeType,
+            string basePath)
+        {
+            if (!groupStart.styledGroupIsFoldout)
+            {
+                DrawBoxGroup(groupStart, groupProperties);
+                return;
+            }
+
+            DrawFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
+        }
+
         private void DrawFoldoutGroup(
             InspectorElement groupStart,
             List<SerializedProperty> groupProperties,
             Type scopeType,
             string basePath)
         {
-            string title = groupStart.foldoutGroupName;
+            string title = groupStart.styledGroupName;
             string stateKey = GetFoldoutStateKey(scopeType, $"{basePath}_{title}", title);
 
-            if (groupStart.foldoutStyle == LoogaFoldoutStyle.Large)
+            if (groupStart.styledGroupStyle == LoogaFoldoutStyle.Large)
             {
-                LoogaEditorFoldouts.LoogaFoldoutLarge(title, stateKey, groupStart.foldoutDefaultExpanded, () =>
+                LoogaEditorFoldouts.LoogaFoldoutLarge(title, stateKey, groupStart.styledGroupDefaultExpanded, () =>
                 {
-                    DrawFoldoutGroupContent(groupProperties);
+                    DrawStyledGroupContent(groupProperties);
                 });
                 return;
             }
 
-            bool expanded = SessionState.GetBool(stateKey, groupStart.foldoutDefaultExpanded);
+            bool expanded = SessionState.GetBool(stateKey, groupStart.styledGroupDefaultExpanded);
             bool newExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(new GUIContent(title), expanded, () =>
             {
-                DrawFoldoutGroupContent(groupProperties);
+                DrawStyledGroupContent(groupProperties);
             });
 
             if (newExpanded != expanded)
                 SessionState.SetBool(stateKey, newExpanded);
         }
 
-        private void DrawFoldoutGroupContent(List<SerializedProperty> groupProperties)
+        private void DrawBoxGroup(
+            InspectorElement groupStart,
+            List<SerializedProperty> groupProperties)
+        {
+            string title = groupStart.styledGroupName;
+
+            if (groupStart.styledGroupStyle == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaBoxLarge(title, () => DrawStyledGroupContent(groupProperties));
+                return;
+            }
+
+            LoogaEditorFoldouts.LoogaBoxSmall(new GUIContent(title), () => DrawStyledGroupContent(groupProperties));
+        }
+
+        private void DrawStyledGroupContent(List<SerializedProperty> groupProperties)
         {
             EditorGUI.indentLevel++;
             foreach (SerializedProperty property in groupProperties)
@@ -572,9 +642,10 @@ namespace LoogaSoft.Inspector.Editor
             TabGroupDefinition currentGroup = null;
             string currentTabName = null;
             bool inTabGroup = false;
-            string currentFoldoutGroupName = null;
-            LoogaFoldoutStyle currentFoldoutStyle = LoogaFoldoutStyle.Small;
-            bool currentFoldoutDefaultExpanded = true;
+            string currentStyledGroupName = null;
+            LoogaFoldoutStyle currentStyledGroupStyle = LoogaFoldoutStyle.Small;
+            bool currentStyledGroupDefaultExpanded = true;
+            bool currentStyledGroupIsFoldout = true;
 
             foreach (var field in fields)
             {
@@ -582,6 +653,8 @@ namespace LoogaSoft.Inspector.Editor
                 var tabEndAttribute = field.GetCustomAttribute<TabEndAttribute>();
                 var foldoutGroupAttribute = field.GetCustomAttribute<LoogaFoldoutGroupAttribute>();
                 var foldoutGroupEndAttribute = field.GetCustomAttribute<LoogaFoldoutGroupEndAttribute>();
+                var boxGroupAttribute = field.GetCustomAttribute<LoogaBoxGroupAttribute>();
+                var boxGroupEndAttribute = field.GetCustomAttribute<LoogaBoxGroupEndAttribute>();
 
                 if (tabAttribute != null)
                 {
@@ -622,25 +695,44 @@ namespace LoogaSoft.Inspector.Editor
 
                 if (foldoutGroupAttribute != null)
                 {
-                    currentFoldoutGroupName = foldoutGroupAttribute.Title;
-                    currentFoldoutStyle = foldoutGroupAttribute.Style;
-                    currentFoldoutDefaultExpanded = foldoutGroupAttribute.DefaultExpanded;
+                    currentStyledGroupName = foldoutGroupAttribute.Title;
+                    currentStyledGroupStyle = foldoutGroupAttribute.Style;
+                    currentStyledGroupDefaultExpanded = foldoutGroupAttribute.DefaultExpanded;
+                    currentStyledGroupIsFoldout = true;
+                }
+                else if (boxGroupAttribute != null)
+                {
+                    currentStyledGroupName = boxGroupAttribute.Title;
+                    currentStyledGroupStyle = boxGroupAttribute.Style;
+                    currentStyledGroupDefaultExpanded = true;
+                    currentStyledGroupIsFoldout = false;
                 }
 
-                bool inFoldoutGroup = !string.IsNullOrWhiteSpace(currentFoldoutGroupName);
-                currentElement.SetFoldoutGroup(
-                    currentFoldoutGroupName,
-                    currentFoldoutStyle,
-                    currentFoldoutDefaultExpanded,
-                    foldoutGroupEndAttribute != null);
+                bool inStyledGroup = !string.IsNullOrWhiteSpace(currentStyledGroupName);
+                if (currentStyledGroupIsFoldout)
+                {
+                    currentElement.SetFoldoutGroup(
+                        currentStyledGroupName,
+                        currentStyledGroupStyle,
+                        currentStyledGroupDefaultExpanded,
+                        foldoutGroupEndAttribute != null);
+                }
+                else
+                {
+                    currentElement.SetBoxGroup(
+                        currentStyledGroupName,
+                        currentStyledGroupStyle,
+                        boxGroupEndAttribute != null);
+                }
 
                 layout.elements.Add(currentElement);
 
-                if (inFoldoutGroup && foldoutGroupEndAttribute != null)
+                if (inStyledGroup && (foldoutGroupEndAttribute != null || boxGroupEndAttribute != null))
                 {
-                    currentFoldoutGroupName = null;
-                    currentFoldoutStyle = LoogaFoldoutStyle.Small;
-                    currentFoldoutDefaultExpanded = true;
+                    currentStyledGroupName = null;
+                    currentStyledGroupStyle = LoogaFoldoutStyle.Small;
+                    currentStyledGroupDefaultExpanded = true;
+                    currentStyledGroupIsFoldout = true;
                 }
             }
             

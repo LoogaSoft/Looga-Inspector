@@ -86,6 +86,28 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.Space(LargeFoldoutGap);
         }
 
+        public static void LoogaBoxLarge(string title, Action content)
+        {
+            EnsureStyles();
+
+            EditorGUILayout.BeginVertical(_largeBox);
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
+            Rect boxRect = ContentToBoxRect(baseRect, _largeBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _largeBox.padding.top + 2f);
+            Rect text = GetStaticHeaderTextRect(headerRect, 1f);
+
+            GUI.Label(text, title, _largeHeader);
+            EditorGUILayout.Space(2);
+            content?.Invoke();
+            EditorGUILayout.Space(2);
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(LargeFoldoutGap);
+        }
+
         public static bool LoogaFoldoutLarge(Rect position, GUIContent label, bool expanded, out Rect contentRect, SerializedProperty property = null)
         {
             EnsureStyles();
@@ -235,6 +257,31 @@ namespace LoogaSoft.Inspector.Editor
             return newExpanded;
         }
 
+        public static void LoogaBoxSmall(GUIContent label, Action content)
+        {
+            EnsureStyles();
+
+            EditorGUILayout.Space(1f);
+            EditorGUILayout.BeginVertical(_smallBox);
+
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _smallBox.padding.top + 1f);
+            Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
+
+            GUI.Label(textRect, label, _smallHeader);
+            EditorGUILayout.Space(2f);
+            content?.Invoke();
+            EditorGUILayout.Space(2f);
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(1f);
+        }
+
         public static bool LoogaFoldoutSmallHeader(Rect headerRect, GUIContent label, bool expanded, SerializedProperty property = null)
         {
             return LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property, _smallBox);
@@ -326,6 +373,15 @@ namespace LoogaSoft.Inspector.Editor
                 headerRect.x + HeaderLeftInset,
                 headerRect.y + yOffset,
                 Mathf.Max(0f, headerRect.width - HeaderLeftInset - reservedRight),
+                headerRect.height);
+        }
+
+        private static Rect GetStaticHeaderTextRect(Rect headerRect, float yOffset)
+        {
+            return new Rect(
+                headerRect.x + HeaderLeftInset,
+                headerRect.y + yOffset,
+                Mathf.Max(0f, headerRect.width - HeaderLeftInset * 2f),
                 headerRect.height);
         }
 

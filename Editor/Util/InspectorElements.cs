@@ -8,11 +8,18 @@ namespace LoogaSoft.Inspector.Editor
         public string propertyName;
         public bool inTabGroup;
         public string tabName;
-        public bool inFoldoutGroup;
-        public string foldoutGroupName;
-        public LoogaFoldoutStyle foldoutStyle;
-        public bool foldoutDefaultExpanded;
-        public bool endsFoldoutGroup;
+        public bool inStyledGroup;
+        public string styledGroupName;
+        public LoogaFoldoutStyle styledGroupStyle;
+        public bool styledGroupDefaultExpanded;
+        public bool styledGroupIsFoldout;
+        public bool endsStyledGroup;
+
+        public bool inFoldoutGroup => inStyledGroup && styledGroupIsFoldout;
+        public string foldoutGroupName => styledGroupName;
+        public LoogaFoldoutStyle foldoutStyle => styledGroupStyle;
+        public bool foldoutDefaultExpanded => styledGroupDefaultExpanded;
+        public bool endsFoldoutGroup => endsStyledGroup && styledGroupIsFoldout;
 
         public InspectorElement(string propertyName, bool inTabGroup = false) : this(propertyName, inTabGroup, "")
         {
@@ -31,11 +38,30 @@ namespace LoogaSoft.Inspector.Editor
             bool defaultExpanded,
             bool endsGroup)
         {
-            inFoldoutGroup = !string.IsNullOrWhiteSpace(groupName);
-            foldoutGroupName = groupName;
-            foldoutStyle = style;
-            foldoutDefaultExpanded = defaultExpanded;
-            endsFoldoutGroup = endsGroup;
+            SetStyledGroup(groupName, style, defaultExpanded, true, endsGroup);
+        }
+
+        public void SetBoxGroup(
+            string groupName,
+            LoogaFoldoutStyle style,
+            bool endsGroup)
+        {
+            SetStyledGroup(groupName, style, true, false, endsGroup);
+        }
+
+        private void SetStyledGroup(
+            string groupName,
+            LoogaFoldoutStyle style,
+            bool defaultExpanded,
+            bool isFoldout,
+            bool endsGroup)
+        {
+            inStyledGroup = !string.IsNullOrWhiteSpace(groupName);
+            styledGroupName = groupName;
+            styledGroupStyle = style;
+            styledGroupDefaultExpanded = defaultExpanded;
+            styledGroupIsFoldout = isFoldout;
+            endsStyledGroup = endsGroup;
         }
     }
 

@@ -48,4 +48,39 @@ namespace LoogaSoft.Inspector.Runtime
     public sealed class LoogaFoldoutGroupEndAttribute : Attribute, ILoogaAttribute
     {
     }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaBoxAttribute : Attribute, ILoogaAttribute
+    {
+        public readonly string Title;
+        public readonly LoogaFoldoutStyle Style;
+
+        public LoogaBoxAttribute(
+            string title = null,
+            LoogaFoldoutStyle style = LoogaFoldoutStyle.Small)
+        {
+            Title = title;
+            Style = style;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaBoxGroupAttribute : Attribute, ILoogaAttribute
+    {
+        public readonly string Title;
+        public readonly LoogaFoldoutStyle Style;
+
+        public LoogaBoxGroupAttribute(
+            string title,
+            LoogaFoldoutStyle style = LoogaFoldoutStyle.Small)
+        {
+            Title = title;
+            Style = style;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaBoxGroupEndAttribute : Attribute, ILoogaAttribute
+    {
+    }
 }
