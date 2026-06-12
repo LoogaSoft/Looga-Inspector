@@ -15,7 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallBoxGap = 2f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderRightInset = 8f;
+        private const float HeaderRightInset = 4f;
         private const float HeaderArrowWidth = 14f;
         private const float HeaderTextArrowGap = 6f;
 
@@ -49,8 +49,8 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _largeBox.padding.top + 2f);
-            Rect text = GetHeaderTextRect(headerRect, 1f);
+                baseRect.height + _largeBox.padding.top);
+            Rect text = GetHeaderTextRect(headerRect);
             Rect arrow = GetHeaderArrowRect(headerRect);
 
             bool containsMouse = headerRect.Contains(Event.current.mousePosition);
@@ -110,7 +110,7 @@ namespace LoogaSoft.Inspector.Editor
                     boxRect.x,
                     boxRect.y + 2f,
                     boxRect.width,
-                    lineHeight + 2f);
+                    lineHeight);
                 bool allowHoverOverflow = Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout;
                 Rect hoverRect = allowHoverOverflow
                     ? new Rect(
@@ -150,7 +150,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallBox.padding.top);
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, headerRect, label, expanded, property);
 
             if (newExpanded)
@@ -183,7 +183,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureStyles();
 
-            Rect textRect = GetHeaderTextRect(headerRect, 1f);
+            Rect textRect = GetHeaderTextRect(headerRect);
             Rect arrowRect = GetHeaderArrowRect(headerRect);
 
             if (property != null)
@@ -242,23 +242,29 @@ namespace LoogaSoft.Inspector.Editor
                 contentRect.height + padding.vertical);
         }
 
-        private static Rect GetHeaderTextRect(Rect headerRect, float yOffset)
+        private static Rect GetHeaderTextRect(Rect headerRect)
         {
             float reservedRight = HeaderRightInset + HeaderArrowWidth + HeaderTextArrowGap;
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float y = headerRect.y + Mathf.Max(0f, (headerRect.height - lineHeight) * 0.5f);
+
             return new Rect(
                 headerRect.x + HeaderLeftInset,
-                headerRect.y + yOffset,
+                y,
                 Mathf.Max(0f, headerRect.width - HeaderLeftInset - reservedRight),
-                headerRect.height);
+                lineHeight);
         }
 
         private static Rect GetHeaderArrowRect(Rect headerRect)
         {
+            float lineHeight = EditorGUIUtility.singleLineHeight;
+            float y = headerRect.y + Mathf.Max(0f, (headerRect.height - lineHeight) * 0.5f);
+
             return new Rect(
                 headerRect.xMax - HeaderRightInset - HeaderArrowWidth,
-                headerRect.y,
+                y,
                 HeaderArrowWidth,
-                headerRect.height);
+                lineHeight);
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
@@ -635,13 +641,13 @@ namespace LoogaSoft.Inspector.Editor
             _largeHeader = new GUIStyle(EditorStyles.boldLabel)
             {
                 fontSize = 13,
-                padding = new RectOffset(0, 0, 0, 4)
+                padding = new RectOffset(0, 0, 0, 0)
             };
 
             _smallHeader = new GUIStyle(EditorStyles.label)
             {
                 //fontSize = 13,
-                padding = new RectOffset(0, 0, 0, 3)
+                padding = new RectOffset(0, 0, 0, 0)
             };
 
             _largeBox = new GUIStyle("HelpBox")
