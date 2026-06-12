@@ -15,7 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderArrowWidth = 14f;
+        private const float HeaderArrowSize = 7f;
         private const float HeaderTextArrowGap = 6f;
 
         private static GUIStyle _largeHeader;
@@ -60,7 +60,8 @@ namespace LoogaSoft.Inspector.Editor
 
             GUI.Label(text, title, _largeHeader);
 
-            bool newShow = EditorGUI.Foldout(arrow, show, GUIContent.none);
+            bool newShow = show;
+            DrawFoldoutArrow(arrow, show);
             if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition) && Event.current.button == 0)
             {
                 newShow = !show;
@@ -203,7 +204,8 @@ namespace LoogaSoft.Inspector.Editor
 
             GUI.Label(textRect, label, _smallHeader);
 
-            bool newExpanded = EditorGUI.Foldout(arrowRect, expanded, GUIContent.none);
+            bool newExpanded = expanded;
+            DrawFoldoutArrow(arrowRect, expanded);
 
             if (property != null && current.type == EventType.ContextClick && containsMouse)
             {
@@ -249,8 +251,8 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect GetHeaderTextRect(Rect headerRect, float yOffset, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(headerRect, boxStyle);
-            float reservedRight = sideInset + HeaderArrowWidth + HeaderTextArrowGap;
+            float sideInset = GetHeaderSideInset(headerRect);
+            float reservedRight = sideInset + HeaderArrowSize + HeaderTextArrowGap;
 
             return new Rect(
                 headerRect.x + HeaderLeftInset,
@@ -261,37 +263,50 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(headerRect, boxStyle);
+            float sideInset = GetHeaderSideInset(headerRect);
 
             return new Rect(
-                headerRect.xMax - sideInset - HeaderArrowWidth,
-                headerRect.y,
-                HeaderArrowWidth,
-                headerRect.height);
+                headerRect.xMax - sideInset - HeaderArrowSize,
+                headerRect.y + sideInset,
+                HeaderArrowSize,
+                HeaderArrowSize);
         }
 
-        private static float GetHeaderSideInset(Rect headerRect, GUIStyle boxStyle)
+        private static float GetHeaderSideInset(Rect headerRect)
         {
-            if (boxStyle == null)
-                return 0f;
+            return Mathf.Max(2f, (headerRect.height - HeaderArrowSize) * 0.5f);
+        }
 
-            float inspectorInset = Mathf.Max(1f, boxStyle.padding.top - 2f);
-            float editorWindowInset = Mathf.Max(8f, boxStyle.padding.top + 6f);
-            EditorWindow window = EditorWindow.focusedWindow ?? EditorWindow.mouseOverWindow;
+        private static void DrawFoldoutArrow(Rect arrowRect, bool expanded)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
 
-            if (window == null)
-                return inspectorInset;
+            Color previousColor = Handles.color;
+            Handles.color = EditorGUIUtility.isProSkin
+                ? new Color(0.68f, 0.68f, 0.68f, 1f)
+                : new Color(0.28f, 0.28f, 0.28f, 1f);
 
-            string windowType = window.GetType().Name;
-            bool isInspector = windowType.Contains("Inspector");
-            if (isInspector)
-                return inspectorInset;
+            Vector2 center = arrowRect.center;
+            float half = HeaderArrowSize * 0.5f;
+            Vector3[] points = expanded
+                ? new[]
+                {
+                    new Vector3(center.x - half, center.y - half * 0.45f, 0f),
+                    new Vector3(center.x + half, center.y - half * 0.45f, 0f),
+                    new Vector3(center.x, center.y + half * 0.55f, 0f)
+                }
+                : new[]
+                {
+                    new Vector3(center.x - half * 0.35f, center.y - half, 0f),
+                    new Vector3(center.x - half * 0.35f, center.y + half, 0f),
+                    new Vector3(center.x + half * 0.55f, center.y, 0f)
+                };
 
-            float distanceFromViewRight = EditorGUIUtility.currentViewWidth - headerRect.xMax;
-            if (distanceFromViewRight <= 16f)
-                return editorWindowInset;
-
-            return inspectorInset;
+            Handles.BeginGUI();
+            Handles.DrawAAConvexPolygon(points);
+            Handles.EndGUI();
+            Handles.color = previousColor;
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
