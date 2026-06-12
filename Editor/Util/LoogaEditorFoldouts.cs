@@ -14,6 +14,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallHoverExtraWidth = 4f;
         private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
+        private const float BoxHorizontalInset = 2f;
         private const float HeaderLeftInset = 6f;
         private const float HeaderArrowSize = 9f;
         private const float HeaderArrowLeftNudge = 5f;
@@ -115,7 +116,7 @@ namespace LoogaSoft.Inspector.Editor
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             int oldIndent = EditorGUI.indentLevel;
-            Rect indentedPosition = EditorGUI.IndentedRect(position);
+                Rect indentedPosition = ShrinkBoxRect(EditorGUI.IndentedRect(position));
             bool newExpanded;
 
             try
@@ -182,7 +183,7 @@ namespace LoogaSoft.Inspector.Editor
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             int oldIndent = EditorGUI.indentLevel;
-            Rect indentedPosition = EditorGUI.IndentedRect(position);
+                Rect indentedPosition = ShrinkBoxRect(EditorGUI.IndentedRect(position));
             bool newExpanded;
 
             try
@@ -819,15 +820,24 @@ namespace LoogaSoft.Inspector.Editor
 
             _largeBox = new GUIStyle("HelpBox")
             {
-                margin = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = new RectOffset(8, 8, 4, 4)
             };
 
             _smallBox = new GUIStyle("HelpBox")
             {
-                margin = new RectOffset(0, 0, 0, 0),
+                margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = new RectOffset(8, 8, 3, 1)
             };
+        }
+
+        private static Rect ShrinkBoxRect(Rect rect)
+        {
+            return new Rect(
+                rect.x + BoxHorizontalInset,
+                rect.y,
+                Mathf.Max(0f, rect.width - BoxHorizontalInset * 2f),
+                rect.height);
         }
     }
 }
