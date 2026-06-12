@@ -67,73 +67,129 @@ namespace LoogaSoft.Inspector.Editor
             if (layout.HasTabs)
                 DrawPropertiesWithTabs(properties, layout, scopeType, basePath);
             else
-            {
-                foreach (var property in properties)
-                    DrawCustomPropertyField(property);
-            }
+                DrawPropertySequence(layout.elements, properties, scopeType, basePath);
         }
 
         private void DrawPropertiesWithTabs(List<SerializedProperty> properties, InspectorLayout layout, Type scopeType, string basePath)
         {
-            int currentTabGroupIndex = 0;
-            bool inTabGroup = false;
+            int tabGroupIndex = 0;
+            int index = 0;
 
-            for (int i = 0; i < layout.elements.Count; i++)
+            while (index < layout.elements.Count)
             {
-                InspectorElement element = layout.elements[i];
-                SerializedProperty property = properties.FirstOrDefault(p => p.name == element.propertyName);
-                
-                if (property == null)
-                    continue;
-                
-                int currentTabIndex = 0;
-                TabGroupDefinition groupDefinition = null;
-                if (element.inTabGroup)
+                InspectorElement element = layout.elements[index];
+                if (!element.inTabGroup)
                 {
-                    if (currentTabGroupIndex >= layout.tabGroups.Count)
-                        continue;
-
-                    groupDefinition = layout.tabGroups[currentTabGroupIndex];
-                    if (groupDefinition.tabNames.Count == 0)
-                        continue;
-
-                    string stateKey = GetTabStateKey(scopeType, basePath, currentTabGroupIndex);
-                    currentTabIndex = SessionState.GetInt(stateKey, 0);
-                    currentTabIndex = Mathf.Clamp(currentTabIndex, 0, groupDefinition.tabNames.Count - 1);
-                }
-
-                if (element.inTabGroup && !inTabGroup)
-                {
-                    inTabGroup = true;
-                    if (i > 0)
-                        EditorGUILayout.Space();
-
-                    Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                    EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
-                    
-                    int newIndex = LoogaEditorTabs.DrawWrappingToolbar(currentTabIndex, groupDefinition.tabNames.ToArray(), $"{basePath}_{currentTabGroupIndex}_toolbar");
-
-                    if (newIndex != currentTabIndex)
+                    List<InspectorElement> chunk = new();
+                    while (index < layout.elements.Count && !layout.elements[index].inTabGroup)
                     {
-                        string stateKey = GetTabStateKey(scopeType, basePath, currentTabGroupIndex);
-                        SessionState.SetInt(stateKey, newIndex);
-                        currentTabIndex = newIndex;
+                        chunk.Add(layout.elements[index]);
+                        index++;
                     }
+
+                    DrawPropertySequence(chunk, properties, scopeType, basePath);
+                    continue;
                 }
-                else if (!element.inTabGroup && inTabGroup)
+
+                List<InspectorElement> tabChunk = new();
+                while (index < layout.elements.Count && layout.elements[index].inTabGroup)
                 {
-                    inTabGroup = false;
-                    EditorGUILayout.EndVertical();
-                    EditorGUILayout.Space();
-                    currentTabGroupIndex++;
+                    tabChunk.Add(layout.elements[index]);
+                    index++;
                 }
-                
-                if (!element.inTabGroup || groupDefinition.tabNames[currentTabIndex] == element.tabName)
-                    DrawCustomPropertyField(property);
-            }
-            
-            if (inTabGroup)
+
+                if (tabGroupIndex >= layout.tabGroups.Count)
+                {
+                    tabGroupIndex++;
+                    continue;
+                }
+
+                TabGroupDefinition groupDefinition = layout.tabGroups[tabGroupIndex];
+                if (groupDefinition.tabNames.Count == 0)
+                {
+                    tabGroupIndex++;
+                    continue;
+                }
+
+                string stateKey = GetTabStateKey(scopeType, basePath, tabGroupIndex);
+                int currentTabIndex = SessionState.GetInt(stateKey, 0);
+                currentTabIndex = Mathf.Clamp(currentTabIndex, 0, groupDefinition.tabNames.Count - 1);
+                string currentTabName = groupDefinition.tabNames[currentTabIndex];
+
+                if (index > tabChunk.Count)
+                    EditorGUILayout.Space();
+
+                Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+                EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
+
+                int newIndex = LoogaEditorTabs.DrawWrappingToolbar(
+                    currentTabIndex,
+                    groupDefinition.tabNames.ToArray(),
+                    $"{basePath}_{tabGroupIndex}_toolbar");
+
+                if (newIndex != currentTabIndex)
+                {
+                    SessionState.SetInt(stateKey, newIndex);
+                    currentTabIndex = newIndex;
+                    currentTabName = groupDefinition.tabNames[currentTabIndex];
+                }
+
+                List<InspectorElement> activeTabElements = tabChunk
+                    .Where(tabElement => tabElement.tabName == currentTabName)
+                    .ToList();
+
+                DrawPropertySequence(activeTabElements, properties, scopeType, $"{basePath}_Tab{tabGroupIndex}_{currentTabName}");
+
                 EditorGUILayout.EndVertical();
+                EditorGUILayout.Space();
+                tabGroupIndex++;
+            }
+        }
+
+        private void DrawPropertySequence(
+            List<InspectorElement> elements,
+            List<SerializedProperty> properties,
+            Type scopeType,
+            string basePath)
+        {
+            for (int i = 0; i < elements.Count; i++)
+            {
+                InspectorElement element = elements[i];
+                if (!element.inFoldoutGroup)
+                {
+                    SerializedProperty property = properties.FirstOrDefault(p => p.name == element.propertyName);
+                    if (property != null)
+                        DrawCustomPropertyField(property);
+
+                    continue;
+                }
+
+                List<SerializedProperty> groupProperties = new();
+                InspectorElement groupStart = element;
+                string groupName = groupStart.foldoutGroupName;
+
+                while (i < elements.Count)
+                {
+                    InspectorElement groupElement = elements[i];
+                    if (!groupElement.inFoldoutGroup || groupElement.foldoutGroupName != groupName)
+                    {
+                        i--;
+                        break;
+                    }
+
+                    SerializedProperty groupProperty = properties.FirstOrDefault(p => p.name == groupElement.propertyName);
+                    if (groupProperty != null)
+                        groupProperties.Add(groupProperty);
+
+                    if (groupElement.endsFoldoutGroup)
+                        break;
+
+                    i++;
+                }
+
+                if (groupProperties.Count > 0)
+                    DrawFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
+            }
         }
 
         private void DrawCustomPropertyField(SerializedProperty property)
@@ -154,21 +210,29 @@ namespace LoogaSoft.Inspector.Editor
                 else
                 {
                     EditorGUI.BeginChangeCheck();
-                    
-                    bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
-                    
-                    bool customNestedFoldout = ShouldDrawNestedFoldout(property, hasCustomDrawer);
-                    if (customNestedFoldout)
+
+                    LoogaFoldoutAttribute foldoutAttribute = PropertyUtils.GetAttribute<LoogaFoldoutAttribute>(property);
+                    if (foldoutAttribute != null)
                     {
-                        DrawNestedFoldoutProperty(property);
+                        DrawFoldoutProperty(property, foldoutAttribute);
                     }
                     else
                     {
-                        EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), false);
+                        bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
 
-                        if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
-                            property.hasVisibleChildren && property.isExpanded)
-                            DrawNestedPropertyChildren(property);
+                        bool customNestedFoldout = ShouldDrawNestedFoldout(property, hasCustomDrawer);
+                        if (customNestedFoldout)
+                        {
+                            DrawNestedFoldoutProperty(property);
+                        }
+                        else
+                        {
+                            EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), false);
+
+                            if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
+                                property.hasVisibleChildren && property.isExpanded)
+                                DrawNestedPropertyChildren(property);
+                        }
                     }
                     
                     if (EditorGUI.EndChangeCheck())
@@ -196,6 +260,93 @@ namespace LoogaSoft.Inspector.Editor
                     EditorGUI.indentLevel--;
                 },
                 property);
+        }
+
+        private void DrawFoldoutProperty(SerializedProperty property, LoogaFoldoutAttribute foldoutAttribute)
+        {
+            string title = string.IsNullOrWhiteSpace(foldoutAttribute.Title)
+                ? PropertyUtils.GetLabel(property).text
+                : foldoutAttribute.Title;
+
+            string stateKey = GetFoldoutStateKey(property.serializedObject.targetObject.GetType(), property.propertyPath, title);
+
+            if (foldoutAttribute.Style == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaFoldoutLarge(title, stateKey, foldoutAttribute.DefaultExpanded, () =>
+                {
+                    DrawFoldoutPropertyContent(property);
+                });
+                return;
+            }
+
+            string initializedKey = $"{stateKey}_Initialized";
+            if (!SessionState.GetBool(initializedKey, false))
+            {
+                property.isExpanded = foldoutAttribute.DefaultExpanded;
+                SessionState.SetBool(initializedKey, true);
+            }
+
+            property.isExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(
+                new GUIContent(title),
+                property.isExpanded,
+                () =>
+                {
+                    DrawFoldoutPropertyContent(property);
+                },
+                property);
+        }
+
+        private void DrawFoldoutPropertyContent(SerializedProperty property)
+        {
+            bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
+            if (!hasCustomDrawer
+                && property.propertyType == SerializedPropertyType.Generic
+                && property.hasVisibleChildren
+                && !property.isArray)
+            {
+                EditorGUI.indentLevel++;
+                DrawNestedPropertyChildren(property);
+                EditorGUI.indentLevel--;
+                return;
+            }
+
+            EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), true);
+        }
+
+        private void DrawFoldoutGroup(
+            InspectorElement groupStart,
+            List<SerializedProperty> groupProperties,
+            Type scopeType,
+            string basePath)
+        {
+            string title = groupStart.foldoutGroupName;
+            string stateKey = GetFoldoutStateKey(scopeType, $"{basePath}_{title}", title);
+
+            if (groupStart.foldoutStyle == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaFoldoutLarge(title, stateKey, groupStart.foldoutDefaultExpanded, () =>
+                {
+                    DrawFoldoutGroupContent(groupProperties);
+                });
+                return;
+            }
+
+            bool expanded = SessionState.GetBool(stateKey, groupStart.foldoutDefaultExpanded);
+            bool newExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(new GUIContent(title), expanded, () =>
+            {
+                DrawFoldoutGroupContent(groupProperties);
+            });
+
+            if (newExpanded != expanded)
+                SessionState.SetBool(stateKey, newExpanded);
+        }
+
+        private void DrawFoldoutGroupContent(List<SerializedProperty> groupProperties)
+        {
+            EditorGUI.indentLevel++;
+            foreach (SerializedProperty property in groupProperties)
+                DrawCustomPropertyField(property);
+            EditorGUI.indentLevel--;
         }
 
         private void DrawNestedPropertyChildren(SerializedProperty property)
@@ -421,11 +572,16 @@ namespace LoogaSoft.Inspector.Editor
             TabGroupDefinition currentGroup = null;
             string currentTabName = null;
             bool inTabGroup = false;
+            string currentFoldoutGroupName = null;
+            LoogaFoldoutStyle currentFoldoutStyle = LoogaFoldoutStyle.Small;
+            bool currentFoldoutDefaultExpanded = true;
 
             foreach (var field in fields)
             {
                 var tabAttribute = field.GetCustomAttribute<TabAttribute>();
                 var tabEndAttribute = field.GetCustomAttribute<TabEndAttribute>();
+                var foldoutGroupAttribute = field.GetCustomAttribute<LoogaFoldoutGroupAttribute>();
+                var foldoutGroupEndAttribute = field.GetCustomAttribute<LoogaFoldoutGroupEndAttribute>();
 
                 if (tabAttribute != null)
                 {
@@ -463,8 +619,29 @@ namespace LoogaSoft.Inspector.Editor
                             currentElement = new InspectorElement(field.Name);
                     }
                 }
-                
+
+                if (foldoutGroupAttribute != null)
+                {
+                    currentFoldoutGroupName = foldoutGroupAttribute.Title;
+                    currentFoldoutStyle = foldoutGroupAttribute.Style;
+                    currentFoldoutDefaultExpanded = foldoutGroupAttribute.DefaultExpanded;
+                }
+
+                bool inFoldoutGroup = !string.IsNullOrWhiteSpace(currentFoldoutGroupName);
+                currentElement.SetFoldoutGroup(
+                    currentFoldoutGroupName,
+                    currentFoldoutStyle,
+                    currentFoldoutDefaultExpanded,
+                    foldoutGroupEndAttribute != null);
+
                 layout.elements.Add(currentElement);
+
+                if (inFoldoutGroup && foldoutGroupEndAttribute != null)
+                {
+                    currentFoldoutGroupName = null;
+                    currentFoldoutStyle = LoogaFoldoutStyle.Small;
+                    currentFoldoutDefaultExpanded = true;
+                }
             }
             
             var methodFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
@@ -563,6 +740,12 @@ namespace LoogaSoft.Inspector.Editor
         {
             string typeKey = scopeType != null ? scopeType.FullName : "UnknownType";
             return $"{typeKey}_{basePath}_{tabGroupIndex}_tab";
+        }
+
+        private static string GetFoldoutStateKey(Type scopeType, string basePath, string title)
+        {
+            string typeKey = scopeType != null ? scopeType.FullName : "UnknownType";
+            return $"{typeKey}_{basePath}_{title}_foldout";
         }
 
                 private void HandleListDragAndDrop(SerializedProperty property, Rect dropArea, FieldInfo fieldInfo)
