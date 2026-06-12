@@ -275,7 +275,7 @@ namespace LoogaSoft.Inspector.Editor
             if (boxStyle == null)
                 return 0f;
 
-            return Mathf.Max(0f, boxStyle.padding.top - 2f);
+            return Mathf.Max(0f, boxStyle.padding.top);
         }
 
         private sealed class ContainedFoldoutScopeInstance : IDisposable
