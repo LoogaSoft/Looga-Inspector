@@ -15,7 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float SmallBoxGap = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float HeaderLeftInset = 6f;
-        private const float HeaderArrowSize = 6f;
+        private const float HeaderArrowSize = 9f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float HeaderTextArrowGap = 6f;
 
