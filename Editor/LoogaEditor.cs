@@ -711,14 +711,16 @@ namespace LoogaSoft.Inspector.Editor
 
             foreach (var field in fields)
             {
-                var tabAttribute = field.GetCustomAttribute<TabAttribute>();
+                var tabAttributes = field.GetCustomAttributes<TabAttribute>()
+                    .OrderBy(attribute => attribute.level)
+                    .ToArray();
                 var tabEndAttribute = field.GetCustomAttribute<TabEndAttribute>();
                 var foldoutGroupAttribute = field.GetCustomAttribute<LoogaFoldoutGroupAttribute>();
                 var foldoutGroupEndAttribute = field.GetCustomAttribute<LoogaFoldoutGroupEndAttribute>();
                 var boxGroupAttribute = field.GetCustomAttribute<LoogaBoxGroupAttribute>();
                 var boxGroupEndAttribute = field.GetCustomAttribute<LoogaBoxGroupEndAttribute>();
 
-                if (tabAttribute != null)
+                if (tabAttributes.Length > 0)
                 {
                     if (!inTabGroup)
                     {
@@ -727,7 +729,9 @@ namespace LoogaSoft.Inspector.Editor
                         layout.tabGroups.Add(currentGroup);
                     }
 
-                    ApplyTabAttribute(currentTabPath, tabAttribute);
+                    foreach (TabAttribute tabAttribute in tabAttributes)
+                        ApplyTabAttribute(currentTabPath, tabAttribute);
+
                     currentGroup?.AddPath(currentTabPath);
                 }
                 else
@@ -826,7 +830,9 @@ namespace LoogaSoft.Inspector.Editor
 
             foreach (var field in fields)
             {
-                var tabAttribute = field.GetCustomAttribute<TabAttribute>();
+                var tabAttribute = field.GetCustomAttributes<TabAttribute>()
+                    .OrderBy(attribute => attribute.level)
+                    .FirstOrDefault();
                 var tabEndAttribute = field.GetCustomAttribute<TabEndAttribute>();
 
                 //if tab declared

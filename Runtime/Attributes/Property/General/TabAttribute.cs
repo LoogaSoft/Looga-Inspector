@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LoogaSoft.Inspector.Runtime
 {
-    [AttributeUsage(AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Field, AllowMultiple = true)]
     public class TabAttribute : Attribute, ILoogaAttribute
     {
         public readonly string tabName;
