@@ -36,7 +36,7 @@ namespace LoogaSoft.Inspector.Editor
                 position.height);
             Rect headerRect = new(
                 boxRect.x,
-                boxRect.y + 2f,
+                boxRect.y + 3f,
                 boxRect.width,
                 LineHeight + 2f);
             Rect arrowRect = objectValid
