@@ -20,6 +20,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowRightInset = 10f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
+        private const float CreateButtonHorizontalInset = 1f;
         private const float CreateButtonBottomPaddingExtension = 1f;
         private const float BoxBottomExtension = 1f;
         
@@ -45,12 +46,19 @@ namespace LoogaSoft.Inspector.Editor
             Rect arrowRect = objectValid
                 ? GetHeaderArrowRect(headerRect)
                 : default;
-            Rect createButtonRect = canCreateAsset
+            Rect createButtonSlotRect = canCreateAsset
                 ? new Rect(
                     boxRect.xMax - CreateButtonWidth - CreateButtonPadding,
                     boxRect.y + CreateButtonPadding,
                     CreateButtonWidth,
                     Mathf.Max(0f, boxRect.height - CreateButtonPadding * 2f - CreateButtonBottomPaddingExtension))
+                : default;
+            Rect createButtonRect = canCreateAsset
+                ? new Rect(
+                    createButtonSlotRect.x + CreateButtonHorizontalInset,
+                    createButtonSlotRect.y,
+                    Mathf.Max(0f, createButtonSlotRect.width - CreateButtonHorizontalInset * 2f),
+                    createButtonSlotRect.height)
                 : default;
             Rect contentRect = new(
                 headerRect.x + HeaderLeftInset,
@@ -60,7 +68,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect rightLimitRect = objectValid
                 ? arrowRect
                 : canCreateAsset
-                    ? createButtonRect
+                    ? createButtonSlotRect
                     : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
             float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentRect.width * 0.5f);
             Rect labelRect = new(contentRect.x, contentRect.y, labelWidth, LineHeight);
