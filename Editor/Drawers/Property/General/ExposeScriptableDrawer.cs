@@ -33,7 +33,7 @@ namespace LoogaSoft.Inspector.Editor
                 position.x,
                 position.y,
                 position.width,
-                position.height + spacing - 4f);
+                position.height);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y + 2f,
@@ -45,9 +45,9 @@ namespace LoogaSoft.Inspector.Editor
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
                     boxRect.xMax - CreateButtonWidth,
-                    headerRect.y + (headerRect.height - LineHeight) * 0.5f,
+                    boxRect.y,
                     CreateButtonWidth,
-                    LineHeight)
+                    boxRect.height)
                 : default;
             Rect contentRect = new(
                 headerRect.x + HeaderLeftInset,
@@ -64,7 +64,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect fieldRect = new(
                 labelRect.xMax + HeaderFieldGap,
                 contentRect.y,
-                Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - HeaderFieldGap * 2f),
+                Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
                 LineHeight);
 
             DrawFoldoutBackground(boxRect, headerRect);
@@ -155,6 +155,13 @@ namespace LoogaSoft.Inspector.Editor
                 headerRect.y + (headerRect.height - HeaderArrowSize) * 0.5f,
                 HeaderArrowSize,
                 HeaderArrowSize);
+        }
+
+        private static float GetFieldRightGap(bool hasCreateButton)
+        {
+            return hasCreateButton
+                ? HeaderFieldGap
+                : HeaderFieldGap * 2f;
         }
 
         private static void DrawInlineScriptableObject(Rect position, UnityEngine.Object scriptableObject)
