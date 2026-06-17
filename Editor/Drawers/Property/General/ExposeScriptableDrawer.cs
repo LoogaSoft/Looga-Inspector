@@ -14,9 +14,11 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly float LineHeight = EditorGUIUtility.singleLineHeight;
         private const float CreateButtonWidth = 58f;
         private const float CreateButtonGap = 4f;
-        private const float FoldoutArrowInset = 4f;
-        private const float FoldoutArrowSize = 8f;
-        private const float FoldoutLabelGap = 4f;
+        private const float HeaderHeight = 22f;
+        private const float HeaderPaddingX = 8f;
+        private const float HeaderFieldGap = 6f;
+        private const float HeaderArrowSize = 9f;
+        private const float HeaderArrowInset = 7f;
 
         private UnityEditor.Editor _editor;
         
@@ -28,33 +30,37 @@ namespace LoogaSoft.Inspector.Editor
             TryGetScriptableObjectType(out Type scriptableObjectType);
             bool canCreateAsset = !objectValid && scriptableObjectType != null;
 
-            float indentOffset = EditorGUI.indentLevel * 15f;
-            float labelWidth = Mathf.Clamp(
-                EditorGUIUtility.labelWidth - indentOffset,
-                80f,
-                Mathf.Max(80f, position.width - CreateButtonWidth - CreateButtonGap - 80f));
-
-            Rect labelRect = new Rect(position.x, position.y, labelWidth, LineHeight);
-            if (objectValid)
-                property.isExpanded = DrawInlineFoldout(labelRect, label, property.isExpanded);
-            else
-            {
-                property.isExpanded = false;
-                EditorGUI.LabelField(labelRect, label);
-            }
-            
-            Rect fieldRect = new Rect(position.x + labelWidth, position.y, position.width - labelWidth, LineHeight);
-            Rect createButtonRect = default;
-            if (canCreateAsset)
-            {
-                createButtonRect = new Rect(
-                    fieldRect.xMax - CreateButtonWidth,
-                    fieldRect.y,
+            Rect headerRect = new(position.x, position.y, position.width, HeaderHeight);
+            Rect arrowRect = objectValid
+                ? GetHeaderArrowRect(headerRect)
+                : default;
+            Rect createButtonRect = canCreateAsset
+                ? new Rect(
+                    headerRect.xMax - HeaderPaddingX - CreateButtonWidth,
+                    headerRect.y + (headerRect.height - LineHeight) * 0.5f,
                     CreateButtonWidth,
-                    LineHeight);
+                    LineHeight)
+                : default;
+            Rect contentRect = new(
+                headerRect.x + HeaderPaddingX,
+                headerRect.y + (headerRect.height - LineHeight) * 0.5f,
+                headerRect.width - HeaderPaddingX * 2f,
+                LineHeight);
+            Rect rightLimitRect = objectValid
+                ? arrowRect
+                : canCreateAsset
+                    ? createButtonRect
+                    : new Rect(headerRect.xMax - HeaderPaddingX, headerRect.y, 0f, headerRect.height);
+            float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentRect.width * 0.5f);
+            Rect labelRect = new(contentRect.x, contentRect.y, labelWidth, LineHeight);
+            Rect fieldRect = new(
+                labelRect.xMax + HeaderFieldGap,
+                contentRect.y,
+                Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - HeaderFieldGap * 2f),
+                LineHeight);
 
-                fieldRect.width -= CreateButtonWidth + CreateButtonGap;
-            }
+            DrawHeaderBackground(headerRect);
+            EditorGUI.LabelField(labelRect, label, EditorStyles.boldLabel);
 
             Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
             UnityEngine.Object newValue = EditorGUI.ObjectField(
@@ -68,6 +74,9 @@ namespace LoogaSoft.Inspector.Editor
 
             if (canCreateAsset && GUI.Button(createButtonRect, "Create"))
                 ShowCreateMenu(property, scriptableObjectType);
+
+            if (objectValid)
+                property.isExpanded = DrawHeaderFoldout(headerRect, fieldRect, arrowRect, property.isExpanded);
             
             if (property.isExpanded && objectValid)
             {
@@ -84,7 +93,7 @@ namespace LoogaSoft.Inspector.Editor
                 EditorGUI.indentLevel--;
                 EditorGUILayout.EndVertical();
             }
-            
+
             EditorGUI.EndProperty();
         }
 
@@ -107,26 +116,24 @@ namespace LoogaSoft.Inspector.Editor
                 && typeof(ScriptableObject).IsAssignableFrom(scriptableObjectType);
         }
 
-        private static bool DrawInlineFoldout(Rect position, GUIContent label, bool expanded)
+        private static void DrawHeaderBackground(Rect headerRect)
+        {
+            GUI.Box(headerRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
+
+            Event current = Event.current;
+            if (headerRect.Contains(current.mousePosition))
+                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
+        }
+
+        private static bool DrawHeaderFoldout(Rect headerRect, Rect fieldRect, Rect arrowRect, bool expanded)
         {
             Event current = Event.current;
             bool newExpanded = expanded;
 
-            Rect arrowRect = new(
-                position.x + FoldoutArrowInset,
-                position.y + (position.height - FoldoutArrowSize) * 0.5f,
-                FoldoutArrowSize,
-                FoldoutArrowSize);
+            bool canToggle = headerRect.Contains(current.mousePosition)
+                && !fieldRect.Contains(current.mousePosition);
 
-            Rect labelRect = new(
-                arrowRect.xMax + FoldoutLabelGap,
-                position.y,
-                Mathf.Max(0f, position.xMax - arrowRect.xMax - FoldoutLabelGap),
-                position.height);
-
-            if (current.type == EventType.MouseDown
-                && current.button == 0
-                && position.Contains(current.mousePosition))
+            if (current.type == EventType.MouseDown && current.button == 0 && canToggle)
             {
                 newExpanded = !expanded;
                 current.Use();
@@ -135,8 +142,16 @@ namespace LoogaSoft.Inspector.Editor
             if (current.type == EventType.Repaint)
                 DrawFoldoutArrow(arrowRect, expanded);
 
-            EditorGUI.LabelField(labelRect, label);
             return newExpanded;
+        }
+
+        private static Rect GetHeaderArrowRect(Rect headerRect)
+        {
+            return new Rect(
+                headerRect.xMax - HeaderArrowInset - HeaderArrowSize,
+                headerRect.y + (headerRect.height - HeaderArrowSize) * 0.5f,
+                HeaderArrowSize,
+                HeaderArrowSize);
         }
 
         private static void DrawFoldoutArrow(Rect arrowRect, bool expanded)
@@ -147,7 +162,7 @@ namespace LoogaSoft.Inspector.Editor
                 : new Color(0.28f, 0.28f, 0.28f, 1f);
 
             Vector2 center = arrowRect.center;
-            float radius = FoldoutArrowSize * 0.5f;
+            float radius = HeaderArrowSize * 0.5f;
             float verticalRadius = radius * Mathf.Sqrt(3f) * 0.5f;
             Vector3[] points = expanded
                 ? new[]
@@ -284,7 +299,7 @@ namespace LoogaSoft.Inspector.Editor
 
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
         {
-            return LineHeight;
+            return HeaderHeight;
         }
     }
 }
