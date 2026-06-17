@@ -14,6 +14,9 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly float LineHeight = EditorGUIUtility.singleLineHeight;
         private const float CreateButtonWidth = 58f;
         private const float CreateButtonGap = 4f;
+        private const float FoldoutArrowInset = 4f;
+        private const float FoldoutArrowSize = 8f;
+        private const float FoldoutLabelGap = 4f;
 
         private UnityEditor.Editor _editor;
         
@@ -33,7 +36,7 @@ namespace LoogaSoft.Inspector.Editor
 
             Rect labelRect = new Rect(position.x, position.y, labelWidth, LineHeight);
             if (objectValid)
-                property.isExpanded = EditorGUI.Foldout(labelRect, property.isExpanded, label, true);
+                property.isExpanded = DrawInlineFoldout(labelRect, label, property.isExpanded);
             else
             {
                 property.isExpanded = false;
@@ -102,6 +105,68 @@ namespace LoogaSoft.Inspector.Editor
 
             return scriptableObjectType != null
                 && typeof(ScriptableObject).IsAssignableFrom(scriptableObjectType);
+        }
+
+        private static bool DrawInlineFoldout(Rect position, GUIContent label, bool expanded)
+        {
+            Event current = Event.current;
+            bool newExpanded = expanded;
+
+            Rect arrowRect = new(
+                position.x + FoldoutArrowInset,
+                position.y + (position.height - FoldoutArrowSize) * 0.5f,
+                FoldoutArrowSize,
+                FoldoutArrowSize);
+
+            Rect labelRect = new(
+                arrowRect.xMax + FoldoutLabelGap,
+                position.y,
+                Mathf.Max(0f, position.xMax - arrowRect.xMax - FoldoutLabelGap),
+                position.height);
+
+            if (current.type == EventType.MouseDown
+                && current.button == 0
+                && position.Contains(current.mousePosition))
+            {
+                newExpanded = !expanded;
+                current.Use();
+            }
+
+            if (current.type == EventType.Repaint)
+                DrawFoldoutArrow(arrowRect, expanded);
+
+            EditorGUI.LabelField(labelRect, label);
+            return newExpanded;
+        }
+
+        private static void DrawFoldoutArrow(Rect arrowRect, bool expanded)
+        {
+            Color previousColor = Handles.color;
+            Handles.color = EditorGUIUtility.isProSkin
+                ? new Color(0.68f, 0.68f, 0.68f, 1f)
+                : new Color(0.28f, 0.28f, 0.28f, 1f);
+
+            Vector2 center = arrowRect.center;
+            float radius = FoldoutArrowSize * 0.5f;
+            float verticalRadius = radius * Mathf.Sqrt(3f) * 0.5f;
+            Vector3[] points = expanded
+                ? new[]
+                {
+                    new Vector3(center.x - radius, center.y - verticalRadius * 0.5f, 0f),
+                    new Vector3(center.x + radius, center.y - verticalRadius * 0.5f, 0f),
+                    new Vector3(center.x, center.y + verticalRadius, 0f)
+                }
+                : new[]
+                {
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y - radius, 0f),
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y + radius, 0f),
+                    new Vector3(center.x + verticalRadius, center.y, 0f)
+                };
+
+            Handles.BeginGUI();
+            Handles.DrawAAConvexPolygon(points);
+            Handles.EndGUI();
+            Handles.color = previousColor;
         }
 
         private static void ShowCreateMenu(SerializedProperty property, Type scriptableObjectType)
