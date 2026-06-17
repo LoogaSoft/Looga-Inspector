@@ -22,10 +22,14 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.BeginProperty(position, label, property);
             
             bool objectValid = property.objectReferenceValue != null;
-            bool canCreateAsset = !objectValid && TryGetScriptableObjectType(out Type scriptableObjectType);
+            TryGetScriptableObjectType(out Type scriptableObjectType);
+            bool canCreateAsset = !objectValid && scriptableObjectType != null;
 
             float indentOffset = EditorGUI.indentLevel * 15f;
-            float labelWidth = EditorGUIUtility.labelWidth - indentOffset;
+            float labelWidth = Mathf.Clamp(
+                EditorGUIUtility.labelWidth - indentOffset,
+                80f,
+                Mathf.Max(80f, position.width - CreateButtonWidth - CreateButtonGap - 80f));
 
             Rect labelRect = new Rect(position.x, position.y, labelWidth, LineHeight);
             if (objectValid)
@@ -49,7 +53,15 @@ namespace LoogaSoft.Inspector.Editor
                 fieldRect.width -= CreateButtonWidth + CreateButtonGap;
             }
 
-            EditorGUI.PropertyField(fieldRect, property, GUIContent.none);
+            Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
+            UnityEngine.Object newValue = EditorGUI.ObjectField(
+                fieldRect,
+                property.objectReferenceValue,
+                objectFieldType,
+                false);
+
+            if (newValue != property.objectReferenceValue)
+                property.objectReferenceValue = newValue;
 
             if (canCreateAsset && GUI.Button(createButtonRect, "Create"))
                 ShowCreateMenu(property, scriptableObjectType);
