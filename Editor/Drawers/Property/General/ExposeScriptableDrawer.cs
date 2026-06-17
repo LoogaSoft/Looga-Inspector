@@ -149,13 +149,24 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void CreateAndAssignAsset(SerializedProperty property, Type scriptableObjectType)
         {
+            UnityEngine.Object targetObject = property.serializedObject.targetObject;
+            string propertyPath = property.propertyPath;
+
+            EditorApplication.delayCall += () => CreateAndAssignAsset(targetObject, propertyPath, scriptableObjectType);
+        }
+
+        private static void CreateAndAssignAsset(UnityEngine.Object targetObject, string propertyPath, Type scriptableObjectType)
+        {
+            if (targetObject == null || string.IsNullOrWhiteSpace(propertyPath))
+                return;
+
             ScriptableObject asset = ScriptableObject.CreateInstance(scriptableObjectType);
             string assetPath = EditorUtility.SaveFilePanelInProject(
                 "Create Scriptable Object",
                 GetDefaultAssetName(scriptableObjectType),
                 "asset",
                 "Choose where to save the new asset.",
-                GetDefaultDirectory(property));
+                GetDefaultDirectory(targetObject));
 
             if (string.IsNullOrWhiteSpace(assetPath))
             {
@@ -169,15 +180,22 @@ namespace LoogaSoft.Inspector.Editor
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
+            SerializedObject serializedObject = new(targetObject);
+            SerializedProperty property = serializedObject.FindProperty(propertyPath);
+            if (property == null)
+            {
+                EditorGUIUtility.PingObject(asset);
+                return;
+            }
+
             property.objectReferenceValue = asset;
-            property.serializedObject.ApplyModifiedProperties();
+            serializedObject.ApplyModifiedProperties();
 
             EditorGUIUtility.PingObject(asset);
         }
 
-        private static string GetDefaultDirectory(SerializedProperty property)
+        private static string GetDefaultDirectory(UnityEngine.Object targetObject)
         {
-            UnityEngine.Object targetObject = property.serializedObject.targetObject;
             string targetPath = AssetDatabase.GetAssetPath(targetObject);
             string directory = "Assets";
 
