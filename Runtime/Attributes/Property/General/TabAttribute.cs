@@ -7,9 +7,12 @@ namespace LoogaSoft.Inspector.Runtime
     public class TabAttribute : Attribute, ILoogaAttribute
     {
         public readonly string tabName;
-        public TabAttribute(string tabName)
+        public readonly int level;
+
+        public TabAttribute(string tabName, int level = 0)
         {
             this.tabName = tabName;
+            this.level = Math.Max(0, level);
         }
     }
     [AttributeUsage(AttributeTargets.All)]

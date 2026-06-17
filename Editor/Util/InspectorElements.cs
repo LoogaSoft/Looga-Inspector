@@ -8,6 +8,7 @@ namespace LoogaSoft.Inspector.Editor
         public string propertyName;
         public bool inTabGroup;
         public string tabName;
+        public readonly List<string> tabPath = new();
         public bool inStyledGroup;
         public string styledGroupName;
         public LoogaFoldoutStyle styledGroupStyle;
@@ -30,6 +31,21 @@ namespace LoogaSoft.Inspector.Editor
             this.propertyName = propertyName;
             this.inTabGroup = inTabGroup;
             this.tabName = tabName;
+
+            if (inTabGroup && !string.IsNullOrWhiteSpace(tabName))
+                tabPath.Add(tabName);
+        }
+
+        public InspectorElement(string propertyName, IReadOnlyList<string> tabPath)
+        {
+            this.propertyName = propertyName;
+
+            if (tabPath == null || tabPath.Count == 0)
+                return;
+
+            inTabGroup = true;
+            this.tabPath.AddRange(tabPath);
+            tabName = tabPath[tabPath.Count - 1];
         }
 
         public void SetFoldoutGroup(

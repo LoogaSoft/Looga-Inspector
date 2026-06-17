@@ -104,46 +104,109 @@ namespace LoogaSoft.Inspector.Editor
                     continue;
                 }
 
-                TabGroupDefinition groupDefinition = layout.tabGroups[tabGroupIndex];
-                if (groupDefinition.tabNames.Count == 0)
-                {
-                    tabGroupIndex++;
-                    continue;
-                }
-
-                string stateKey = GetTabStateKey(scopeType, basePath, tabGroupIndex);
-                int currentTabIndex = SessionState.GetInt(stateKey, 0);
-                currentTabIndex = Mathf.Clamp(currentTabIndex, 0, groupDefinition.tabNames.Count - 1);
-                string currentTabName = groupDefinition.tabNames[currentTabIndex];
-
                 if (index > tabChunk.Count)
                     EditorGUILayout.Space();
 
                 Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
                 EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
 
-                int newIndex = LoogaEditorTabs.DrawWrappingToolbar(
-                    currentTabIndex,
-                    groupDefinition.tabNames.ToArray(),
-                    $"{basePath}_{tabGroupIndex}_toolbar");
-
-                if (newIndex != currentTabIndex)
-                {
-                    SessionState.SetInt(stateKey, newIndex);
-                    currentTabIndex = newIndex;
-                    currentTabName = groupDefinition.tabNames[currentTabIndex];
-                }
-
-                List<InspectorElement> activeTabElements = tabChunk
-                    .Where(tabElement => tabElement.tabName == currentTabName)
-                    .ToList();
-
-                DrawPropertySequence(activeTabElements, properties, scopeType, $"{basePath}_Tab{tabGroupIndex}_{currentTabName}");
+                DrawTabLevel(tabChunk, properties, scopeType, $"{basePath}_TabGroup{tabGroupIndex}", 0);
 
                 EditorGUILayout.EndVertical();
                 EditorGUILayout.Space();
                 tabGroupIndex++;
             }
+        }
+
+        private void DrawTabLevel(
+            List<InspectorElement> elements,
+            List<SerializedProperty> properties,
+            Type scopeType,
+            string basePath,
+            int level)
+        {
+            List<string> tabNames = GetTabNamesAtLevel(elements, level);
+            if (tabNames.Count == 0)
+            {
+                DrawPropertySequence(elements, properties, scopeType, basePath);
+                return;
+            }
+
+            string stateKey = GetTabStateKey(scopeType, basePath, level);
+            int currentTabIndex = SessionState.GetInt(stateKey, 0);
+            currentTabIndex = Mathf.Clamp(currentTabIndex, 0, tabNames.Count - 1);
+
+            int newIndex = LoogaEditorTabs.DrawWrappingToolbar(
+                currentTabIndex,
+                tabNames.ToArray(),
+                $"{basePath}_Level{level}_toolbar");
+
+            if (newIndex != currentTabIndex)
+            {
+                SessionState.SetInt(stateKey, newIndex);
+                currentTabIndex = newIndex;
+            }
+
+            string currentTabName = tabNames[currentTabIndex];
+            List<InspectorElement> activeElements = elements
+                .Where(element => element.tabPath.Count > level && element.tabPath[level] == currentTabName)
+                .ToList();
+
+            DrawSelectedTabContent(activeElements, properties, scopeType, $"{basePath}_{currentTabName}", level);
+        }
+
+        private void DrawSelectedTabContent(
+            List<InspectorElement> activeElements,
+            List<SerializedProperty> properties,
+            Type scopeType,
+            string basePath,
+            int level)
+        {
+            int index = 0;
+            while (index < activeElements.Count)
+            {
+                bool nested = activeElements[index].tabPath.Count > level + 1;
+                List<InspectorElement> chunk = new();
+
+                while (index < activeElements.Count
+                       && (activeElements[index].tabPath.Count > level + 1) == nested)
+                {
+                    chunk.Add(activeElements[index]);
+                    index++;
+                }
+
+                if (nested)
+                    DrawTabLevel(chunk, properties, scopeType, $"{basePath}_Nested{level + 1}", level + 1);
+                else
+                    DrawPropertySequence(chunk, properties, scopeType, basePath);
+            }
+        }
+
+        private static List<string> GetTabNamesAtLevel(List<InspectorElement> elements, int level)
+        {
+            List<string> tabNames = new();
+
+            foreach (InspectorElement element in elements)
+            {
+                if (element.tabPath.Count <= level)
+                    continue;
+
+                string tabName = element.tabPath[level];
+                if (!tabNames.Contains(tabName))
+                    tabNames.Add(tabName);
+            }
+
+            return tabNames;
+        }
+
+        private static void ApplyTabAttribute(List<string> currentTabPath, TabAttribute tabAttribute)
+        {
+            int targetLevel = Mathf.Clamp(tabAttribute.level, 0, currentTabPath.Count);
+
+            if (currentTabPath.Count > targetLevel)
+                currentTabPath.RemoveRange(targetLevel, currentTabPath.Count - targetLevel);
+
+            currentTabPath.Add(tabAttribute.tabName);
         }
 
         private void DrawPropertySequence(
@@ -638,10 +701,9 @@ namespace LoogaSoft.Inspector.Editor
             var bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             FieldInfo[] fields = type.GetFields(bindingFlags);
             
-            InspectorElement currentElement = null;
             TabGroupDefinition currentGroup = null;
-            string currentTabName = null;
             bool inTabGroup = false;
+            List<string> currentTabPath = new();
             string currentStyledGroupName = null;
             LoogaFoldoutStyle currentStyledGroupStyle = LoogaFoldoutStyle.Small;
             bool currentStyledGroupDefaultExpanded = true;
@@ -658,40 +720,29 @@ namespace LoogaSoft.Inspector.Editor
 
                 if (tabAttribute != null)
                 {
-                    if (tabAttribute.tabName != currentTabName)
-                    {
-                        currentTabName = tabAttribute.tabName;
-                        
-                        if (currentGroup != null)
-                            currentGroup.tabNames.Add(currentTabName);
-                    }
-
                     if (!inTabGroup)
                     {
                         inTabGroup = true;
                         currentGroup = new TabGroupDefinition();
-                        currentGroup.tabNames.Add(currentTabName);
                         layout.tabGroups.Add(currentGroup);
                     }
-                    
-                    currentElement = new InspectorElement(field.Name, true, currentTabName);
+
+                    ApplyTabAttribute(currentTabPath, tabAttribute);
+                    currentGroup?.AddPath(currentTabPath);
                 }
                 else
                 {
                     if (tabEndAttribute != null)
                     {
-                        currentElement = new InspectorElement(field.Name);
                         inTabGroup = false;
                         currentGroup = null;
-                    }
-                    else
-                    {
-                        if (currentElement != null && currentElement.inTabGroup)
-                            currentElement = new InspectorElement(field.Name, true, currentTabName);
-                        else
-                            currentElement = new InspectorElement(field.Name);
+                        currentTabPath.Clear();
                     }
                 }
+
+                InspectorElement currentElement = inTabGroup
+                    ? new InspectorElement(field.Name, currentTabPath)
+                    : new InspectorElement(field.Name);
 
                 if (foldoutGroupAttribute != null)
                 {
