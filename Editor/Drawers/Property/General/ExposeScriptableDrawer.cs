@@ -20,6 +20,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowRightInset = 10f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
+        private const float CreateButtonVerticalNudge = -1f;
         private const float BoxBottomExtension = 1f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
@@ -47,7 +48,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
                     boxRect.xMax - CreateButtonWidth - CreateButtonPadding,
-                    boxRect.y + CreateButtonPadding,
+                    boxRect.y + CreateButtonPadding + CreateButtonVerticalNudge,
                     CreateButtonWidth,
                     Mathf.Max(0f, boxRect.height - CreateButtonPadding * 2f))
                 : default;
