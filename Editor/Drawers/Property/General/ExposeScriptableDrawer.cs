@@ -150,7 +150,20 @@ namespace LoogaSoft.Inspector.Editor
         private static void CreateAndAssignAsset(SerializedProperty property, Type scriptableObjectType)
         {
             ScriptableObject asset = ScriptableObject.CreateInstance(scriptableObjectType);
-            string assetPath = AssetDatabase.GenerateUniqueAssetPath(GetDefaultAssetPath(property, scriptableObjectType));
+            string assetPath = EditorUtility.SaveFilePanelInProject(
+                "Create Scriptable Object",
+                GetDefaultAssetName(scriptableObjectType),
+                "asset",
+                "Choose where to save the new asset.",
+                GetDefaultDirectory(property));
+
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                UnityEngine.Object.DestroyImmediate(asset);
+                return;
+            }
+
+            assetPath = AssetDatabase.GenerateUniqueAssetPath(assetPath);
 
             AssetDatabase.CreateAsset(asset, assetPath);
             AssetDatabase.SaveAssets();
@@ -160,10 +173,9 @@ namespace LoogaSoft.Inspector.Editor
             property.serializedObject.ApplyModifiedProperties();
 
             EditorGUIUtility.PingObject(asset);
-            Selection.activeObject = asset;
         }
 
-        private static string GetDefaultAssetPath(SerializedProperty property, Type scriptableObjectType)
+        private static string GetDefaultDirectory(SerializedProperty property)
         {
             UnityEngine.Object targetObject = property.serializedObject.targetObject;
             string targetPath = AssetDatabase.GetAssetPath(targetObject);
@@ -179,8 +191,12 @@ namespace LoogaSoft.Inspector.Editor
             if (string.IsNullOrWhiteSpace(directory))
                 directory = "Assets";
 
-            string assetName = $"{ObjectNames.NicifyVariableName(scriptableObjectType.Name)}.asset";
-            return $"{directory.Replace('\\', '/')}/{assetName}";
+            return directory.Replace('\\', '/');
+        }
+
+        private static string GetDefaultAssetName(Type scriptableObjectType)
+        {
+            return ObjectNames.NicifyVariableName(scriptableObjectType.Name);
         }
 
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)

@@ -33,5 +33,7 @@ while changing level `0` starts a new top-level tab.
 `ExposeScriptableAttribute` draws assigned ScriptableObject assets inline.
 When the field is empty, the drawer shows a `Create` button beside the object
 field. If the declared field type has multiple concrete ScriptableObject types,
-the button opens a creation menu. New assets are created beside the inspected
-asset when possible, or in `Assets` as a fallback.
+the button opens a creation menu first. Creating an asset opens Unity's save
+panel so the asset name and location can be chosen. The new asset is assigned
+back to the field and pinged in the Project window without changing the current
+inspector selection.
