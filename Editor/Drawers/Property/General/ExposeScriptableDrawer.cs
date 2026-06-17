@@ -13,14 +13,12 @@ namespace LoogaSoft.Inspector.Editor
     {
         private static readonly float LineHeight = EditorGUIUtility.singleLineHeight;
         private const float CreateButtonWidth = 58f;
-        private const float CreateButtonGap = 4f;
         private const float HeaderHeight = 22f;
-        private const float HeaderPaddingX = 8f;
+        private const float HeaderLeftInset = 6f;
         private const float HeaderFieldGap = 6f;
         private const float HeaderArrowSize = 9f;
-        private const float HeaderArrowInset = 7f;
-
-        private UnityEditor.Editor _editor;
+        private const float HeaderArrowRightInset = 10f;
+        private const float HeaderArrowLeftNudge = 5f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -30,27 +28,37 @@ namespace LoogaSoft.Inspector.Editor
             TryGetScriptableObjectType(out Type scriptableObjectType);
             bool canCreateAsset = !objectValid && scriptableObjectType != null;
 
-            Rect headerRect = new(position.x, position.y, position.width, HeaderHeight);
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+            Rect boxRect = new(
+                position.x,
+                position.y,
+                position.width,
+                position.height + spacing - 4f);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y + 2f,
+                boxRect.width,
+                LineHeight + 2f);
             Rect arrowRect = objectValid
                 ? GetHeaderArrowRect(headerRect)
                 : default;
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
-                    headerRect.xMax - HeaderPaddingX - CreateButtonWidth,
+                    boxRect.xMax - CreateButtonWidth,
                     headerRect.y + (headerRect.height - LineHeight) * 0.5f,
                     CreateButtonWidth,
                     LineHeight)
                 : default;
             Rect contentRect = new(
-                headerRect.x + HeaderPaddingX,
+                headerRect.x + HeaderLeftInset,
                 headerRect.y + (headerRect.height - LineHeight) * 0.5f,
-                headerRect.width - HeaderPaddingX * 2f,
+                headerRect.width - HeaderLeftInset,
                 LineHeight);
             Rect rightLimitRect = objectValid
                 ? arrowRect
                 : canCreateAsset
                     ? createButtonRect
-                    : new Rect(headerRect.xMax - HeaderPaddingX, headerRect.y, 0f, headerRect.height);
+                    : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
             float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentRect.width * 0.5f);
             Rect labelRect = new(contentRect.x, contentRect.y, labelWidth, LineHeight);
             Rect fieldRect = new(
@@ -59,8 +67,8 @@ namespace LoogaSoft.Inspector.Editor
                 Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - HeaderFieldGap * 2f),
                 LineHeight);
 
-            DrawHeaderBackground(headerRect);
-            EditorGUI.LabelField(labelRect, label, EditorStyles.boldLabel);
+            DrawFoldoutBackground(boxRect, headerRect);
+            EditorGUI.LabelField(labelRect, label);
 
             Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
             UnityEngine.Object newValue = EditorGUI.ObjectField(
@@ -80,18 +88,13 @@ namespace LoogaSoft.Inspector.Editor
             
             if (property.isExpanded && objectValid)
             {
-                EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                EditorGUI.indentLevel++;
-                
-                UnityEditor.Editor.CreateCachedEditor(property.objectReferenceValue, null, ref _editor);
-                
-                using (LoogaEditorFoldouts.ContainedFoldoutScope())
-                {
-                    _editor?.OnInspectorGUI();
-                }
-                
-                EditorGUI.indentLevel--;
-                EditorGUILayout.EndVertical();
+                Rect inlineContentRect = new(
+                    boxRect.x + LoogaEditorFoldouts.SmallPaddingX,
+                    headerRect.yMax + spacing,
+                    boxRect.width - LoogaEditorFoldouts.SmallPaddingX * 2f,
+                    Mathf.Max(0f, boxRect.yMax - headerRect.yMax - spacing - LoogaEditorFoldouts.SmallPaddingY));
+
+                DrawInlineScriptableObject(inlineContentRect, property.objectReferenceValue);
             }
 
             EditorGUI.EndProperty();
@@ -116,9 +119,9 @@ namespace LoogaSoft.Inspector.Editor
                 && typeof(ScriptableObject).IsAssignableFrom(scriptableObjectType);
         }
 
-        private static void DrawHeaderBackground(Rect headerRect)
+        private static void DrawFoldoutBackground(Rect boxRect, Rect headerRect)
         {
-            GUI.Box(headerRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
+            GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
 
             Event current = Event.current;
             if (headerRect.Contains(current.mousePosition))
@@ -148,10 +151,42 @@ namespace LoogaSoft.Inspector.Editor
         private static Rect GetHeaderArrowRect(Rect headerRect)
         {
             return new Rect(
-                headerRect.xMax - HeaderArrowInset - HeaderArrowSize,
+                headerRect.xMax - HeaderArrowRightInset - HeaderArrowLeftNudge - HeaderArrowSize,
                 headerRect.y + (headerRect.height - HeaderArrowSize) * 0.5f,
                 HeaderArrowSize,
                 HeaderArrowSize);
+        }
+
+        private static void DrawInlineScriptableObject(Rect position, UnityEngine.Object scriptableObject)
+        {
+            if (scriptableObject == null)
+                return;
+
+            SerializedObject serializedObject = new(scriptableObject);
+            serializedObject.Update();
+
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            float y = position.y;
+            float spacing = EditorGUIUtility.standardVerticalSpacing;
+
+            int oldIndent = EditorGUI.indentLevel;
+            EditorGUI.indentLevel++;
+
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                float propertyHeight = EditorGUI.GetPropertyHeight(iterator, includeChildren: true);
+                Rect propertyRect = new(position.x, y, position.width, propertyHeight);
+
+                using (new EditorGUI.DisabledScope(iterator.propertyPath == "m_Script"))
+                    EditorGUI.PropertyField(propertyRect, iterator, includeChildren: true);
+
+                y += propertyHeight + spacing;
+            }
+
+            EditorGUI.indentLevel = oldIndent;
+            serializedObject.ApplyModifiedProperties();
         }
 
         private static void DrawFoldoutArrow(Rect arrowRect, bool expanded)
@@ -299,7 +334,33 @@ namespace LoogaSoft.Inspector.Editor
 
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
         {
-            return HeaderHeight;
+            float height = HeaderHeight;
+
+            if (property.isExpanded && property.objectReferenceValue != null)
+                height += GetInlineScriptableObjectHeight(property.objectReferenceValue)
+                    + LoogaEditorFoldouts.SmallPaddingY;
+
+            return height;
+        }
+
+        private static float GetInlineScriptableObjectHeight(UnityEngine.Object scriptableObject)
+        {
+            if (scriptableObject == null)
+                return 0f;
+
+            SerializedObject serializedObject = new(scriptableObject);
+            SerializedProperty iterator = serializedObject.GetIterator();
+            bool enterChildren = true;
+            float height = EditorGUIUtility.standardVerticalSpacing;
+
+            while (iterator.NextVisible(enterChildren))
+            {
+                enterChildren = false;
+                height += EditorGUI.GetPropertyHeight(iterator, includeChildren: true)
+                    + EditorGUIUtility.standardVerticalSpacing;
+            }
+
+            return height;
         }
     }
 }
