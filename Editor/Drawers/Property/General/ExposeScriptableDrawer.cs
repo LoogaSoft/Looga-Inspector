@@ -20,6 +20,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowRightInset = 10f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
+        private const float BoxBottomExtension = 1f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -342,7 +343,7 @@ namespace LoogaSoft.Inspector.Editor
 
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
         {
-            float height = HeaderHeight;
+            float height = HeaderHeight + BoxBottomExtension;
 
             if (property.isExpanded && property.objectReferenceValue != null)
                 height += GetInlineScriptableObjectHeight(property.objectReferenceValue)
