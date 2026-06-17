@@ -19,7 +19,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowSize = 9f;
         private const float HeaderArrowRightInset = 10f;
         private const float HeaderArrowLeftNudge = 5f;
-        private const float CreateButtonPadding = 1f;
+        private const float CreateButtonPadding = 2f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -45,10 +45,10 @@ namespace LoogaSoft.Inspector.Editor
                 : default;
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
-                    boxRect.xMax - CreateButtonWidth,
-                    boxRect.y,
+                    boxRect.xMax - CreateButtonWidth - CreateButtonPadding,
+                    boxRect.y + CreateButtonPadding,
                     CreateButtonWidth,
-                    boxRect.height)
+                    Mathf.Max(0f, boxRect.height - CreateButtonPadding * 2f))
                 : default;
             Rect contentRect = new(
                 headerRect.x + HeaderLeftInset,
@@ -81,7 +81,7 @@ namespace LoogaSoft.Inspector.Editor
             if (newValue != property.objectReferenceValue)
                 property.objectReferenceValue = newValue;
 
-            if (canCreateAsset && GUI.Button(InsetRect(createButtonRect, CreateButtonPadding), "Create"))
+            if (canCreateAsset && GUI.Button(createButtonRect, "Create"))
                 ShowCreateMenu(property, scriptableObjectType);
 
             if (objectValid)
@@ -163,15 +163,6 @@ namespace LoogaSoft.Inspector.Editor
             return hasCreateButton
                 ? HeaderFieldGap
                 : HeaderFieldGap * 2f;
-        }
-
-        private static Rect InsetRect(Rect rect, float amount)
-        {
-            return new Rect(
-                rect.x + amount,
-                rect.y + amount,
-                Mathf.Max(0f, rect.width - amount * 2f),
-                Mathf.Max(0f, rect.height - amount * 2f));
         }
 
         private static void DrawInlineScriptableObject(Rect position, UnityEngine.Object scriptableObject)
