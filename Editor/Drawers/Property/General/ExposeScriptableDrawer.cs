@@ -22,7 +22,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
         private const float BoxBottomExtension = 1f;
-        private const float HeaderContentVerticalOffset = 1f;
+        private const bool DrawDebugRects = false;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -38,48 +38,39 @@ namespace LoogaSoft.Inspector.Editor
                 position.y,
                 position.width,
                 position.height);
-            float headerContentY = boxRect.y + (HeaderHeight - LineHeight) * 0.5f + HeaderContentVerticalOffset;
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
                 HeaderHeight);
+            Rect contentLineRect = CenterVertically(headerRect, LineHeight);
+            contentLineRect.x = headerRect.x + HeaderLeftInset;
+            contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset);
             Rect arrowRect = objectValid
                 ? GetHeaderArrowRect(headerRect)
                 : default;
-            Rect createButtonSlotRect = canCreateAsset
-                ? new Rect(
-                    boxRect.xMax - CreateButtonWidth - CreateButtonPadding,
-                    headerContentY - CreateButtonPadding,
-                    CreateButtonWidth,
-                    LineHeight + CreateButtonPadding * 2f)
-                : default;
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
-                    createButtonSlotRect.x + CreateButtonHorizontalInset,
-                    createButtonSlotRect.y + CreateButtonPadding,
-                    Mathf.Max(0f, createButtonSlotRect.width - CreateButtonHorizontalInset * 2f),
+                    boxRect.xMax - CreateButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
+                    contentLineRect.y,
+                    Mathf.Max(0f, CreateButtonWidth - CreateButtonHorizontalInset * 2f),
                     LineHeight)
                 : default;
-            Rect contentRect = new(
-                headerRect.x + HeaderLeftInset,
-                headerContentY,
-                headerRect.width - HeaderLeftInset,
-                LineHeight);
             Rect rightLimitRect = objectValid
                 ? arrowRect
                 : canCreateAsset
-                    ? createButtonSlotRect
+                    ? createButtonRect
                     : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
-            float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentRect.width * 0.5f);
-            Rect labelRect = new(contentRect.x, contentRect.y, labelWidth, LineHeight);
+            float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentLineRect.width * 0.5f);
+            Rect labelRect = new(contentLineRect.x, contentLineRect.y, labelWidth, contentLineRect.height);
             Rect fieldRect = new(
                 labelRect.xMax + HeaderFieldGap,
-                contentRect.y,
+                contentLineRect.y,
                 Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
-                LineHeight);
+                contentLineRect.height);
 
             DrawFoldoutBackground(boxRect, headerRect);
+            DrawDebugGeometry(boxRect, headerRect, contentLineRect, labelRect, fieldRect, createButtonRect, arrowRect);
             EditorGUI.LabelField(labelRect, label);
 
             Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
@@ -164,9 +155,40 @@ namespace LoogaSoft.Inspector.Editor
         {
             return new Rect(
                 headerRect.xMax - HeaderArrowRightInset - HeaderArrowLeftNudge - HeaderArrowSize,
-                headerRect.y + (headerRect.height - HeaderArrowSize) * 0.5f,
+                CenterVertically(headerRect, HeaderArrowSize).y,
                 HeaderArrowSize,
                 HeaderArrowSize);
+        }
+
+        private static Rect CenterVertically(Rect container, float height)
+        {
+            float y = Mathf.Round(container.y + (container.height - height) * 0.5f);
+            return new Rect(container.x, y, container.width, height);
+        }
+
+        private static void DrawDebugGeometry(
+            Rect boxRect,
+            Rect headerRect,
+            Rect contentLineRect,
+            Rect labelRect,
+            Rect fieldRect,
+            Rect createButtonRect,
+            Rect arrowRect)
+        {
+            if (!DrawDebugRects || Event.current.type != EventType.Repaint)
+                return;
+
+            EditorGUI.DrawRect(boxRect, new Color(1f, 0f, 0f, 0.12f));
+            EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 0f, 0.14f));
+            EditorGUI.DrawRect(contentLineRect, new Color(0f, 1f, 1f, 0.16f));
+            EditorGUI.DrawRect(labelRect, new Color(0f, 1f, 0f, 0.14f));
+            EditorGUI.DrawRect(fieldRect, new Color(0f, 0.4f, 1f, 0.14f));
+
+            if (createButtonRect.width > 0f)
+                EditorGUI.DrawRect(createButtonRect, new Color(1f, 0f, 1f, 0.14f));
+
+            if (arrowRect.width > 0f)
+                EditorGUI.DrawRect(arrowRect, new Color(1f, 0.5f, 0f, 0.2f));
         }
 
         private static float GetFieldRightGap(bool hasCreateButton)
