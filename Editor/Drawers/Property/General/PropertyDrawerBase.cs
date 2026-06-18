@@ -17,7 +17,7 @@ namespace LoogaSoft.Inspector.Editor
 
             //disable GUI if enabled is false
             using (new EditorGUI.DisabledScope(disabled: !enabled))
-                OnGUI_Internal(position, property, PropertyUtils.GetLabel(property));
+                OnGUI_Internal(position, property, GetResolvedLabel(property, label));
             
             if (EditorGUI.EndChangeCheck())
                 PropertyUtils.CallOnFieldChangedCallbacks(property);
@@ -38,5 +38,12 @@ namespace LoogaSoft.Inspector.Editor
             return EditorGUI.GetPropertyHeight(property, includeChildren: true);
         }
 
+        private static GUIContent GetResolvedLabel(SerializedProperty property, GUIContent label)
+        {
+            if (label != null && label != GUIContent.none && !string.IsNullOrWhiteSpace(label.text))
+                return label;
+
+            return PropertyUtils.GetLabel(property);
+        }
     }
 }
