@@ -13,7 +13,7 @@ namespace LoogaSoft.Inspector.Editor
     {
         private static readonly float LineHeight = EditorGUIUtility.singleLineHeight;
         private const float CreateButtonWidth = 58f;
-        private const float HeaderHeight = 22f;
+        private const float HeaderHeight = 23f;
         private const float HeaderLeftInset = 6f;
         private const float HeaderFieldGap = 6f;
         private const float HeaderArrowSize = 9f;
@@ -21,7 +21,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
-        private const float BoxBottomExtension = 1f;
         private const bool DrawDebugRects = false;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
@@ -162,8 +161,14 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect CenterVertically(Rect container, float height)
         {
-            float y = Mathf.Round(container.y + (container.height - height) * 0.5f);
+            float y = SnapToPixel(container.y + (container.height - height) * 0.5f);
             return new Rect(container.x, y, container.width, height);
+        }
+
+        private static float SnapToPixel(float value)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return Mathf.Floor(value * pixelsPerPoint + 0.5f) / pixelsPerPoint;
         }
 
         private static void DrawDebugGeometry(
@@ -375,7 +380,7 @@ namespace LoogaSoft.Inspector.Editor
 
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
         {
-            float height = HeaderHeight + BoxBottomExtension;
+            float height = HeaderHeight;
 
             if (property.isExpanded && property.objectReferenceValue != null)
                 height += GetInlineScriptableObjectHeight(property.objectReferenceValue)
