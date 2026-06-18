@@ -22,6 +22,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
         private const float BoxBottomExtension = 1f;
+        private const float HeaderContentVerticalOffset = 1f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -37,7 +38,7 @@ namespace LoogaSoft.Inspector.Editor
                 position.y,
                 position.width,
                 position.height);
-            float headerContentY = boxRect.y + (HeaderHeight - LineHeight) * 0.5f;
+            float headerContentY = boxRect.y + (HeaderHeight - LineHeight) * 0.5f + HeaderContentVerticalOffset;
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
