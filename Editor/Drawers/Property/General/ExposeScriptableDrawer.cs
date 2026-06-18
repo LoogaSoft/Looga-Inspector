@@ -21,7 +21,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
-        private const float CreateButtonBottomPaddingExtension = 1f;
         private const float BoxBottomExtension = 1f;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
@@ -38,31 +37,33 @@ namespace LoogaSoft.Inspector.Editor
                 position.y,
                 position.width,
                 position.height);
+            float headerRowHeight = HeaderHeight + BoxBottomExtension;
+            float headerContentY = boxRect.y + Mathf.Ceil((headerRowHeight - LineHeight) * 0.5f);
             Rect headerRect = new(
                 boxRect.x,
-                boxRect.y + 1f,
+                boxRect.y,
                 boxRect.width,
-                LineHeight + 2f);
+                headerRowHeight);
             Rect arrowRect = objectValid
                 ? GetHeaderArrowRect(headerRect)
                 : default;
             Rect createButtonSlotRect = canCreateAsset
                 ? new Rect(
                     boxRect.xMax - CreateButtonWidth - CreateButtonPadding,
-                    boxRect.y + CreateButtonPadding,
+                    headerContentY - CreateButtonPadding,
                     CreateButtonWidth,
-                    Mathf.Max(0f, boxRect.height - CreateButtonPadding * 2f - CreateButtonBottomPaddingExtension))
+                    LineHeight + CreateButtonPadding * 2f)
                 : default;
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
                     createButtonSlotRect.x + CreateButtonHorizontalInset,
-                    createButtonSlotRect.y,
+                    createButtonSlotRect.y + CreateButtonPadding,
                     Mathf.Max(0f, createButtonSlotRect.width - CreateButtonHorizontalInset * 2f),
-                    createButtonSlotRect.height)
+                    LineHeight)
                 : default;
             Rect contentRect = new(
                 headerRect.x + HeaderLeftInset,
-                headerRect.y + (headerRect.height - LineHeight) * 0.5f,
+                headerContentY,
                 headerRect.width - HeaderLeftInset,
                 LineHeight);
             Rect rightLimitRect = objectValid
