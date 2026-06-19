@@ -1,77 +1,220 @@
 # Looga Inspector
 
-## Nested Tabs
+Looga Inspector is a small attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields or methods and the default Looga editor handles layout, visibility, validation, dropdowns, inline assets, buttons, and common Unity-specific selectors.
 
-`TabAttribute` supports hierarchical tab groups through its `level` parameter.
-The default level is `0`, so existing usages continue to work:
+The package is designed to keep most inspector polish close to the data it affects, without creating one-off custom editor scripts for every component.
+
+## Setup
+
+Add the runtime namespace to scripts that use the attributes:
+
+```csharp
+using LoogaSoft.Inspector.Runtime;
+```
+
+For Unity-specific types in examples, also use:
+
+```csharp
+using UnityEngine;
+```
+
+## Layout
+
+### Tabs
+
+`TabAttribute` groups fields into tab bars. Use `level` for nested tab groups.
 
 ```csharp
 [Tab("General")]
-public int value;
-```
+[SerializeField] private string _displayName;
 
-Use higher levels to create nested tab bars inside the active parent tab.
-Stack parent and child tab attributes on the first field in a nested group:
-
-```csharp
 [Tab("Effects")]
 [Tab("SFX", level: 1)]
-public AudioClip equipSound;
+[SerializeField] private AudioClip _fireSound;
 
 [Tab("VFX", level: 1)]
-public GameObject muzzleFlashPrefab;
-
-[Tab("Impacts", level: 2)]
-public GameObject metalImpactPrefab;
+[SerializeField] private GameObject _muzzleFlashPrefab;
 ```
 
-Tab levels are authored as a path. Changing a lower level keeps its parent tab,
-while changing level `0` starts a new top-level tab.
-
-## Exposed Scriptable Objects
-
-`ExposeScriptableAttribute` draws assigned ScriptableObject assets inline.
-When the field is empty, the drawer shows a `Create` button beside the object
-field. If the declared field type has multiple concrete ScriptableObject types,
-the button opens a creation menu first. Creating an asset opens Unity's save
-panel so the asset name and location can be chosen. The new asset is assigned
-back to the field and pinged in the Project window without changing the current
-inspector selection.
-
-Optional constructor settings:
+`TabEndAttribute` ends a tabbed section when later fields should return to normal drawing.
 
 ```csharp
-[ExposeScriptable(showScriptField: false, expandedByDefault: true, createButtonLabel: "New")]
-public MyProfile profile;
+[Tab("Advanced")]
+[SerializeField] private float _debugValue;
+
+[TabEnd]
+[SerializeField] private bool _drawOutsideTabs;
 ```
 
-## Conditional Visibility
+### Foldouts
 
-`ShowIf` and `HideIf` can check a bool member as before, or compare against a
-simple value. Enum comparisons should use the enum value name as a string:
+`LoogaFoldoutAttribute` wraps one field or nested serializable class in a styled foldout.
 
 ```csharp
-[ShowIf(nameof(mode), "Advanced")]
-public float advancedValue;
+[LoogaFoldout("Recoil", LoogaFoldoutStyle.Large, defaultExpanded: true)]
+[SerializeField] private RecoilSettings _recoil;
 ```
 
-## Buttons
-
-`ButtonAttribute` supports confirmation prompts, edit/play mode gating, custom
-height, and an optional bool condition:
+`LoogaFoldoutGroupAttribute` starts a foldout around multiple fields. End it with `LoogaFoldoutGroupEndAttribute`.
 
 ```csharp
-[Button("Clear Data", confirmMessage: "Clear all saved data?")]
-private void ClearData() { }
+[LoogaFoldoutGroup("Audio", LoogaFoldoutStyle.Small)]
+[SerializeField] private AudioClip _openSound;
 
-[Button("Spawn", mode: LoogaButtonMode.PlayModeOnly, enableIf: nameof(CanSpawn))]
-private void Spawn() { }
+[SerializeField] private AudioClip _closeSound;
+
+[LoogaFoldoutGroupEnd]
+[SerializeField] private float _volume = 1f;
 ```
 
-## Display Names
+### Boxes
 
-`AssetDisplayNameAttribute` keeps a string field synced to the asset name unless
-a paired custom-name bool is enabled:
+`LoogaBoxAttribute` draws one field or nested serializable class inside a non-collapsible styled box.
+
+```csharp
+[LoogaBox("Projectile", LoogaFoldoutStyle.Large)]
+[SerializeField] private ProjectileSettings _projectile;
+```
+
+`LoogaBoxGroupAttribute` and `LoogaBoxGroupEndAttribute` draw multiple fields inside a non-collapsible box.
+
+```csharp
+[LoogaBoxGroup("Identity", LoogaFoldoutStyle.Small)]
+[SerializeField] private string _id;
+
+[SerializeField] private Sprite _icon;
+
+[LoogaBoxGroupEnd]
+[SerializeField] private string _description;
+```
+
+### Headers And Separators
+
+`CenterHeaderAttribute` draws a centered section header.
+
+```csharp
+[CenterHeader("Runtime")]
+[SerializeField] private bool _enabled;
+```
+
+`DividerLineAttribute` draws a horizontal separator.
+
+```csharp
+[DividerLine]
+[SerializeField] private float _nextSectionValue;
+```
+
+`TooltipBoxAttribute` draws an info, warning, or error box above a field.
+
+```csharp
+[TooltipBox("Used only while testing.", TooltipType.Warning)]
+[SerializeField] private bool _debugMode;
+```
+
+## Visibility And Editability
+
+### Conditional Visibility
+
+`ShowIfAttribute` and `HideIfAttribute` show or hide fields based on a bool member, or by comparing a member to an expected value.
+
+```csharp
+[SerializeField] private bool _usesAmmo;
+
+[ShowIf(nameof(_usesAmmo))]
+[SerializeField] private int _magazineSize;
+```
+
+```csharp
+[SerializeField] private FireMode _fireMode;
+
+[ShowIf(nameof(_fireMode), "Automatic")]
+[SerializeField] private float _fireRate;
+```
+
+Supported comparison values are `bool`, `int`, `float`, and `string`. For enums, pass the enum value name as a string.
+
+### Conditional Enable/Disable
+
+`EnableIfAttribute` and `DisableIfAttribute` enable or disable fields based on a bool member.
+
+```csharp
+[SerializeField] private bool _canEdit;
+
+[EnableIf(nameof(_canEdit))]
+[SerializeField] private string _editableValue;
+```
+
+### Play/Edit Mode Helpers
+
+Use these to make setup-only or runtime-only data obvious:
+
+```csharp
+[DisableInPlayMode]
+[SerializeField] private string _setupId;
+
+[DisableInEditMode]
+[SerializeField] private float _runtimeTuning;
+
+[ShowInPlayMode]
+[SerializeField] private int _runtimeCount;
+
+[ShowInEditMode]
+[SerializeField] private bool _editorOnlyPreview;
+```
+
+### Read Only
+
+`ReadOnlyAttribute` draws a serialized field normally, but prevents editing.
+
+```csharp
+[ReadOnly]
+[SerializeField] private int _currentHealth;
+```
+
+## Validation And Change Hooks
+
+`ValidateInputAttribute` calls a bool method and shows a message when validation fails.
+
+```csharp
+[ValidateInput(nameof(HasValidId), "ID cannot be empty.", MessageMode.Warning)]
+[SerializeField] private string _id;
+
+private bool HasValidId() => !string.IsNullOrWhiteSpace(_id);
+```
+
+`OnFieldChangedAttribute` calls a method after a field changes in the inspector.
+
+```csharp
+[OnFieldChanged(nameof(RebuildCache))]
+[SerializeField] private float _radius;
+
+private void RebuildCache() { }
+```
+
+## Labels And Text
+
+`CustomLabelAttribute` replaces the displayed label for a field.
+
+```csharp
+[CustomLabel("Display Name")]
+[SerializeField] private string _displayName;
+```
+
+`LabelAttribute` provides label metadata used by Looga Inspector drawing paths.
+
+```csharp
+[Label("Movement Speed")]
+[SerializeField] private float _speed;
+```
+
+`FittedTextAttribute` draws strings as a larger text area with a minimum line count.
+
+```csharp
+[FittedText(4)]
+[SerializeField] private string _description;
+```
+
+`AssetDisplayNameAttribute` keeps a string synced to the asset name unless a paired custom-name bool is enabled.
 
 ```csharp
 [SerializeField] private bool _useCustomDisplayName;
@@ -80,47 +223,209 @@ a paired custom-name bool is enabled:
 [SerializeField] private string _displayName;
 ```
 
-## Duplicate Validation
+## Dropdowns And Selectors
 
-`NoDuplicateEntriesAttribute` draws the normal list and adds a warning when
-duplicate entries are found. Pass a child member name when list elements are
-objects or structs:
+### Custom Dropdowns
+
+`DropdownAttribute` draws a field as a dropdown backed by a field, property, or zero-argument method.
 
 ```csharp
-[NoDuplicateEntries("_key")]
-public List<Rule> rules;
+[Dropdown(nameof(GetWeaponIds))]
+[SerializeField] private string _weaponId;
+
+private string[] GetWeaponIds() => new[] { "Pistol", "Shotgun", "Rifle" };
 ```
 
-## Table Lists
+Use `DropdownOption` when the label and stored value differ:
 
-`TableListAttribute` draws simple serialized arrays/lists as fixed one-line
-tables. Pass the child field names to draw as columns:
+```csharp
+[Dropdown(nameof(GetOptions))]
+[SerializeField] private int _selectedIndex;
+
+private DropdownOption[] GetOptions()
+{
+    return new[]
+    {
+        new DropdownOption("Easy", 0),
+        new DropdownOption("Hard", 1)
+    };
+}
+```
+
+Or use `labelMember` and `valueMember` for object lists:
+
+```csharp
+[Dropdown(nameof(_entries), labelMember: "Name", valueMember: "Id")]
+[SerializeField] private string _selectedId;
+```
+
+### Unity Selectors
+
+These draw common Unity dropdowns:
+
+```csharp
+[Tag]
+[SerializeField] private string _targetTag;
+
+[Layer]
+[SerializeField] private int _collisionLayer;
+
+[SortingLayer]
+[SerializeField] private string _sortingLayer;
+
+[Scene]
+[SerializeField] private string _sceneName;
+```
+
+`SingleEnumFlagAttribute` draws a flagged enum as a single-choice value instead of a multi-flag mask.
+
+```csharp
+[SingleEnumFlag]
+[SerializeField] private DamageType _damageType;
+```
+
+`SecureStringAttribute` disables editing until the user explicitly enters edit mode. Pass `true` to obscure the value while locked.
+
+```csharp
+[SecureString]
+[SerializeField] private string _titleId;
+
+[SecureString(true)]
+[SerializeField] private string _secret;
+```
+
+`BoolButtonAttribute` draws a bool with a button that calls a method.
+
+```csharp
+[BoolButton(nameof(TogglePreview), "Preview")]
+[SerializeField] private bool _previewEnabled;
+
+private void TogglePreview() { }
+```
+
+## Numeric And List Helpers
+
+`MinMaxSliderAttribute` draws a `Vector2` as a min/max slider.
+
+```csharp
+[MinMaxSlider(0f, 100f)]
+[SerializeField] private Vector2 _range;
+```
+
+`SliderlessRangeAttribute` clamps a numeric value without drawing Unity's slider UI.
+
+```csharp
+[SliderlessRange(0f, 1f)]
+[SerializeField] private float _weight;
+```
+
+`NoDuplicateEntriesAttribute` warns when an array or list contains duplicates. Pass a child member name for object or struct lists.
+
+```csharp
+[NoDuplicateEntries]
+[SerializeField] private List<string> _ids;
+
+[NoDuplicateEntries("_key")]
+[SerializeField] private List<RuleEntry> _rules;
+```
+
+`TableListAttribute` draws simple arrays/lists as compact rows. Pass the child field names to use as columns. The first constructor allows add/remove buttons; the second can disable them.
 
 ```csharp
 [TableList("_clip", "_direction", "_playbackSpeed")]
-public List<JumpClip> jumpClips;
+[SerializeField] private List<JumpClip> _jumpClips;
+
+[TableList(false, "_key", "_value")]
+[SerializeField] private List<RuntimeValue> _runtimeValues;
 ```
 
-This is intended for compact data rows. Complex rows, nested foldouts, previews,
-or search/filter tooling should still use purpose-built editor code.
+Use table lists for compact data rows. Complex preview tools, filtering, or deeply nested data should still use a purpose-built editor.
 
-## Mode-Aware Fields
+## Scriptable Object Fields
 
-Use `DisableInPlayMode`, `DisableInEditMode`, `ShowInPlayMode`, and
-`ShowInEditMode` to keep runtime-only or setup-only data obvious in inspectors.
+`ExposeScriptableAttribute` draws an assigned ScriptableObject inline. When the field is empty, the drawer shows a create button beside the object field. Creating an asset opens Unity's save panel, assigns the new asset, and pings it in the Project window while keeping the current inspector selection.
 
 ```csharp
-[DisableInPlayMode]
-public string setupId;
+[ExposeScriptable(showScriptField: false, expandedByDefault: true, createButtonLabel: "New")]
+[SerializeField] private WeaponVfxProfile _vfxProfile;
 ```
 
-## Dropdowns
+If the declared field type has multiple concrete ScriptableObject types, the create button opens a type menu first.
 
-`DropdownAttribute` can still read options from a field, property, or method.
-Options can now expose separate display/value members, or return
-`DropdownOption` values:
+## Animator Helpers
+
+Animator attributes draw string fields as dropdowns from an Animator Controller or Animator reference member.
 
 ```csharp
-[Dropdown(nameof(GetOptions), labelMember: "Name", valueMember: "Id")]
-public string selectedId;
+[SerializeField] private RuntimeAnimatorController _controller;
+
+[AnimatorParameter(nameof(_controller))]
+[SerializeField] private string _anyParameter;
+
+[AnimatorParameter(nameof(_controller), AnimatorControllerParameterType.Bool)]
+[SerializeField] private string _boolParameter;
+
+[AnimatorLayer(nameof(_controller))]
+[SerializeField] private string _layerName;
+
+[AnimatorState(nameof(_controller))]
+[SerializeField] private string _stateName;
+
+[AnimatorClip(nameof(_controller))]
+[SerializeField] private AnimationClip _clip;
 ```
+
+The referenced member can be a serialized field, property, or method that resolves to an Animator, Animator Controller, or compatible source supported by the helper.
+
+## Shader And Material Helpers
+
+`ShaderPropertyAttribute` draws a string as a dropdown of shader property names from a referenced `Material` or `Shader`. Filter by `LoogaShaderPropertyType` when needed.
+
+```csharp
+[SerializeField] private Material _material;
+
+[ShaderProperty(nameof(_material), LoogaShaderPropertyType.Color)]
+[SerializeField] private string _tintProperty;
+
+[ShaderProperty(nameof(_material), LoogaShaderPropertyType.Texture)]
+[SerializeField] private string _maskProperty;
+```
+
+`ShaderKeywordAttribute` draws a string as a dropdown of local shader keywords from a referenced `Material` or `Shader`.
+
+```csharp
+[ShaderKeyword(nameof(_material))]
+[SerializeField] private string _emissionKeyword;
+```
+
+`GlobalShaderPropertyAttribute` draws a string as a dropdown of project-known shader property names. This is meant for values used with `Shader.SetGlobal*`, global material property IDs, or shared rendering systems.
+
+```csharp
+[GlobalShaderProperty(LoogaShaderPropertyType.Texture)]
+[SerializeField] private string _globalMaskProperty;
+```
+
+The global list is built by scanning shader assets in the project.
+
+## Method Buttons
+
+`ButtonAttribute` draws a method as an inspector button. It supports labels, top placement, edit/play mode gating, confirmation prompts, custom height, and an optional bool condition.
+
+```csharp
+[Button("Clear Data", confirmMessage: "Clear all saved data?")]
+private void ClearData() { }
+
+[Button("Spawn", mode: LoogaButtonMode.PlayModeOnly, enableIf: nameof(CanSpawn))]
+private void Spawn() { }
+
+[Button("Refresh", drawAtTop: true, height: 24f)]
+private void Refresh() { }
+
+private bool CanSpawn() => Application.isPlaying;
+```
+
+## When To Use A Custom Editor
+
+Prefer Looga Inspector attributes for common inspector shaping: grouping, tabs, conditional fields, validation, inline ScriptableObjects, dropdowns, and simple tables.
+
+Keep a custom editor or editor window when the workflow needs custom previews, graph editing, search/filter-heavy interfaces, drag-and-drop canvases, asset migration tools, or runtime debugging panels.
