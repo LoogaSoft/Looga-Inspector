@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Reflection;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
@@ -19,7 +18,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             ShaderKeywordAttribute keywordAttribute = (ShaderKeywordAttribute)attribute;
-            Shader shader = ResolveShader(property, keywordAttribute.materialOrShaderMember);
+            Shader shader = LoogaShaderEditorUtility.ResolveShader(property, keywordAttribute.materialOrShaderMember);
             if (shader == null)
             {
                 EditorGUI.PropertyField(position, property, label, true);
@@ -39,42 +38,6 @@ namespace LoogaSoft.Inspector.Editor
             int currentIndex = Mathf.Max(0, keywords.IndexOf(property.stringValue));
             int newIndex = EditorGUI.Popup(position, label.text, currentIndex, keywords.ToArray());
             property.stringValue = keywords[Mathf.Clamp(newIndex, 0, keywords.Count - 1)];
-        }
-
-        private static Shader ResolveShader(SerializedProperty property, string memberName)
-        {
-            object target = PropertyUtils.GetTargetObjectWithProperty(property);
-            object memberValue = GetMemberValue(target, memberName);
-
-            return memberValue switch
-            {
-                Material material => material != null ? material.shader : null,
-                Shader shader => shader,
-                _ => null
-            };
-        }
-
-        private static object GetMemberValue(object target, string memberName)
-        {
-            if (target == null || string.IsNullOrWhiteSpace(memberName))
-                return null;
-
-            BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-            System.Type type = target.GetType();
-
-            FieldInfo field = type.GetField(memberName, flags);
-            if (field != null)
-                return field.GetValue(target);
-
-            PropertyInfo property = type.GetProperty(memberName, flags);
-            if (property != null)
-                return property.GetValue(target, null);
-
-            MethodInfo method = type.GetMethod(memberName, flags);
-            if (method != null && method.GetParameters().Length == 0)
-                return method.Invoke(target, null);
-
-            return null;
         }
 
         private static List<string> GetKeywordNames(Shader shader)

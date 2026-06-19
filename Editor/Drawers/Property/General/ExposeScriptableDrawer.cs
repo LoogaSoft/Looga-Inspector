@@ -21,7 +21,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
-        private const bool DrawDebugRects = false;
         
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -71,7 +70,6 @@ namespace LoogaSoft.Inspector.Editor
                 contentLineRect.height);
 
             DrawFoldoutBackground(boxRect, headerRect);
-            DrawDebugGeometry(boxRect, headerRect, contentLineRect, labelRect, fieldRect, createButtonRect, arrowRect);
             EditorGUI.LabelField(labelRect, label);
 
             Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
@@ -180,31 +178,6 @@ namespace LoogaSoft.Inspector.Editor
         {
             float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
             return Mathf.Floor(value * pixelsPerPoint + 0.5f) / pixelsPerPoint;
-        }
-
-        private static void DrawDebugGeometry(
-            Rect boxRect,
-            Rect headerRect,
-            Rect contentLineRect,
-            Rect labelRect,
-            Rect fieldRect,
-            Rect createButtonRect,
-            Rect arrowRect)
-        {
-            if (!DrawDebugRects || Event.current.type != EventType.Repaint)
-                return;
-
-            EditorGUI.DrawRect(boxRect, new Color(1f, 0f, 0f, 0.12f));
-            EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 0f, 0.14f));
-            EditorGUI.DrawRect(contentLineRect, new Color(0f, 1f, 1f, 0.16f));
-            EditorGUI.DrawRect(labelRect, new Color(0f, 1f, 0f, 0.14f));
-            EditorGUI.DrawRect(fieldRect, new Color(0f, 0.4f, 1f, 0.14f));
-
-            if (createButtonRect.width > 0f)
-                EditorGUI.DrawRect(createButtonRect, new Color(1f, 0f, 1f, 0.14f));
-
-            if (arrowRect.width > 0f)
-                EditorGUI.DrawRect(arrowRect, new Color(1f, 0.5f, 0f, 0.2f));
         }
 
         private static float GetFieldRightGap(bool hasCreateButton)
