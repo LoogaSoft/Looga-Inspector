@@ -12,7 +12,7 @@ namespace LoogaSoft.Inspector.Editor
     public class ExposeScriptableDrawer : PropertyDrawerBase
     {
         private static readonly float LineHeight = EditorGUIUtility.singleLineHeight;
-        private const float CreateButtonWidth = 58f;
+        private const float MinCreateButtonWidth = 58f;
         private const float HeaderHeight = 23f;
         private const float HeaderLeftInset = 6f;
         private const float HeaderFieldGap = 6f;
@@ -26,10 +26,12 @@ namespace LoogaSoft.Inspector.Editor
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
+            ExposeScriptableAttribute exposeAttribute = (ExposeScriptableAttribute)attribute;
             
             bool objectValid = property.objectReferenceValue != null;
             TryGetScriptableObjectType(out Type scriptableObjectType);
             bool canCreateAsset = !objectValid && scriptableObjectType != null;
+            float createButtonWidth = GetCreateButtonWidth(exposeAttribute);
 
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             Rect boxRect = new(
@@ -50,9 +52,9 @@ namespace LoogaSoft.Inspector.Editor
                 : default;
             Rect createButtonRect = canCreateAsset
                 ? new Rect(
-                    boxRect.xMax - CreateButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
+                    boxRect.xMax - createButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
                     contentLineRect.y,
-                    Mathf.Max(0f, CreateButtonWidth - CreateButtonHorizontalInset * 2f),
+                    Mathf.Max(0f, createButtonWidth - CreateButtonHorizontalInset * 2f),
                     LineHeight)
                 : default;
             Rect rightLimitRect = objectValid
@@ -82,11 +84,20 @@ namespace LoogaSoft.Inspector.Editor
             if (newValue != property.objectReferenceValue)
                 property.objectReferenceValue = newValue;
 
-            if (canCreateAsset && GUI.Button(createButtonRect, "Create"))
+            if (canCreateAsset && GUI.Button(createButtonRect, exposeAttribute.createButtonLabel))
                 ShowCreateMenu(property, scriptableObjectType);
 
             if (objectValid)
+            {
+                string expansionTouchedKey = GetExpansionTouchedKey(property);
+                if (exposeAttribute.expandedByDefault && !SessionState.GetBool(expansionTouchedKey, false))
+                    property.isExpanded = true;
+
+                bool previousExpanded = property.isExpanded;
                 property.isExpanded = DrawHeaderFoldout(headerRect, fieldRect, arrowRect, property.isExpanded);
+                if (property.isExpanded != previousExpanded)
+                    SessionState.SetBool(expansionTouchedKey, true);
+            }
             
             if (property.isExpanded && objectValid)
             {
@@ -96,7 +107,7 @@ namespace LoogaSoft.Inspector.Editor
                     boxRect.width - LoogaEditorFoldouts.SmallPaddingX * 2f,
                     Mathf.Max(0f, boxRect.yMax - headerRect.yMax - spacing - LoogaEditorFoldouts.SmallPaddingY));
 
-                DrawInlineScriptableObject(inlineContentRect, property.objectReferenceValue);
+                DrawInlineScriptableObject(inlineContentRect, property.objectReferenceValue, exposeAttribute);
             }
 
             EditorGUI.EndProperty();
@@ -203,7 +214,23 @@ namespace LoogaSoft.Inspector.Editor
                 : HeaderFieldGap * 2f;
         }
 
-        private static void DrawInlineScriptableObject(Rect position, UnityEngine.Object scriptableObject)
+        private static float GetCreateButtonWidth(ExposeScriptableAttribute exposeAttribute)
+        {
+            GUIContent content = new(exposeAttribute.createButtonLabel);
+            return Mathf.Max(MinCreateButtonWidth, GUI.skin.button.CalcSize(content).x + CreateButtonPadding * 4f);
+        }
+
+        private static string GetExpansionTouchedKey(SerializedProperty property)
+        {
+            UnityEngine.Object targetObject = property.serializedObject.targetObject;
+            int targetId = targetObject != null ? targetObject.GetInstanceID() : 0;
+            return $"{targetId}_{property.propertyPath}_ExposeScriptableTouched";
+        }
+
+        private static void DrawInlineScriptableObject(
+            Rect position,
+            UnityEngine.Object scriptableObject,
+            ExposeScriptableAttribute exposeAttribute)
         {
             if (scriptableObject == null)
                 return;
@@ -222,6 +249,9 @@ namespace LoogaSoft.Inspector.Editor
             while (iterator.NextVisible(enterChildren))
             {
                 enterChildren = false;
+                if (!exposeAttribute.showScriptField && iterator.propertyPath == "m_Script")
+                    continue;
+
                 float propertyHeight = EditorGUI.GetPropertyHeight(iterator, includeChildren: true);
                 Rect propertyRect = new(position.x, y, position.width, propertyHeight);
 
@@ -383,13 +413,13 @@ namespace LoogaSoft.Inspector.Editor
             float height = HeaderHeight;
 
             if (property.isExpanded && property.objectReferenceValue != null)
-                height += GetInlineScriptableObjectHeight(property.objectReferenceValue)
+                height += GetInlineScriptableObjectHeight(property.objectReferenceValue, ((ExposeScriptableAttribute)attribute).showScriptField)
                     + LoogaEditorFoldouts.SmallPaddingY;
 
             return height;
         }
 
-        private static float GetInlineScriptableObjectHeight(UnityEngine.Object scriptableObject)
+        private static float GetInlineScriptableObjectHeight(UnityEngine.Object scriptableObject, bool showScriptField)
         {
             if (scriptableObject == null)
                 return 0f;
@@ -402,6 +432,9 @@ namespace LoogaSoft.Inspector.Editor
             while (iterator.NextVisible(enterChildren))
             {
                 enterChildren = false;
+                if (!showScriptField && iterator.propertyPath == "m_Script")
+                    continue;
+
                 height += EditorGUI.GetPropertyHeight(iterator, includeChildren: true)
                     + EditorGUIUtility.standardVerticalSpacing;
             }

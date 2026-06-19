@@ -33,7 +33,7 @@ namespace LoogaSoft.Inspector.Editor
                 #if ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
-                .Select(o => o.ToString() ?? "Null")
+                .Select(o => GetOptionLabel(o, dropdownAttribute))
                 .ToArray();
             
             EditorGUI.BeginProperty(position, label, property);
@@ -43,7 +43,7 @@ namespace LoogaSoft.Inspector.Editor
 
             for (int i = 0; i < options.Count; i++)
             {
-                if (Equals(currentObj, options[i]))
+                if (Equals(currentObj, GetOptionValue(options[i], dropdownAttribute)))
                 {
                     currentIndex = i;
                     break;
@@ -52,8 +52,8 @@ namespace LoogaSoft.Inspector.Editor
             
             int newIndex = EditorGUI.Popup(position, label.text, currentIndex, labels);
             
-            if (newIndex != currentIndex) 
-                property.boxedValue = options[newIndex];
+            if (newIndex != currentIndex)
+                property.boxedValue = GetOptionValue(options[newIndex], dropdownAttribute);
             
             EditorGUI.EndProperty();
         }
@@ -95,6 +95,66 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             return null;
+        }
+
+        private static string GetOptionLabel(object option, DropdownAttribute dropdownAttribute)
+        {
+            if (option == null)
+                return "Null";
+
+            if (option is DropdownOption dropdownOption)
+                return dropdownOption.Label ?? "Null";
+
+            if (!string.IsNullOrWhiteSpace(dropdownAttribute.labelMember)
+                && TryGetMemberValue(option, dropdownAttribute.labelMember, out object labelValue))
+                return labelValue?.ToString() ?? "Null";
+
+            return option.ToString() ?? "Null";
+        }
+
+        private static object GetOptionValue(object option, DropdownAttribute dropdownAttribute)
+        {
+            if (option is DropdownOption dropdownOption)
+                return dropdownOption.Value;
+
+            if (!string.IsNullOrWhiteSpace(dropdownAttribute.valueMember)
+                && TryGetMemberValue(option, dropdownAttribute.valueMember, out object value))
+                return value;
+
+            return option;
+        }
+
+        private static bool TryGetMemberValue(object source, string memberName, out object value)
+        {
+            value = null;
+            if (source == null || string.IsNullOrWhiteSpace(memberName))
+                return false;
+
+            BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
+            System.Type type = source.GetType();
+
+            FieldInfo field = type.GetField(memberName, flags);
+            if (field != null)
+            {
+                value = field.GetValue(source);
+                return true;
+            }
+
+            PropertyInfo property = type.GetProperty(memberName, flags);
+            if (property != null)
+            {
+                value = property.GetValue(source, null);
+                return true;
+            }
+
+            MethodInfo method = type.GetMethod(memberName, flags);
+            if (method != null && method.GetParameters().Length == 0)
+            {
+                value = method.Invoke(source, null);
+                return true;
+            }
+
+            return false;
         }
     }
 }

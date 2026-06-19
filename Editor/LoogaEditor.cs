@@ -524,11 +524,19 @@ namespace LoogaSoft.Inspector.Editor
                 if (button.drawAtTop != drawTop)
                     continue;
 
-                if (GUILayout.Button(button.label, GUILayout.Height(30f)))
+                bool enabled = IsButtonEnabled(button);
+
+                using (new EditorGUI.DisabledScope(!enabled))
                 {
-                    foreach (var t in targets)
+                    if (GUILayout.Button(button.label, GUILayout.Height(button.height)))
                     {
-                        button.method.Invoke(t, null);
+                        if (!ShouldInvokeButton(button))
+                            continue;
+
+                        foreach (var t in targets)
+                        {
+                            button.method.Invoke(t, null);
+                        }
                     }
                 }
 
@@ -806,7 +814,11 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     method = m,
                     label = buttonLabel,
-                    drawAtTop = buttonAttribute.drawAtTop
+                    drawAtTop = buttonAttribute.drawAtTop,
+                    enableIf = buttonAttribute.enableIf,
+                    confirmMessage = buttonAttribute.confirmMessage,
+                    height = Mathf.Max(1f, buttonAttribute.height),
+                    mode = buttonAttribute.mode
                 });
             }
             
@@ -817,6 +829,32 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
         
         #region Helpers
+        private bool IsButtonEnabled(InspectorButton button)
+        {
+            if (button.mode == LoogaButtonMode.EditModeOnly && EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
+
+            if (button.mode == LoogaButtonMode.PlayModeOnly && !EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
+
+            if (string.IsNullOrWhiteSpace(button.enableIf))
+                return true;
+
+            return targets.Any(targetObject => PropertyUtils.GetConditionValue(targetObject, button.enableIf));
+        }
+
+        private static bool ShouldInvokeButton(InspectorButton button)
+        {
+            if (string.IsNullOrWhiteSpace(button.confirmMessage))
+                return true;
+
+            return EditorUtility.DisplayDialog(
+                button.label,
+                button.confirmMessage,
+                "Confirm",
+                "Cancel");
+        }
+
         private void GroupPropertiesIntoTabs()
         {
             //get fields with these flags

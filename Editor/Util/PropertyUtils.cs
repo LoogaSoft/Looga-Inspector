@@ -67,6 +67,12 @@ namespace LoogaSoft.Inspector.Editor
             ReadOnlyAttribute readOnlyAttribute = GetAttribute<ReadOnlyAttribute>(property);
             if (readOnlyAttribute != null)
                 return false;
+
+            if (GetAttribute<DisableInPlayModeAttribute>(property) != null && EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
+
+            if (GetAttribute<DisableInEditModeAttribute>(property) != null && !EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
             
             EnableIfAttributeBase enableIfAttribute = GetAttribute<EnableIfAttributeBase>(property);
             if (enableIfAttribute == null)
@@ -85,6 +91,12 @@ namespace LoogaSoft.Inspector.Editor
             if (property == null) 
                 return true;
             
+            if (GetAttribute<ShowInPlayModeAttribute>(property) != null && !EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
+
+            if (GetAttribute<ShowInEditModeAttribute>(property) != null && EditorApplication.isPlayingOrWillChangePlaymode)
+                return false;
+
             ShowIfAttributeBase showIfAttribute = GetAttribute<ShowIfAttributeBase>(property);
             if (showIfAttribute == null)
                 return true;
@@ -92,7 +104,9 @@ namespace LoogaSoft.Inspector.Editor
             object target = GetTargetObjectWithProperty(property);
 
             bool inverted = showIfAttribute.inverted;
-            bool condition = GetCondition(target, showIfAttribute.condition);
+            bool condition = showIfAttribute.hasExpectedValue
+                ? GetCondition(target, showIfAttribute.condition, showIfAttribute.expectedValue)
+                : GetCondition(target, showIfAttribute.condition);
             
             return inverted ? !condition : condition;
         }
@@ -113,6 +127,50 @@ namespace LoogaSoft.Inspector.Editor
             
             Debug.LogWarning($"Could not find condition {conditionName} on {target.GetType().Name}");
             return false;
+        }
+
+        public static bool GetConditionValue(object target, string conditionName)
+        {
+            return GetCondition(target, conditionName);
+        }
+
+        private static bool GetCondition(object target, string conditionName, string expectedValue)
+        {
+            object value = GetConditionObject(target, conditionName);
+            if (value == null)
+                return string.IsNullOrEmpty(expectedValue);
+
+            if (value is bool boolValue && bool.TryParse(expectedValue, out bool expectedBool))
+                return boolValue == expectedBool;
+
+            if (value is int intValue && int.TryParse(expectedValue, out int expectedInt))
+                return intValue == expectedInt;
+
+            if (value is float floatValue && float.TryParse(expectedValue, out float expectedFloat))
+                return Mathf.Approximately(floatValue, expectedFloat);
+
+            if (value.GetType().IsEnum)
+                return string.Equals(value.ToString(), expectedValue, StringComparison.Ordinal);
+
+            return string.Equals(value.ToString(), expectedValue, StringComparison.Ordinal);
+        }
+
+        private static object GetConditionObject(object target, string conditionName)
+        {
+            FieldInfo field = ReflectionUtils.GetField(target, conditionName);
+            if (field != null)
+                return field.GetValue(target);
+
+            PropertyInfo property = ReflectionUtils.GetProperty(target, conditionName);
+            if (property != null)
+                return property.GetValue(target, null);
+
+            MethodInfo method = ReflectionUtils.GetMethod(target, conditionName);
+            if (method != null && method.GetParameters().Length == 0)
+                return method.Invoke(target, null);
+
+            Debug.LogWarning($"Could not find condition {conditionName} on {target.GetType().Name}");
+            return null;
         }
 
         public static object GetTargetObjectWithProperty(SerializedProperty property)
