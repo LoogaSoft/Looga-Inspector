@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -231,13 +231,15 @@ namespace LoogaSoft.Inspector.Editor
                 InspectorElement groupStart = element;
                 string groupName = groupStart.styledGroupName;
                 bool isFoldout = groupStart.styledGroupIsFoldout;
+                bool isToggleFoldout = groupStart.styledGroupIsToggleFoldout;
 
                 while (i < elements.Count)
                 {
                     InspectorElement groupElement = elements[i];
                     if (!groupElement.inStyledGroup
                         || groupElement.styledGroupName != groupName
-                        || groupElement.styledGroupIsFoldout != isFoldout)
+                        || groupElement.styledGroupIsFoldout != isFoldout
+                        || groupElement.styledGroupIsToggleFoldout != isToggleFoldout)
                     {
                         i--;
                         break;
@@ -279,7 +281,12 @@ namespace LoogaSoft.Inspector.Editor
 
                     LoogaBoxAttribute boxAttribute = PropertyUtils.GetAttribute<LoogaBoxAttribute>(property);
                     LoogaFoldoutAttribute foldoutAttribute = PropertyUtils.GetAttribute<LoogaFoldoutAttribute>(property);
-                    if (foldoutAttribute != null)
+                    LoogaToggleFoldoutAttribute toggleFoldoutAttribute = PropertyUtils.GetAttribute<LoogaToggleFoldoutAttribute>(property);
+                    if (toggleFoldoutAttribute != null)
+                    {
+                        DrawToggleFoldoutProperty(property, toggleFoldoutAttribute);
+                    }
+                    else if (foldoutAttribute != null)
                     {
                         DrawFoldoutProperty(property, foldoutAttribute);
                     }
@@ -384,6 +391,70 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), true);
         }
 
+        private void DrawToggleFoldoutProperty(SerializedProperty property, LoogaToggleFoldoutAttribute toggleFoldoutAttribute)
+        {
+            string title = string.IsNullOrWhiteSpace(toggleFoldoutAttribute.Title)
+                ? PropertyUtils.GetLabel(property).text
+                : toggleFoldoutAttribute.Title;
+
+            SerializedProperty toggleProperty = ResolveToggleProperty(property, toggleFoldoutAttribute.TogglePropertyName);
+            if (toggleProperty == null)
+            {
+                DrawFoldoutProperty(property, new LoogaFoldoutAttribute(title, toggleFoldoutAttribute.Style));
+                return;
+            }
+
+            string stateKey = GetFoldoutStateKey(property.serializedObject.targetObject.GetType(), property.propertyPath, title);
+
+            if (toggleFoldoutAttribute.Style == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaToggleFoldoutLarge(title, toggleProperty, stateKey, () =>
+                {
+                    DrawToggleFoldoutPropertyContent(property, toggleProperty);
+                });
+                return;
+            }
+
+            bool expanded = SessionState.GetBool(stateKey, false);
+            bool newExpanded = LoogaEditorFoldouts.LoogaToggleFoldoutSmall(
+                new GUIContent(title),
+                toggleProperty,
+                expanded,
+                () => DrawToggleFoldoutPropertyContent(property, toggleProperty),
+                property);
+
+            if (newExpanded != expanded)
+                SessionState.SetBool(stateKey, newExpanded);
+        }
+
+        private void DrawToggleFoldoutPropertyContent(SerializedProperty property, SerializedProperty toggleProperty)
+        {
+            bool hasCustomDrawer = CustomDrawerUtil.HasCustomDrawer(property);
+            if (!hasCustomDrawer
+                && property.propertyType == SerializedPropertyType.Generic
+                && property.hasVisibleChildren
+                && !property.isArray)
+            {
+                EditorGUI.indentLevel++;
+                DrawNestedPropertyChildren(property, toggleProperty.propertyPath);
+                EditorGUI.indentLevel--;
+                return;
+            }
+
+            EditorGUILayout.PropertyField(property, PropertyUtils.GetLabel(property), true);
+        }
+
+        private SerializedProperty ResolveToggleProperty(SerializedProperty property, string togglePropertyName)
+        {
+            if (property.propertyType == SerializedPropertyType.Boolean && string.IsNullOrWhiteSpace(togglePropertyName))
+                return property;
+
+            if (string.IsNullOrWhiteSpace(togglePropertyName))
+                return null;
+
+            SerializedProperty child = property.FindPropertyRelative(togglePropertyName);
+            return child != null && child.propertyType == SerializedPropertyType.Boolean ? child : null;
+        }
         private void DrawBoxProperty(SerializedProperty property, LoogaBoxAttribute boxAttribute)
         {
             string title = string.IsNullOrWhiteSpace(boxAttribute.Title)
@@ -422,6 +493,12 @@ namespace LoogaSoft.Inspector.Editor
             Type scopeType,
             string basePath)
         {
+            if (groupStart.styledGroupIsToggleFoldout)
+            {
+                DrawToggleFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
+                return;
+            }
+
             if (!groupStart.styledGroupIsFoldout)
             {
                 DrawBoxGroup(groupStart, groupProperties);
@@ -431,6 +508,44 @@ namespace LoogaSoft.Inspector.Editor
             DrawFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
         }
 
+        private void DrawToggleFoldoutGroup(
+            InspectorElement groupStart,
+            List<SerializedProperty> groupProperties,
+            Type scopeType,
+            string basePath)
+        {
+            if (groupProperties.Count == 0)
+                return;
+
+            SerializedProperty toggleProperty = groupProperties[0];
+            if (toggleProperty.propertyType != SerializedPropertyType.Boolean)
+            {
+                DrawFoldoutGroup(groupStart, groupProperties, scopeType, basePath);
+                return;
+            }
+
+            string title = groupStart.styledGroupName;
+            string stateKey = GetFoldoutStateKey(scopeType, $"{basePath}_{title}", title);
+            List<SerializedProperty> contentProperties = groupProperties.Skip(1).ToList();
+
+            if (groupStart.styledGroupStyle == LoogaFoldoutStyle.Large)
+            {
+                LoogaEditorFoldouts.LoogaToggleFoldoutLarge(title, toggleProperty, stateKey, () =>
+                {
+                    DrawStyledGroupContent(contentProperties);
+                });
+                return;
+            }
+
+            bool expanded = SessionState.GetBool(stateKey, false);
+            bool newExpanded = LoogaEditorFoldouts.LoogaToggleFoldoutSmall(new GUIContent(title), toggleProperty, expanded, () =>
+            {
+                DrawStyledGroupContent(contentProperties);
+            });
+
+            if (newExpanded != expanded)
+                SessionState.SetBool(stateKey, newExpanded);
+        }
         private void DrawFoldoutGroup(
             InspectorElement groupStart,
             List<SerializedProperty> groupProperties,
@@ -482,9 +597,16 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.indentLevel--;
         }
 
-        private void DrawNestedPropertyChildren(SerializedProperty property)
+        private void DrawNestedPropertyChildren(SerializedProperty property, string hiddenPropertyPath = null)
         {
             var childProperties = GetNestedSerializedProperties(property);
+
+            if (!string.IsNullOrWhiteSpace(hiddenPropertyPath))
+            {
+                childProperties = childProperties
+                    .Where(child => child.propertyPath != hiddenPropertyPath)
+                    .ToList();
+            }
 
             if (TryGetInlineNestedTabType(property, childProperties, out Type nestedType))
             {
@@ -716,6 +838,7 @@ namespace LoogaSoft.Inspector.Editor
             LoogaFoldoutStyle currentStyledGroupStyle = LoogaFoldoutStyle.Small;
             bool currentStyledGroupDefaultExpanded = true;
             bool currentStyledGroupIsFoldout = true;
+            bool currentStyledGroupIsToggleFoldout = false;
 
             foreach (var field in fields)
             {
@@ -727,6 +850,8 @@ namespace LoogaSoft.Inspector.Editor
                 var foldoutGroupEndAttribute = field.GetCustomAttribute<LoogaFoldoutGroupEndAttribute>();
                 var boxGroupAttribute = field.GetCustomAttribute<LoogaBoxGroupAttribute>();
                 var boxGroupEndAttribute = field.GetCustomAttribute<LoogaBoxGroupEndAttribute>();
+                var toggleFoldoutGroupAttribute = field.GetCustomAttribute<LoogaToggleFoldoutGroupAttribute>();
+                var toggleFoldoutGroupEndAttribute = field.GetCustomAttribute<LoogaToggleFoldoutGroupEndAttribute>();
 
                 if (tabAttributes.Length > 0)
                 {
@@ -756,12 +881,21 @@ namespace LoogaSoft.Inspector.Editor
                     ? new InspectorElement(field.Name, currentTabPath)
                     : new InspectorElement(field.Name);
 
-                if (foldoutGroupAttribute != null)
+                if (toggleFoldoutGroupAttribute != null)
+                {
+                    currentStyledGroupName = toggleFoldoutGroupAttribute.Title;
+                    currentStyledGroupStyle = toggleFoldoutGroupAttribute.Style;
+                    currentStyledGroupDefaultExpanded = false;
+                    currentStyledGroupIsFoldout = true;
+                    currentStyledGroupIsToggleFoldout = true;
+                }
+                else if (foldoutGroupAttribute != null)
                 {
                     currentStyledGroupName = foldoutGroupAttribute.Title;
                     currentStyledGroupStyle = foldoutGroupAttribute.Style;
                     currentStyledGroupDefaultExpanded = foldoutGroupAttribute.DefaultExpanded;
                     currentStyledGroupIsFoldout = true;
+                    currentStyledGroupIsToggleFoldout = false;
                 }
                 else if (boxGroupAttribute != null)
                 {
@@ -769,10 +903,18 @@ namespace LoogaSoft.Inspector.Editor
                     currentStyledGroupStyle = boxGroupAttribute.Style;
                     currentStyledGroupDefaultExpanded = true;
                     currentStyledGroupIsFoldout = false;
+                    currentStyledGroupIsToggleFoldout = false;
                 }
 
                 bool inStyledGroup = !string.IsNullOrWhiteSpace(currentStyledGroupName);
-                if (currentStyledGroupIsFoldout)
+                if (currentStyledGroupIsToggleFoldout)
+                {
+                    currentElement.SetToggleFoldoutGroup(
+                        currentStyledGroupName,
+                        currentStyledGroupStyle,
+                        toggleFoldoutGroupEndAttribute != null);
+                }
+                else if (currentStyledGroupIsFoldout)
                 {
                     currentElement.SetFoldoutGroup(
                         currentStyledGroupName,
@@ -790,12 +932,13 @@ namespace LoogaSoft.Inspector.Editor
 
                 layout.elements.Add(currentElement);
 
-                if (inStyledGroup && (foldoutGroupEndAttribute != null || boxGroupEndAttribute != null))
+                if (inStyledGroup && (foldoutGroupEndAttribute != null || boxGroupEndAttribute != null || toggleFoldoutGroupEndAttribute != null))
                 {
                     currentStyledGroupName = null;
                     currentStyledGroupStyle = LoogaFoldoutStyle.Small;
                     currentStyledGroupDefaultExpanded = true;
                     currentStyledGroupIsFoldout = true;
+                    currentStyledGroupIsToggleFoldout = false;
                 }
             }
             
@@ -997,3 +1140,10 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
     }
 }
+
+
+
+
+
+
+

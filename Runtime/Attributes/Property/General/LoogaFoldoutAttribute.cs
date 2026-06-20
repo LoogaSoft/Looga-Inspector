@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace LoogaSoft.Inspector.Runtime
 {
@@ -50,6 +50,44 @@ namespace LoogaSoft.Inspector.Runtime
     }
 
     [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaToggleFoldoutAttribute : Attribute, ILoogaAttribute
+    {
+        public readonly string Title;
+        public readonly LoogaFoldoutStyle Style;
+        public readonly string TogglePropertyName;
+
+        public LoogaToggleFoldoutAttribute(
+            string title = null,
+            string togglePropertyName = null,
+            LoogaFoldoutStyle style = LoogaFoldoutStyle.Large)
+        {
+            Title = title;
+            TogglePropertyName = togglePropertyName;
+            Style = style;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaToggleFoldoutGroupAttribute : Attribute, ILoogaAttribute
+    {
+        public readonly string Title;
+        public readonly LoogaFoldoutStyle Style;
+
+        public LoogaToggleFoldoutGroupAttribute(
+            string title,
+            LoogaFoldoutStyle style = LoogaFoldoutStyle.Large)
+        {
+            Title = title;
+            Style = style;
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Field)]
+    public sealed class LoogaToggleFoldoutGroupEndAttribute : Attribute, ILoogaAttribute
+    {
+    }
+
+    [AttributeUsage(AttributeTargets.Field)]
     public sealed class LoogaBoxAttribute : Attribute, ILoogaAttribute
     {
         public readonly string Title;
@@ -84,3 +122,4 @@ namespace LoogaSoft.Inspector.Runtime
     {
     }
 }
+

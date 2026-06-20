@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -340,6 +340,141 @@ namespace LoogaSoft.Inspector.Editor
             return newExpanded;
         }
 
+        public static void LoogaToggleFoldoutLarge(string title, SerializedProperty toggleProperty, string prefKey, Action content)
+        {
+            EnsureStyles();
+
+            bool enabled = toggleProperty != null && toggleProperty.propertyType == SerializedPropertyType.Boolean && toggleProperty.boolValue;
+            bool show = enabled && EditorPrefs.GetBool(prefKey, false);
+
+            EditorGUILayout.BeginVertical(_largeBox);
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
+            Rect boxRect = ContentToBoxRect(baseRect, _largeBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _largeBox.padding.top + 2f);
+            Rect toggleRect = GetHeaderToggleRect(headerRect);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeBox);
+            textRect.xMin = toggleRect.xMax + 5f;
+            Rect arrowRect = GetHeaderArrowRect(headerRect, _largeBox);
+
+            Event current = Event.current;
+            bool containsMouse = headerRect.Contains(current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
+                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
+
+            EditorGUI.BeginChangeCheck();
+            bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
+            if (EditorGUI.EndChangeCheck() && toggleProperty != null)
+            {
+                toggleProperty.boolValue = newEnabled;
+                enabled = newEnabled;
+                show = false;
+                EditorPrefs.SetBool(prefKey, false);
+            }
+
+            GUI.Label(textRect, title, _largeHeader);
+
+            if (enabled)
+            {
+                DrawFoldoutArrow(arrowRect, show);
+                if (current.type == EventType.MouseDown
+                    && headerRect.Contains(current.mousePosition)
+                    && !toggleRect.Contains(current.mousePosition)
+                    && current.button == 0)
+                {
+                    show = !show;
+                    EditorPrefs.SetBool(prefKey, show);
+                    current.Use();
+                }
+            }
+
+            if (enabled && show)
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
+            }
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(LargeFoldoutGap);
+        }
+
+        public static bool LoogaToggleFoldoutSmall(GUIContent label, SerializedProperty toggleProperty, bool expanded, Action content, SerializedProperty property = null)
+        {
+            EnsureStyles();
+
+            bool enabled = toggleProperty != null && toggleProperty.propertyType == SerializedPropertyType.Boolean && toggleProperty.boolValue;
+            bool show = enabled && expanded;
+
+            EditorGUILayout.Space(1f);
+            EditorGUILayout.BeginVertical(_smallBox);
+
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + _smallBox.padding.top + 1f);
+            Rect toggleRect = GetHeaderToggleRect(headerRect);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallBox);
+            textRect.xMin = toggleRect.xMax + 5f;
+            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallBox);
+
+            Event current = Event.current;
+            bool containsMouse = headerRect.Contains(current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
+                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
+
+            if (property != null)
+                EditorGUI.BeginProperty(headerRect, label, property);
+
+            EditorGUI.BeginChangeCheck();
+            bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
+            if (EditorGUI.EndChangeCheck() && toggleProperty != null)
+            {
+                toggleProperty.boolValue = newEnabled;
+                enabled = newEnabled;
+                show = false;
+            }
+
+            GUI.Label(textRect, label, _smallHeader);
+
+            if (enabled)
+            {
+                DrawFoldoutArrow(arrowRect, show);
+                if (current.type == EventType.MouseDown
+                    && headerRect.Contains(current.mousePosition)
+                    && !toggleRect.Contains(current.mousePosition)
+                    && current.button == 0)
+                {
+                    show = !show;
+                    current.Use();
+                }
+            }
+
+            if (property != null)
+                EditorGUI.EndProperty();
+
+            if (enabled && show)
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
+            }
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(1f);
+
+            return enabled && show;
+        }
         private static void RequestMouseMoveRepaint(bool containsMouse)
         {
             EditorWindow window = EditorWindow.mouseOverWindow;
@@ -386,6 +521,15 @@ namespace LoogaSoft.Inspector.Editor
                 headerRect.height);
         }
 
+        private static Rect GetHeaderToggleRect(Rect headerRect)
+        {
+            float size = EditorGUIUtility.singleLineHeight - 2f;
+            return new Rect(
+                headerRect.x + HeaderLeftInset,
+                headerRect.y + (headerRect.height - size) * 0.5f,
+                size,
+                size);
+        }
         private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
             float sideInset = GetHeaderSideInset(headerRect);
@@ -841,3 +985,5 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+

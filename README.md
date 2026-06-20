@@ -1,4 +1,4 @@
-# Looga Inspector
+﻿# Looga Inspector
 
 Looga Inspector is a small attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields or methods and the default Looga editor handles layout, visibility, validation, dropdowns, inline assets, buttons, and common Unity-specific selectors.
 
@@ -65,6 +65,33 @@ using UnityEngine;
 
 [LoogaFoldoutGroupEnd]
 [SerializeField] private float _volume = 1f;
+```
+
+`LoogaToggleFoldoutAttribute` draws a foldout with a toggle in its header. If the toggle is off, the foldout stays collapsed and hides the arrow. Attributes cannot receive live field references in C#, so nested-class toggles use a serialized child field name.
+
+```csharp
+[Serializable]
+private sealed class DamagePopupSettings
+{
+    [SerializeField] private bool _enabled;
+    [SerializeField] private Color _color = Color.white;
+    [SerializeField] private float _lifetime = 0.8f;
+}
+
+[LoogaToggleFoldout("Damage Popups", "_enabled")]
+[SerializeField] private DamagePopupSettings _damagePopups;
+```
+
+For several sibling fields, use `LoogaToggleFoldoutGroupAttribute` on the bool field. That first bool becomes the header toggle and is not drawn again inside the foldout.
+
+```csharp
+[LoogaToggleFoldoutGroup("Advanced Recoil")]
+[SerializeField] private bool _advancedRecoil;
+
+[SerializeField] private float _springFrequency = 18f;
+
+[LoogaToggleFoldoutGroupEnd]
+[SerializeField] private float _springDamping = 0.6f;
 ```
 
 ### Boxes
@@ -429,3 +456,4 @@ private bool CanSpawn() => Application.isPlaying;
 Prefer Looga Inspector attributes for common inspector shaping: grouping, tabs, conditional fields, validation, inline ScriptableObjects, dropdowns, and simple tables.
 
 Keep a custom editor or editor window when the workflow needs custom previews, graph editing, search/filter-heavy interfaces, drag-and-drop canvases, asset migration tools, or runtime debugging panels.
+

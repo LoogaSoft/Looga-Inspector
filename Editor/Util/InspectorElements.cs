@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 
 namespace LoogaSoft.Inspector.Editor
@@ -14,6 +14,7 @@ namespace LoogaSoft.Inspector.Editor
         public LoogaFoldoutStyle styledGroupStyle;
         public bool styledGroupDefaultExpanded;
         public bool styledGroupIsFoldout;
+        public bool styledGroupIsToggleFoldout;
         public bool endsStyledGroup;
 
         public bool inFoldoutGroup => inStyledGroup && styledGroupIsFoldout;
@@ -22,7 +23,7 @@ namespace LoogaSoft.Inspector.Editor
         public bool foldoutDefaultExpanded => styledGroupDefaultExpanded;
         public bool endsFoldoutGroup => endsStyledGroup && styledGroupIsFoldout;
 
-        public InspectorElement(string propertyName, bool inTabGroup = false) : this(propertyName, inTabGroup, "")
+        public InspectorElement(string propertyName, bool inTabGroup = false) : this(propertyName, inTabGroup, string.Empty)
         {
         }
 
@@ -54,7 +55,7 @@ namespace LoogaSoft.Inspector.Editor
             bool defaultExpanded,
             bool endsGroup)
         {
-            SetStyledGroup(groupName, style, defaultExpanded, true, endsGroup);
+            SetStyledGroup(groupName, style, defaultExpanded, true, false, endsGroup);
         }
 
         public void SetBoxGroup(
@@ -62,7 +63,15 @@ namespace LoogaSoft.Inspector.Editor
             LoogaFoldoutStyle style,
             bool endsGroup)
         {
-            SetStyledGroup(groupName, style, true, false, endsGroup);
+            SetStyledGroup(groupName, style, true, false, false, endsGroup);
+        }
+
+        public void SetToggleFoldoutGroup(
+            string groupName,
+            LoogaFoldoutStyle style,
+            bool endsGroup)
+        {
+            SetStyledGroup(groupName, style, false, true, true, endsGroup);
         }
 
         private void SetStyledGroup(
@@ -70,6 +79,7 @@ namespace LoogaSoft.Inspector.Editor
             LoogaFoldoutStyle style,
             bool defaultExpanded,
             bool isFoldout,
+            bool isToggleFoldout,
             bool endsGroup)
         {
             inStyledGroup = !string.IsNullOrWhiteSpace(groupName);
@@ -77,6 +87,7 @@ namespace LoogaSoft.Inspector.Editor
             styledGroupStyle = style;
             styledGroupDefaultExpanded = defaultExpanded;
             styledGroupIsFoldout = isFoldout;
+            styledGroupIsToggleFoldout = isToggleFoldout;
             endsStyledGroup = endsGroup;
         }
     }
