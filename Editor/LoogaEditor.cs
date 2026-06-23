@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -107,8 +107,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (index > tabChunk.Count)
                     EditorGUILayout.Space();
 
-                Rect boxRect = EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-                EditorGUI.DrawRect(boxRect, new Color(0f, 0f, 0f, 0.2f));
+                EditorGUILayout.BeginVertical(LoogaEditorFoldouts.SmallBoxStyle);
 
                 DrawTabLevel(tabChunk, properties, scopeType, $"{basePath}_TabGroup{tabGroupIndex}", 0);
 

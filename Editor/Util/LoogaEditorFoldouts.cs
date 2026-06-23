@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -24,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
         private static GUIStyle _smallBox;
+        private static Texture2D _flatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
         private static int _containedFoldoutDepth;
@@ -962,17 +963,48 @@ namespace LoogaSoft.Inspector.Editor
                 padding = new RectOffset(0, 0, 0, 3)
             };
 
-            _largeBox = new GUIStyle("HelpBox")
+            _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
+
+            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 4));
+            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 1));
+        }
+
+        private static GUIStyle CreateFlatBoxStyle(RectOffset padding)
+        {
+            GUIStyle style = new(EditorStyles.label)
             {
                 margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
-                padding = new RectOffset(8, 8, 4, 4)
+                padding = padding,
+                border = new RectOffset(0, 0, 0, 0),
+                overflow = new RectOffset(0, 0, 0, 0)
             };
 
-            _smallBox = new GUIStyle("HelpBox")
+            style.normal.background = _flatBoxTexture;
+            style.hover.background = _flatBoxTexture;
+            style.active.background = _flatBoxTexture;
+            style.focused.background = _flatBoxTexture;
+            return style;
+        }
+
+        private static Texture2D CreateFlatTexture(Color color)
+        {
+            Texture2D texture = new(1, 1)
             {
-                margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
-                padding = new RectOffset(8, 8, 3, 1)
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
             };
+
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
+        }
+
+        private static Color GetFlatBoxColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.235f, 0.235f, 0.235f, 1f)
+                : new Color(0.76f, 0.76f, 0.76f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
