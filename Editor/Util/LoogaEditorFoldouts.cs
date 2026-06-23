@@ -533,18 +533,18 @@ namespace LoogaSoft.Inspector.Editor
 
             return new Rect(
                 x,
-                headerRect.y + yOffset,
+                GetHeaderTextY(headerRect, yOffset),
                 Mathf.Max(0f, headerRect.xMax - rightInset - x),
-                headerRect.height);
+                EditorGUIUtility.singleLineHeight);
         }
 
         private static Rect GetStaticHeaderTextRect(Rect headerRect, float yOffset)
         {
             return new Rect(
                 headerRect.x + HeaderLeftInset + AccentRailWidth,
-                headerRect.y + yOffset,
+                GetHeaderTextY(headerRect, yOffset),
                 Mathf.Max(0f, headerRect.width - HeaderLeftInset * 2f - AccentRailWidth),
-                headerRect.height);
+                EditorGUIUtility.singleLineHeight);
         }
 
         private static Rect GetHeaderToggleRect(Rect headerRect)
@@ -552,17 +552,16 @@ namespace LoogaSoft.Inspector.Editor
             float size = EditorGUIUtility.singleLineHeight - 2f;
             return new Rect(
                 headerRect.x + HeaderLeftInset + AccentRailWidth,
-                headerRect.y + (headerRect.height - size) * 0.5f,
+                CenterVertically(headerRect, size).y,
                 size,
                 size);
         }
 
         private static Rect GetHeaderArrowRectAfter(Rect headerRect, Rect previousRect)
         {
-            float sideInset = GetHeaderSideInset(headerRect);
             return new Rect(
                 previousRect.xMax + HeaderTextArrowGap,
-                headerRect.y + sideInset,
+                CenterVertically(headerRect, HeaderArrowSize).y,
                 HeaderArrowSize,
                 HeaderArrowSize);
         }
@@ -573,20 +572,38 @@ namespace LoogaSoft.Inspector.Editor
             float rightInset = GetHeaderSideInset(headerRect);
             return new Rect(
                 x,
-                headerRect.y + yOffset,
+                GetHeaderTextY(headerRect, yOffset),
                 Mathf.Max(0f, headerRect.xMax - rightInset - x),
-                headerRect.height);
+                EditorGUIUtility.singleLineHeight);
         }
 
         private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(headerRect);
-
             return new Rect(
                 headerRect.x + HeaderLeftInset + AccentRailWidth + HeaderArrowLeftNudge,
-                headerRect.y + sideInset,
+                CenterVertically(headerRect, HeaderArrowSize).y,
                 HeaderArrowSize,
                 HeaderArrowSize);
+        }
+
+        private static float GetHeaderTextY(Rect headerRect, float yOffset)
+        {
+            return CenterVertically(headerRect, EditorGUIUtility.singleLineHeight).y + yOffset;
+        }
+
+        private static Rect CenterVertically(Rect container, float height)
+        {
+            return new Rect(
+                container.x,
+                SnapToPixel(container.y + (container.height - height) * 0.5f),
+                container.width,
+                height);
+        }
+
+        private static float SnapToPixel(float value)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return Mathf.Floor(value * pixelsPerPoint + 0.5f) / pixelsPerPoint;
         }
 
         private static float GetHeaderSideInset(Rect headerRect)
@@ -1022,8 +1039,16 @@ namespace LoogaSoft.Inspector.Editor
 
         public static void DrawHoverRect(Rect rect)
         {
-            rect.xMin += Mathf.Max(0f, AccentRailWidth - 1f);
-            EditorGUI.DrawRect(rect, GetFlatHoverColor());
+            Rect hoverRect = rect;
+            hoverRect.xMin += Mathf.Max(0f, AccentRailWidth - 1f);
+            EditorGUI.DrawRect(hoverRect, GetFlatHoverColor());
+            DrawAccentRail(rect);
+        }
+
+        private static void DrawAccentRail(Rect rect)
+        {
+            Rect railRect = new(rect.x, rect.y, AccentRailWidth, rect.height);
+            EditorGUI.DrawRect(railRect, GetAccentRailColor());
         }
 
         private static Color GetFlatHoverColor()
@@ -1102,6 +1127,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
