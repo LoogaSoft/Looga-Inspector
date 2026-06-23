@@ -216,7 +216,7 @@ namespace LoogaSoft.Inspector.Editor
 
                 Rect headerRect = new(
                     boxRect.x,
-                    boxRect.y + 2f,
+                    boxRect.y,
                     boxRect.width,
                     lineHeight + 2f);
                 bool allowHoverOverflow = Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout;
@@ -259,7 +259,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallLayoutFoldoutBox.padding.top + 1f);
+                baseRect.height + _smallLayoutFoldoutBox.padding.top + 2f);
             Rect clickRect = expanded ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallLayoutFoldoutBox);
 
@@ -290,7 +290,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallLayoutBox.padding.top + 1f);
+                baseRect.height + _smallLayoutBox.padding.top + 2f);
             Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
             GUI.Label(textRect, label, _smallHeader);
@@ -439,7 +439,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallLayoutFoldoutBox.padding.top + 1f);
+                baseRect.height + _smallLayoutFoldoutBox.padding.top + 2f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
             Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
             Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
