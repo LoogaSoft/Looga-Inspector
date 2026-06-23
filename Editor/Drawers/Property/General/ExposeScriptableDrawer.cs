@@ -15,10 +15,10 @@ namespace LoogaSoft.Inspector.Editor
         private const float MinCreateButtonWidth = 58f;
         private const float HeaderHeight = 23f;
         private const float HeaderLeftInset = 6f;
+        private const float HeaderAccentRailWidth = 4f;
         private const float HeaderFieldGap = 6f;
         private const float HeaderArrowSize = 10.5f;
-        private const float HeaderArrowRightInset = 10f;
-        private const float HeaderArrowLeftNudge = 5f;
+        private const float HeaderArrowLeftNudge = 0f;
         private const float CreateButtonPadding = 2f;
         private const float CreateButtonHorizontalInset = 1f;
         
@@ -44,8 +44,8 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.width,
                 HeaderHeight);
             Rect contentLineRect = CenterVertically(headerRect, LineHeight);
-            contentLineRect.x = headerRect.x + HeaderLeftInset;
-            contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset);
+            contentLineRect.x = headerRect.x + HeaderLeftInset + HeaderAccentRailWidth;
+            contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset - HeaderAccentRailWidth);
             Rect arrowRect = objectValid
                 ? GetHeaderArrowRect(headerRect)
                 : default;
@@ -56,13 +56,12 @@ namespace LoogaSoft.Inspector.Editor
                     Mathf.Max(0f, createButtonWidth - CreateButtonHorizontalInset * 2f),
                     LineHeight)
                 : default;
-            Rect rightLimitRect = objectValid
-                ? arrowRect
-                : canCreateAsset
-                    ? createButtonRect
-                    : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
+            Rect rightLimitRect = canCreateAsset
+                ? createButtonRect
+                : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
             float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentLineRect.width * 0.5f);
-            Rect labelRect = new(contentLineRect.x, contentLineRect.y, labelWidth, contentLineRect.height);
+            float labelX = objectValid ? arrowRect.xMax + HeaderFieldGap : contentLineRect.x;
+            Rect labelRect = new(labelX, contentLineRect.y, labelWidth, contentLineRect.height);
             Rect fieldRect = new(
                 labelRect.xMax + HeaderFieldGap,
                 contentLineRect.y,
@@ -163,7 +162,7 @@ namespace LoogaSoft.Inspector.Editor
         private static Rect GetHeaderArrowRect(Rect headerRect)
         {
             return new Rect(
-                headerRect.xMax - HeaderArrowRightInset - HeaderArrowLeftNudge - HeaderArrowSize,
+                headerRect.x + HeaderLeftInset + HeaderAccentRailWidth + HeaderArrowLeftNudge,
                 CenterVertically(headerRect, HeaderArrowSize).y,
                 HeaderArrowSize,
                 HeaderArrowSize);
@@ -417,5 +416,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
+
 
 

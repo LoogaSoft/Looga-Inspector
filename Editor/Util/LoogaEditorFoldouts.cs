@@ -18,9 +18,9 @@ namespace LoogaSoft.Inspector.Editor
         private const float BoxHorizontalInset = 3f;
         private const float HeaderLeftInset = 6f;
         private const float HeaderArrowSize = 10.5f;
-        private const float HeaderArrowLeftNudge = 5f;
+        private const float HeaderArrowLeftNudge = 0f;
         private const float HeaderTextArrowGap = 6f;
-        private const int AccentRailWidth = 2;
+        private const int AccentRailWidth = 4;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -375,9 +375,8 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.width,
                 baseRect.height + _largeFoldoutBox.padding.top + 2f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
-            Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeFoldoutBox);
-            textRect.xMin = toggleRect.xMax + 5f;
-            Rect arrowRect = GetHeaderArrowRect(headerRect, _largeFoldoutBox);
+            Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
+            Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
 
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : boxRect;
@@ -442,9 +441,8 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.width,
                 baseRect.height + _smallLayoutFoldoutBox.padding.top + 1f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
-            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallLayoutFoldoutBox);
-            textRect.xMin = toggleRect.xMax + 5f;
-            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallLayoutFoldoutBox);
+            Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
+            Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
 
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
@@ -529,22 +527,23 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Rect GetHeaderTextRect(Rect headerRect, float yOffset, GUIStyle boxStyle)
         {
-            float sideInset = GetHeaderSideInset(headerRect);
-            float reservedRight = sideInset + HeaderArrowSize + HeaderTextArrowGap;
+            Rect arrowRect = GetHeaderArrowRect(headerRect, boxStyle);
+            float x = arrowRect.xMax + HeaderTextArrowGap;
+            float rightInset = GetHeaderSideInset(headerRect);
 
             return new Rect(
-                headerRect.x + HeaderLeftInset,
+                x,
                 headerRect.y + yOffset,
-                Mathf.Max(0f, headerRect.width - HeaderLeftInset - reservedRight),
+                Mathf.Max(0f, headerRect.xMax - rightInset - x),
                 headerRect.height);
         }
 
         private static Rect GetStaticHeaderTextRect(Rect headerRect, float yOffset)
         {
             return new Rect(
-                headerRect.x + HeaderLeftInset,
+                headerRect.x + HeaderLeftInset + AccentRailWidth,
                 headerRect.y + yOffset,
-                Mathf.Max(0f, headerRect.width - HeaderLeftInset * 2f),
+                Mathf.Max(0f, headerRect.width - HeaderLeftInset * 2f - AccentRailWidth),
                 headerRect.height);
         }
 
@@ -552,17 +551,39 @@ namespace LoogaSoft.Inspector.Editor
         {
             float size = EditorGUIUtility.singleLineHeight - 2f;
             return new Rect(
-                headerRect.x + HeaderLeftInset,
+                headerRect.x + HeaderLeftInset + AccentRailWidth,
                 headerRect.y + (headerRect.height - size) * 0.5f,
                 size,
                 size);
         }
+
+        private static Rect GetHeaderArrowRectAfter(Rect headerRect, Rect previousRect)
+        {
+            float sideInset = GetHeaderSideInset(headerRect);
+            return new Rect(
+                previousRect.xMax + HeaderTextArrowGap,
+                headerRect.y + sideInset,
+                HeaderArrowSize,
+                HeaderArrowSize);
+        }
+
+        private static Rect GetHeaderTextRectAfter(Rect headerRect, Rect previousRect, float yOffset)
+        {
+            float x = previousRect.xMax + HeaderTextArrowGap;
+            float rightInset = GetHeaderSideInset(headerRect);
+            return new Rect(
+                x,
+                headerRect.y + yOffset,
+                Mathf.Max(0f, headerRect.xMax - rightInset - x),
+                headerRect.height);
+        }
+
         private static Rect GetHeaderArrowRect(Rect headerRect, GUIStyle boxStyle)
         {
             float sideInset = GetHeaderSideInset(headerRect);
 
             return new Rect(
-                headerRect.xMax - sideInset - HeaderArrowSize - HeaderArrowLeftNudge,
+                headerRect.x + HeaderLeftInset + AccentRailWidth + HeaderArrowLeftNudge,
                 headerRect.y + sideInset,
                 HeaderArrowSize,
                 HeaderArrowSize);
@@ -1001,7 +1022,7 @@ namespace LoogaSoft.Inspector.Editor
 
         public static void DrawHoverRect(Rect rect)
         {
-            rect.xMin += AccentRailWidth;
+            rect.xMin += Mathf.Max(0f, AccentRailWidth - 1f);
             EditorGUI.DrawRect(rect, GetFlatHoverColor());
         }
 
@@ -1081,6 +1102,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
