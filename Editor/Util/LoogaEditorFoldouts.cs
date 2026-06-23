@@ -7,7 +7,7 @@ namespace LoogaSoft.Inspector.Editor
 {
     public static class LoogaEditorFoldouts
     {
-        public const float SmallPaddingX = 4f;
+        public const float SmallPaddingX = 10f;
         public const float SmallPaddingY = 6f;
 
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
@@ -627,8 +627,8 @@ namespace LoogaSoft.Inspector.Editor
             Vector3[] points = expanded
                 ? new[]
                 {
-                    new Vector3(center.x - radius, center.y - verticalRadius * 0.5f, 0f),
-                    new Vector3(center.x + radius, center.y - verticalRadius * 0.5f, 0f),
+                    new Vector3(center.x - radius, center.y - verticalRadius, 0f),
+                    new Vector3(center.x + radius, center.y - verticalRadius, 0f),
                     new Vector3(center.x, center.y + verticalRadius, 0f)
                 }
                 : new[]
