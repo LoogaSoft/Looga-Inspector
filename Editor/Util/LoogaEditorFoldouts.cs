@@ -12,7 +12,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
         private const float SmallHoverExtraWidth = 4f;
-        private const float SmallBoxGap = 4f;
+        private const float SmallBoxGap = 5f;
         private const float LargeFoldoutGap = 2f;
         private const float BoxHorizontalInset = 3f;
         private const float HeaderLeftInset = 6f;
@@ -244,7 +244,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallBox.padding.top);
             Rect clickRect = expanded ? headerRect : boxRect;
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallBox);
 
@@ -275,7 +275,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallBox.padding.top);
             Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
             GUI.Label(textRect, label, _smallHeader);
@@ -425,7 +425,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallBox.padding.top);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
             Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallBox);
             textRect.xMin = toggleRect.xMax + 5f;
@@ -965,7 +965,7 @@ namespace LoogaSoft.Inspector.Editor
             _smallHeader = new GUIStyle(EditorStyles.label)
             {
                 //fontSize = 13,
-                padding = new RectOffset(0, 0, 0, 3)
+                padding = new RectOffset(0, 0, 0, 2)
             };
 
             _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
@@ -1020,7 +1020,7 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.195f, 0.195f, 0.195f, 1f)
+                ? new Color(0.188f, 0.188f, 0.188f, 1f)
                 : new Color(0.76f, 0.76f, 0.76f, 1f);
         }
 
@@ -1034,6 +1034,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
