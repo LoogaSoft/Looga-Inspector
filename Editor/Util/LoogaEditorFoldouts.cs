@@ -20,12 +20,16 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowSize = 10.5f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float HeaderTextArrowGap = 6f;
+        private const int AccentRailWidth = 2;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
+        private static GUIStyle _largeFoldoutBox;
         private static GUIStyle _smallBox;
+        private static GUIStyle _smallFoldoutBox;
         private static GUIStyle _smallLayoutBox;
+        private static GUIStyle _smallLayoutFoldoutBox;
         private static Texture2D _flatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
@@ -40,22 +44,31 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
+        public static GUIStyle SmallFoldoutBoxStyle
+        {
+            get
+            {
+                EnsureStyles();
+                return _smallFoldoutBox;
+            }
+        }
+
         public static void LoogaFoldoutLarge(string title, string prefKey, bool defaultShow, Action content)
         {
             EnsureStyles();
 
             bool show = EditorPrefs.GetBool(prefKey, defaultShow);
 
-            EditorGUILayout.BeginVertical(_largeBox);
+            EditorGUILayout.BeginVertical(_largeFoldoutBox);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _largeBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _largeFoldoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _largeBox.padding.top + 2f);
-            Rect text = GetHeaderTextRect(headerRect, 1f, _largeBox);
-            Rect arrow = GetHeaderArrowRect(headerRect, _largeBox);
+                baseRect.height + _largeFoldoutBox.padding.top + 2f);
+            Rect text = GetHeaderTextRect(headerRect, 1f, _largeFoldoutBox);
+            Rect arrow = GetHeaderArrowRect(headerRect, _largeFoldoutBox);
 
             Rect hoverRect = show ? headerRect : boxRect;
             bool containsMouse = hoverRect.Contains(Event.current.mousePosition);
@@ -127,16 +140,16 @@ namespace LoogaSoft.Inspector.Editor
             {
                 EditorGUI.indentLevel = 0;
 
-                GUI.Box(indentedPosition, GUIContent.none, _largeBox);
+                GUI.Box(indentedPosition, GUIContent.none, _largeFoldoutBox);
 
                 Rect headerRect = new(
                     indentedPosition.x,
                     indentedPosition.y + 2f,
                     indentedPosition.width,
-                    lineHeight + _largeBox.padding.top + 2f);
+                    lineHeight + _largeFoldoutBox.padding.top + 2f);
                 Rect hoverRect = expanded ? headerRect : indentedPosition;
-                Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeBox);
-                Rect arrowRect = GetHeaderArrowRect(headerRect, _largeBox);
+                Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeFoldoutBox);
+                Rect arrowRect = GetHeaderArrowRect(headerRect, _largeFoldoutBox);
 
                 if (property != null)
                     EditorGUI.BeginProperty(hoverRect, label, property);
@@ -167,10 +180,10 @@ namespace LoogaSoft.Inspector.Editor
                     EditorGUI.EndProperty();
 
                 contentRect = new Rect(
-                    indentedPosition.x + _largeBox.padding.left,
+                    indentedPosition.x + _largeFoldoutBox.padding.left,
                     headerRect.yMax + spacing,
-                    indentedPosition.width - _largeBox.padding.horizontal,
-                    indentedPosition.height - headerRect.height - _largeBox.padding.vertical - spacing);
+                    indentedPosition.width - _largeFoldoutBox.padding.horizontal,
+                    indentedPosition.height - headerRect.height - _largeFoldoutBox.padding.vertical - spacing);
             }
             finally
             {
@@ -199,7 +212,7 @@ namespace LoogaSoft.Inspector.Editor
                     indentedPosition.y,
                     indentedPosition.width,
                     indentedPosition.height + spacing - SmallBoxGap);
-                GUI.Box(boxRect, GUIContent.none, _smallBox);
+                GUI.Box(boxRect, GUIContent.none, _smallFoldoutBox);
 
                 Rect headerRect = new(
                     boxRect.x,
@@ -216,7 +229,7 @@ namespace LoogaSoft.Inspector.Editor
                     : headerRect;
 
                 Rect clickRect = expanded ? hoverRect : boxRect;
-                newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property);
+                newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallFoldoutBox);
 
                 contentRect = new Rect(
                     boxRect.x + SmallPaddingX,
@@ -238,17 +251,17 @@ namespace LoogaSoft.Inspector.Editor
             
             EditorGUILayout.Space(1f);
 
-            EditorGUILayout.BeginVertical(_smallLayoutBox);
+            EditorGUILayout.BeginVertical(_smallLayoutFoldoutBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutFoldoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallLayoutBox.padding.top + 1f);
+                baseRect.height + _smallLayoutFoldoutBox.padding.top + 1f);
             Rect clickRect = expanded ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
-            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallLayoutBox);
+            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallLayoutFoldoutBox);
 
             if (newExpanded)
             {
@@ -353,18 +366,18 @@ namespace LoogaSoft.Inspector.Editor
             bool enabled = toggleProperty != null && toggleProperty.propertyType == SerializedPropertyType.Boolean && toggleProperty.boolValue;
             bool show = enabled && EditorPrefs.GetBool(prefKey, false);
 
-            EditorGUILayout.BeginVertical(_largeBox);
+            EditorGUILayout.BeginVertical(_largeFoldoutBox);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _largeBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _largeFoldoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _largeBox.padding.top + 2f);
+                baseRect.height + _largeFoldoutBox.padding.top + 2f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
-            Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeBox);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, _largeFoldoutBox);
             textRect.xMin = toggleRect.xMax + 5f;
-            Rect arrowRect = GetHeaderArrowRect(headerRect, _largeBox);
+            Rect arrowRect = GetHeaderArrowRect(headerRect, _largeFoldoutBox);
 
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : boxRect;
@@ -419,19 +432,19 @@ namespace LoogaSoft.Inspector.Editor
             bool show = enabled && expanded;
 
             EditorGUILayout.Space(1f);
-            EditorGUILayout.BeginVertical(_smallLayoutBox);
+            EditorGUILayout.BeginVertical(_smallLayoutFoldoutBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutFoldoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallLayoutBox.padding.top + 1f);
+                baseRect.height + _smallLayoutFoldoutBox.padding.top + 1f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
-            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallLayoutBox);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallLayoutFoldoutBox);
             textRect.xMin = toggleRect.xMax + 5f;
-            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallLayoutBox);
+            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallLayoutFoldoutBox);
 
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
@@ -978,13 +991,17 @@ namespace LoogaSoft.Inspector.Editor
 
             _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
 
-            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2));
-            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0));
-            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2));
+            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), false);
+            _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
+            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), false);
+            _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
+            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), false);
+            _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
         }
 
         public static void DrawHoverRect(Rect rect)
         {
+            rect.xMin += AccentRailWidth;
             EditorGUI.DrawRect(rect, GetFlatHoverColor());
         }
 
@@ -995,35 +1012,56 @@ namespace LoogaSoft.Inspector.Editor
                 : new Color(0.68f, 0.68f, 0.68f, 1f);
         }
 
-        private static GUIStyle CreateFlatBoxStyle(RectOffset padding)
+        private static GUIStyle CreateFlatBoxStyle(RectOffset padding, bool includeAccentRail)
         {
+            Texture2D texture = includeAccentRail
+                ? CreateFlatTexture(GetFlatBoxColor(), GetAccentRailColor())
+                : _flatBoxTexture;
+
             GUIStyle style = new(EditorStyles.label)
             {
                 margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = padding,
-                border = new RectOffset(0, 0, 0, 0),
+                border = includeAccentRail ? new RectOffset(AccentRailWidth, 0, 0, 0) : new RectOffset(0, 0, 0, 0),
                 overflow = new RectOffset(0, 0, 0, 0)
             };
 
-            style.normal.background = _flatBoxTexture;
-            style.hover.background = _flatBoxTexture;
-            style.active.background = _flatBoxTexture;
-            style.focused.background = _flatBoxTexture;
+            style.normal.background = texture;
+            style.hover.background = texture;
+            style.active.background = texture;
+            style.focused.background = texture;
             return style;
         }
 
         private static Texture2D CreateFlatTexture(Color color)
         {
-            Texture2D texture = new(1, 1)
+            return CreateFlatTexture(color, color);
+        }
+
+        private static Texture2D CreateFlatTexture(Color color, Color accentColor)
+        {
+            const int width = 8;
+            Texture2D texture = new(width, 1)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
 
-            texture.SetPixel(0, 0, color);
+            for (int x = 0; x < width; x++)
+            {
+                texture.SetPixel(x, 0, x < AccentRailWidth ? accentColor : color);
+            }
+
             texture.Apply();
             return texture;
+        }
+
+        private static Color GetAccentRailColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.38f, 0.38f, 0.38f, 1f)
+                : new Color(0.52f, 0.52f, 0.52f, 1f);
         }
 
         private static Color GetFlatBoxColor()
@@ -1043,6 +1081,11 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
+
+
+
 
 
 

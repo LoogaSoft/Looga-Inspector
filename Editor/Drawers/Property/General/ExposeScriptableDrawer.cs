@@ -132,7 +132,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DrawFoldoutBackground(Rect boxRect, Rect headerRect, bool expanded)
         {
-            GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
+            GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallFoldoutBoxStyle);
 
             Rect hoverRect = expanded ? headerRect : boxRect;
             Event current = Event.current;
@@ -417,4 +417,5 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
