@@ -12,7 +12,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
         private const float SmallHoverExtraWidth = 4f;
-        private const float SmallBoxGap = 5f;
+        private const float SmallBoxGap = 6f;
         private const float LargeFoldoutGap = 2f;
         private const float BoxHorizontalInset = 3f;
         private const float HeaderLeftInset = 6f;
@@ -185,7 +185,7 @@ namespace LoogaSoft.Inspector.Editor
             float lineHeight = EditorGUIUtility.singleLineHeight;
             float spacing = EditorGUIUtility.standardVerticalSpacing;
             int oldIndent = EditorGUI.indentLevel;
-                Rect indentedPosition = ShrinkBoxRect(EditorGUI.IndentedRect(position));
+            Rect indentedPosition = ShrinkBoxRect(EditorGUI.IndentedRect(position));
             bool newExpanded;
 
             try
@@ -1034,6 +1034,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
