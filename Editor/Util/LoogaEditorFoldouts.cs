@@ -24,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
         private static GUIStyle _smallBox;
+        private static GUIStyle _smallLayoutBox;
         private static Texture2D _flatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
@@ -236,17 +237,17 @@ namespace LoogaSoft.Inspector.Editor
             
             EditorGUILayout.Space(1f);
 
-            EditorGUILayout.BeginVertical(_smallBox);
+            EditorGUILayout.BeginVertical(_smallLayoutBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallLayoutBox.padding.top + 1f);
             Rect clickRect = expanded ? headerRect : boxRect;
-            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallBox);
+            bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallLayoutBox);
 
             if (newExpanded)
             {
@@ -267,15 +268,15 @@ namespace LoogaSoft.Inspector.Editor
             EnsureStyles();
 
             EditorGUILayout.Space(1f);
-            EditorGUILayout.BeginVertical(_smallBox);
+            EditorGUILayout.BeginVertical(_smallLayoutBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallLayoutBox.padding.top + 1f);
             Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
             GUI.Label(textRect, label, _smallHeader);
@@ -417,19 +418,19 @@ namespace LoogaSoft.Inspector.Editor
             bool show = enabled && expanded;
 
             EditorGUILayout.Space(1f);
-            EditorGUILayout.BeginVertical(_smallBox);
+            EditorGUILayout.BeginVertical(_smallLayoutBox);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            Rect boxRect = ContentToBoxRect(baseRect, _smallBox);
+            Rect boxRect = ContentToBoxRect(baseRect, _smallLayoutBox);
             Rect headerRect = new(
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top + 1f);
+                baseRect.height + _smallLayoutBox.padding.top + 1f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
-            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallBox);
+            Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallLayoutBox);
             textRect.xMin = toggleRect.xMax + 5f;
-            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallBox);
+            Rect arrowRect = GetHeaderArrowRect(headerRect, _smallLayoutBox);
 
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : boxRect;
@@ -972,6 +973,7 @@ namespace LoogaSoft.Inspector.Editor
 
             _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2));
             _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0));
+            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2));
         }
 
         public static void DrawHoverRect(Rect rect)
@@ -1034,6 +1036,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
