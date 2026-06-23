@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderHeight = 23f;
         private const float HeaderLeftInset = 6f;
         private const float HeaderFieldGap = 6f;
-        private const float HeaderArrowSize = 9f;
+        private const float HeaderArrowSize = 10.5f;
         private const float HeaderArrowRightInset = 10f;
         private const float HeaderArrowLeftNudge = 5f;
         private const float CreateButtonPadding = 2f;
@@ -69,7 +69,7 @@ namespace LoogaSoft.Inspector.Editor
                 Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
                 contentLineRect.height);
 
-            DrawFoldoutBackground(boxRect, headerRect);
+            DrawFoldoutBackground(boxRect, headerRect, property.isExpanded);
             EditorGUI.LabelField(labelRect, label);
 
             Type objectFieldType = scriptableObjectType ?? typeof(ScriptableObject);
@@ -130,13 +130,14 @@ namespace LoogaSoft.Inspector.Editor
                 && typeof(ScriptableObject).IsAssignableFrom(scriptableObjectType);
         }
 
-        private static void DrawFoldoutBackground(Rect boxRect, Rect headerRect)
+        private static void DrawFoldoutBackground(Rect boxRect, Rect headerRect, bool expanded)
         {
             GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
 
+            Rect hoverRect = expanded ? headerRect : boxRect;
             Event current = Event.current;
-            if (headerRect.Contains(current.mousePosition))
-                EditorGUI.DrawRect(headerRect, new Color(1f, 1f, 1f, 0.05f));
+            if (hoverRect.Contains(current.mousePosition))
+                LoogaEditorFoldouts.DrawHoverRect(hoverRect);
         }
 
         private static bool DrawHeaderFoldout(Rect headerRect, Rect fieldRect, Rect arrowRect, bool expanded)
@@ -416,3 +417,4 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
