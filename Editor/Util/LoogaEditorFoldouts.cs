@@ -244,7 +244,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top);
+                baseRect.height + _smallBox.padding.top + 1f);
             Rect clickRect = expanded ? headerRect : boxRect;
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallBox);
 
@@ -275,7 +275,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top);
+                baseRect.height + _smallBox.padding.top + 1f);
             Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
             GUI.Label(textRect, label, _smallHeader);
@@ -425,7 +425,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.x,
                 boxRect.y,
                 boxRect.width,
-                baseRect.height + _smallBox.padding.top);
+                baseRect.height + _smallBox.padding.top + 1f);
             Rect toggleRect = GetHeaderToggleRect(headerRect);
             Rect textRect = GetHeaderTextRect(headerRect, 1f, _smallBox);
             textRect.xMin = toggleRect.xMax + 5f;
@@ -1034,6 +1034,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
