@@ -13,6 +13,7 @@ namespace LoogaSoft.Inspector.Editor
         private const string PropertyClipboardPrefix = "LOOGA_SERIALIZED_PROPERTY::";
         private const float SmallHoverExtraWidth = 4f;
         private const float SmallBoxGap = 6f;
+        private const float SmallLayoutHoverBottomBleed = 4f;
         private const float LargeFoldoutGap = 2f;
         private const float BoxHorizontalInset = 3f;
         private const float HeaderLeftInset = 6f;
@@ -246,7 +247,7 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.y,
                 boxRect.width,
                 baseRect.height + _smallLayoutBox.padding.top + 1f);
-            Rect clickRect = expanded ? headerRect : boxRect;
+            Rect clickRect = expanded ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
             bool newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, _smallLayoutBox);
 
             if (newExpanded)
@@ -433,7 +434,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect arrowRect = GetHeaderArrowRect(headerRect, _smallLayoutBox);
 
             Event current = Event.current;
-            Rect hoverRect = show ? headerRect : boxRect;
+            Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
             bool containsMouse = hoverRect.Contains(current.mousePosition);
             RequestMouseMoveRepaint(containsMouse);
 
@@ -505,6 +506,12 @@ namespace LoogaSoft.Inspector.Editor
                 contentRect.y - padding.top,
                 contentRect.width + padding.horizontal,
                 contentRect.height + padding.vertical);
+        }
+
+        private static Rect ExpandRectBottom(Rect rect, float amount)
+        {
+            rect.height += amount;
+            return rect;
         }
 
         private static Rect GetHeaderTextRect(Rect headerRect, float yOffset, GUIStyle boxStyle)
@@ -1036,6 +1043,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
