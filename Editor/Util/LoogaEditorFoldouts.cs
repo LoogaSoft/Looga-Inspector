@@ -627,9 +627,9 @@ namespace LoogaSoft.Inspector.Editor
             Vector3[] points = expanded
                 ? new[]
                 {
-                    new Vector3(center.x - radius, center.y - verticalRadius, 0f),
-                    new Vector3(center.x + radius, center.y - verticalRadius, 0f),
-                    new Vector3(center.x, center.y + verticalRadius, 0f)
+                    new Vector3(center.x - radius, center.y - verticalRadius * 0.75f, 0f),
+                    new Vector3(center.x + radius, center.y - verticalRadius * 0.75f, 0f),
+                    new Vector3(center.x, center.y + verticalRadius * 0.75f, 0f)
                 }
                 : new[]
                 {
