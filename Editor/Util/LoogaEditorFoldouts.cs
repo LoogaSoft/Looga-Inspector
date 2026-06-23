@@ -1003,7 +1003,7 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.235f, 0.235f, 0.235f, 1f)
+                ? new Color(0.18f, 0.18f, 0.18f, 1f)
                 : new Color(0.76f, 0.76f, 0.76f, 1f);
         }
 
