@@ -138,6 +138,16 @@ For several sibling fields, use `LoogaToggleFoldoutGroupAttribute` on the bool f
 [SerializeField] private bool _debugMode;
 ```
 
+`LoogaInspectorMessageAttribute` draws an info, warning, or error box at the top of a component inspector when a bool field, property, or method returns true. Use it for component-level setup warnings instead of writing a custom editor.
+
+```csharp
+[LoogaInspectorMessage(nameof(MissingSource), "No source component found.", MessageMode.Warning)]
+public sealed class ExampleComponent : MonoBehaviour
+{
+    private bool MissingSource => GetComponent<SourceComponent>() == null;
+}
+```
+
 ## Visibility And Editability
 
 ### Conditional Visibility

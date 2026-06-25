@@ -45,6 +45,8 @@ namespace LoogaSoft.Inspector.Editor
             }
             
             EditorGUILayout.Space(1f);
+
+            DrawInspectorMessages(target.GetType());
             
             DrawButtons(layout, true);
 
@@ -57,6 +59,43 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
         
         #region Drawers
+        private void DrawInspectorMessages(Type inspectedType)
+        {
+            var messages = inspectedType
+                .GetCustomAttributes<LoogaInspectorMessageAttribute>(inherit: true)
+                .ToArray();
+
+            if (messages.Length == 0)
+                return;
+
+            for (int i = 0; i < messages.Length; i++)
+            {
+                LoogaInspectorMessageAttribute message = messages[i];
+                if (!ShouldDrawInspectorMessage(message))
+                    continue;
+
+                EditorGUILayout.HelpBox(message.Message, ValidateInputDrawer.GetMessageType(message.MessageMode));
+                EditorGUILayout.Space(1f);
+            }
+        }
+
+        private bool ShouldDrawInspectorMessage(LoogaInspectorMessageAttribute message)
+        {
+            for (int i = 0; i < targets.Length; i++)
+            {
+                bool condition = string.IsNullOrWhiteSpace(message.Condition)
+                    || ValidateInputDrawer.GetCondition(targets[i], message.Condition);
+
+                if (message.Invert)
+                    condition = !condition;
+
+                if (condition)
+                    return true;
+            }
+
+            return false;
+        }
+
         private void DrawPropertiesScope(List<SerializedProperty> properties, Type scopeType, string basePath)
         {
             if (properties.Count == 0)
