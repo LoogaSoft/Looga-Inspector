@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEngine;
 using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -41,7 +41,7 @@ namespace LoogaSoft.Inspector.Editor
                 : AnimatorControllerParameterType.Trigger;
 
             IEnumerable<AnimatorControllerParameter> parameters = controller.parameters
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .Where(p => !filterByParameterType || p.type == parameterType);

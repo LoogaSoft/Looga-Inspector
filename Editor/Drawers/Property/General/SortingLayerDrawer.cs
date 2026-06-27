@@ -2,7 +2,7 @@ using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -16,7 +16,7 @@ namespace LoogaSoft.Inspector.Editor
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
             var sortingLayers = SortingLayer.layers
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .Select(s => s.name)

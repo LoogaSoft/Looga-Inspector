@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
 
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -17,7 +17,7 @@ namespace LoogaSoft.Inspector.Editor
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
             var tagsList = InternalEditorUtility.tags
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .ToList();

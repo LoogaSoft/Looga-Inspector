@@ -3,7 +3,7 @@ using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -17,7 +17,7 @@ namespace LoogaSoft.Inspector.Editor
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
             var scenesList = EditorBuildSettings.scenes
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .Select(s => System.IO.Path.GetFileNameWithoutExtension(s.path))
@@ -26,7 +26,7 @@ namespace LoogaSoft.Inspector.Editor
             scenesList.Insert(0, "None");
             
             var scenesArray = scenesList
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .ToArray();

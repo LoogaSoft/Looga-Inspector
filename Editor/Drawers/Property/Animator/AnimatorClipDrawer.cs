@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -34,7 +34,7 @@ namespace LoogaSoft.Inspector.Editor
             }
             
             List<string> clipNames = controller.animationClips
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .Select(c => c.name)

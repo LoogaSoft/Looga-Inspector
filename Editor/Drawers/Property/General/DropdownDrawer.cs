@@ -5,7 +5,7 @@ using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-#if ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
 using ZLinq;
 #else
 using System.Linq;
@@ -30,7 +30,7 @@ namespace LoogaSoft.Inspector.Editor
             }
             
             string[] labels = options
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 .AsValueEnumerable()
                 #endif
                 .Select(o => GetOptionLabel(o, dropdownAttribute))
@@ -87,7 +87,7 @@ namespace LoogaSoft.Inspector.Editor
 
             if (result is IEnumerable enumerable)
             {
-                #if ZLINQ_SUPPORT
+                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
                 return enumerable.AsValueEnumerable<object>().ToList();
                 #else
                 return enumerable.Cast<object>().ToList();
