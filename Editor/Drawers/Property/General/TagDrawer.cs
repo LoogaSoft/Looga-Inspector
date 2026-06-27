@@ -1,13 +1,8 @@
+using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
-
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
 
 namespace LoogaSoft.Inspector.Editor
 {
@@ -16,20 +11,16 @@ namespace LoogaSoft.Inspector.Editor
     {
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
-            var tagsList = InternalEditorUtility.tags
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
-                .ToList();
-            
+            List<string> tagsList = LoogaInspectorQueryUtility.ToStringList(InternalEditorUtility.tags);
             tagsList.Insert(0, "None");
+            string[] tagsArray = tagsList.ToArray();
             
             EditorGUI.BeginProperty(position, label, property);
 
             if (property.propertyType == SerializedPropertyType.String)
             {
                 var currentIndex = Mathf.Max(0, tagsList.IndexOf(property.stringValue));
-                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, tagsList.ToArray());
+                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, tagsArray);
                 property.stringValue = tagsList[newIndex];
             }
             else

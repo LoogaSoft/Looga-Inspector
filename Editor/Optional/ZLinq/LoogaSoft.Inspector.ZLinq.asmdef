@@ -1,0 +1,21 @@
+{
+    "name": "LoogaSoft.Inspector.ZLinq",
+    "rootNamespace": "LoogaSoft.Inspector.Editor",
+    "references": [
+        "LoogaSoft.Inspector.Editor",
+        "ZLinq"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [
+        "LOOGA_INSPECTOR_ZLINQ_SUPPORT"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

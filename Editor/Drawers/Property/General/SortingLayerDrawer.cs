@@ -1,12 +1,7 @@
+using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
-
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
 
 namespace LoogaSoft.Inspector.Editor
 {
@@ -15,25 +10,20 @@ namespace LoogaSoft.Inspector.Editor
     {
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
-            var sortingLayers = SortingLayer.layers
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
-                .Select(s => s.name)
-                .ToList();
-            
+            List<string> sortingLayers = LoogaInspectorQueryUtility.GetSortingLayerNames(SortingLayer.layers);
             sortingLayers.Insert(0, "None");
+            string[] sortingLayerArray = sortingLayers.ToArray();
             
             EditorGUI.BeginProperty(position, label, property);
 
             if (property.propertyType == SerializedPropertyType.Integer)
             {
-                property.intValue = EditorGUI.Popup(position, label.text, property.intValue, sortingLayers.ToArray());
+                property.intValue = EditorGUI.Popup(position, label.text, property.intValue, sortingLayerArray);
             }
             else if (property.propertyType == SerializedPropertyType.String)
             {
                 var currentIndex = Mathf.Max(0, sortingLayers.IndexOf(property.stringValue));
-                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, sortingLayers.ToArray());
+                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, sortingLayerArray);
                 property.stringValue = sortingLayers[newIndex];
             }
             else

@@ -5,12 +5,6 @@ using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
-
 namespace LoogaSoft.Inspector.Editor
 {
     [CustomPropertyDrawer(typeof(DropdownAttribute))]
@@ -29,12 +23,9 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
             
-            string[] labels = options
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
-                .Select(o => GetOptionLabel(o, dropdownAttribute))
-                .ToArray();
+            string[] labels = LoogaInspectorQueryUtility.GetObjectLabels(
+                options,
+                option => GetOptionLabel(option, dropdownAttribute));
             
             EditorGUI.BeginProperty(position, label, property);
 
@@ -85,16 +76,7 @@ namespace LoogaSoft.Inspector.Editor
                 }
             }
 
-            if (result is IEnumerable enumerable)
-            {
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                return enumerable.AsValueEnumerable<object>().ToList();
-                #else
-                return enumerable.Cast<object>().ToList();
-                #endif           
-            }
-
-            return null;
+            return result is IEnumerable enumerable ? LoogaInspectorQueryUtility.ToObjectList(enumerable) : null;
         }
 
         private static string GetOptionLabel(object option, DropdownAttribute dropdownAttribute)

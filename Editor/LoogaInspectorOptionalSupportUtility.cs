@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Build;
@@ -55,103 +54,6 @@ namespace LoogaSoft.Inspector.Editor
             ApplyDefineSymbols(defines);
         }
 
-        public static bool AsmdefReferences(string asmdefName, string assemblyName)
-        {
-            if (!TryGetAsmdefPath(asmdefName, out string path))
-                return false;
-
-            string json = File.ReadAllText(path);
-            return json.Contains("\"" + assemblyName + "\"");
-        }
-
-        public static bool SetAsmdefReferences(
-            string asmdefName,
-            IReadOnlyList<string> assemblyNames,
-            bool include,
-            out string error)
-        {
-            error = string.Empty;
-
-            if (!TryGetAsmdefPath(asmdefName, out string path))
-            {
-                error = $"Could not find {asmdefName}.asmdef.";
-                return false;
-            }
-
-            if (!PackageIsEditable(path, out error))
-                return false;
-
-            try
-            {
-                string json = File.ReadAllText(path);
-                AsmdefData asmdef = UnityEngine.JsonUtility.FromJson<AsmdefData>(json);
-                List<string> references = asmdef.references != null
-                    ? asmdef.references.ToList()
-                    : new List<string>();
-
-                bool changed = false;
-                foreach (string assemblyName in assemblyNames)
-                {
-                    if (include)
-                    {
-                        if (references.Contains(assemblyName))
-                            continue;
-
-                        references.Add(assemblyName);
-                        changed = true;
-                    }
-                    else
-                    {
-                        changed |= references.RemoveAll(reference => reference == assemblyName) > 0;
-                    }
-                }
-
-                if (changed)
-                {
-                    asmdef.references = references.ToArray();
-                    File.WriteAllText(path, UnityEngine.JsonUtility.ToJson(asmdef, prettyPrint: true));
-                }
-
-                return true;
-            }
-            catch (Exception exception)
-            {
-                error = $"Could not update {asmdefName}.asmdef. If this package is installed from an immutable PackageCache location, embed the package or edit the source package before enabling optional support.\n\n{exception.Message}";
-                return false;
-            }
-        }
-
-        private static bool PackageIsEditable(string assetPath, out string error)
-        {
-            error = string.Empty;
-            UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
-            if (packageInfo == null)
-                return true;
-
-            if (packageInfo.source == UnityEditor.PackageManager.PackageSource.Embedded || packageInfo.source == UnityEditor.PackageManager.PackageSource.Local)
-                return true;
-
-            error = $"{packageInfo.displayName} is installed as {packageInfo.source}. Optional support can only modify asmdefs for embedded or local packages. Embed the package, or edit the source package and update the package version, before enabling this support toggle.";
-            return false;
-        }
-
-        private static bool TryGetAsmdefPath(string asmdefName, out string path)
-        {
-            string[] guids = AssetDatabase.FindAssets($"{asmdefName} t:AssemblyDefinitionAsset");
-            foreach (string guid in guids)
-            {
-                string candidate = AssetDatabase.GUIDToAssetPath(guid);
-                if (candidate.EndsWith($"{asmdefName}.asmdef", StringComparison.Ordinal))
-                {
-                    path = candidate;
-                    return true;
-                }
-            }
-
-            path = string.Empty;
-            return false;
-        }
-
         private static List<string> GetDefines()
         {
             return PlayerSettings.GetScriptingDefineSymbols(GetNamedBuildTarget())
@@ -171,31 +73,6 @@ namespace LoogaSoft.Inspector.Editor
         {
             BuildTarget activeBuildTarget = EditorUserBuildSettings.activeBuildTarget;
             return NamedBuildTarget.FromBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(activeBuildTarget));
-        }
-
-        [Serializable]
-        private sealed class AsmdefData
-        {
-            public string name;
-            public string rootNamespace;
-            public string[] references;
-            public string[] includePlatforms;
-            public string[] excludePlatforms;
-            public bool allowUnsafeCode;
-            public bool overrideReferences;
-            public string[] precompiledReferences;
-            public bool autoReferenced;
-            public string[] defineConstraints;
-            public VersionDefine[] versionDefines;
-            public bool noEngineReferences;
-        }
-
-        [Serializable]
-        private sealed class VersionDefine
-        {
-            public string name;
-            public string expression;
-            public string define;
         }
     }
 }

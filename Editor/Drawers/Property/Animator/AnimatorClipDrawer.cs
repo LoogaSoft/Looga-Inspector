@@ -2,11 +2,6 @@ using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
 
 namespace LoogaSoft.Inspector.Editor
 {
@@ -33,13 +28,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
             
-            List<string> clipNames = controller.animationClips
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
-                .Select(c => c.name)
-                .ToList();
-            
+            List<string> clipNames = LoogaInspectorQueryUtility.GetAnimationClipNames(controller.animationClips);
             clipNames.Insert(0, "None");
             
             var currentIndex = Mathf.Max(0, clipNames.IndexOf(property.stringValue));

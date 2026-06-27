@@ -2,11 +2,6 @@ using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
 
 namespace LoogaSoft.Inspector.Editor
 {
@@ -34,12 +29,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
             
-            List<string> layerNames = controller.layers
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-                .AsValueEnumerable()
-                #endif
-                .Select(l => l.name)
-                .ToList();
+            List<string> layerNames = LoogaInspectorQueryUtility.GetAnimatorLayerNames(controller.layers);
             layerNames.Insert(0, "None");
 
             int currentIndex = -1;

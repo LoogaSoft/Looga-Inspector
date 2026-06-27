@@ -1,13 +1,8 @@
 using System;
-using UnityEditor;
-using UnityEngine;
 using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-using ZLinq;
-#else
-using System.Linq;
-#endif
+using UnityEditor;
+using UnityEngine;
 
 namespace LoogaSoft.Inspector.Editor
 {
@@ -41,16 +36,10 @@ namespace LoogaSoft.Inspector.Editor
                 ? apAttribute.parameterType
                 : AnimatorControllerParameterType.Trigger;
 
-#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
-            AnimatorControllerParameter[] parameterList = controller.parameters
-                .AsValueEnumerable()
-                .Where(p => !filterByParameterType || p.type == parameterType)
-                .ToArray();
-#else
-            AnimatorControllerParameter[] parameterList = controller.parameters
-                .Where(p => !filterByParameterType || p.type == parameterType)
-                .ToArray();
-#endif
+            AnimatorControllerParameter[] parameterList = LoogaInspectorQueryUtility.FilterAnimatorParameters(
+                controller.parameters,
+                filterByParameterType,
+                parameterType);
 
             List<string> paramNames = new(parameterList.Length + 1) { "None" };
             int[] paramHashesWithNone = new int[parameterList.Length + 1];

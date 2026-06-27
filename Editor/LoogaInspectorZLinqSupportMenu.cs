@@ -7,7 +7,6 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const string MenuPath = "LoogaSoft/Inspector/Enable ZLinq Support";
         private const string DefineSymbol = "LOOGA_INSPECTOR_ZLINQ_SUPPORT";
-        private const string EditorAsmdef = "LoogaSoft.Inspector.Editor";
 
         private static readonly string[] RequiredAssemblies =
         {
@@ -41,16 +40,12 @@ namespace LoogaSoft.Inspector.Editor
 
         private static bool IsEnabled()
         {
-            return LoogaInspectorOptionalSupportUtility.DefineIsEnabled(DefineSymbol)
-                && LoogaInspectorOptionalSupportUtility.AsmdefReferences(EditorAsmdef, "ZLinq");
+            return LoogaInspectorOptionalSupportUtility.DefineIsEnabled(DefineSymbol);
         }
 
         private static void Enable()
         {
             LoogaInspectorOptionalSupportUtility.AddDefineSymbol(DefineSymbol);
-            if (!LoogaInspectorOptionalSupportUtility.SetAsmdefReferences(EditorAsmdef, RequiredAssemblies, include: true, out string error))
-                EditorUtility.DisplayDialog("Unable To Update Looga Inspector", error, "OK");
-
             AssetDatabase.Refresh();
             Debug.Log("Looga Inspector ZLinq support enabled.");
         }
@@ -58,9 +53,6 @@ namespace LoogaSoft.Inspector.Editor
         private static void Disable()
         {
             LoogaInspectorOptionalSupportUtility.RemoveDefineSymbol(DefineSymbol);
-            if (!LoogaInspectorOptionalSupportUtility.SetAsmdefReferences(EditorAsmdef, RequiredAssemblies, include: false, out string error))
-                EditorUtility.DisplayDialog("Unable To Update Looga Inspector", error, "OK");
-
             AssetDatabase.Refresh();
             Debug.Log("Looga Inspector ZLinq support disabled.");
         }
