@@ -32,6 +32,7 @@ namespace LoogaSoft.Inspector.Editor
             if (controller == null)
             {
                 EditorGUI.LabelField(position, label.text, "Animator Controller not found");
+                EditorGUI.EndProperty();
                 return;
             }
             
@@ -40,26 +41,26 @@ namespace LoogaSoft.Inspector.Editor
                 ? apAttribute.parameterType
                 : AnimatorControllerParameterType.Trigger;
 
-            IEnumerable<AnimatorControllerParameter> parameters = controller.parameters
-                #if LOOGA_INSPECTOR_ZLINQ_SUPPORT
+#if LOOGA_INSPECTOR_ZLINQ_SUPPORT
+            AnimatorControllerParameter[] parameterList = controller.parameters
                 .AsValueEnumerable()
-                #endif
-                .Where(p => !filterByParameterType || p.type == parameterType);
-
-            List<AnimatorControllerParameter> parameterList = parameters.ToList();
-
-            List<string> paramNames = parameterList
-                .Select(p => p.name)
-                .ToList();
-            
-            int[] paramHashes = parameterList
-                .Select(p => p.nameHash)
+                .Where(p => !filterByParameterType || p.type == parameterType)
                 .ToArray();
-            
-            paramNames.Insert(0, "None");
-            int[] paramHashesWithNone = new int[paramHashes.Length + 1];
-            paramHashesWithNone[0] = 0;
-            paramHashes.CopyTo(paramHashesWithNone, 1);
+#else
+            AnimatorControllerParameter[] parameterList = controller.parameters
+                .Where(p => !filterByParameterType || p.type == parameterType)
+                .ToArray();
+#endif
+
+            List<string> paramNames = new(parameterList.Length + 1) { "None" };
+            int[] paramHashesWithNone = new int[parameterList.Length + 1];
+
+            for (int i = 0; i < parameterList.Length; i++)
+            {
+                AnimatorControllerParameter parameter = parameterList[i];
+                paramNames.Add(parameter.name);
+                paramHashesWithNone[i + 1] = parameter.nameHash;
+            }
 
             var currentIndex = -1;
             

@@ -61,7 +61,7 @@ namespace LoogaSoft.Inspector.Editor
                 return false;
 
             string json = File.ReadAllText(path);
-            return json.Contains($@"""{assemblyName}""");
+            return json.Contains("\"" + assemblyName + "\"");
         }
 
         public static bool SetAsmdefReferences(
@@ -77,6 +77,9 @@ namespace LoogaSoft.Inspector.Editor
                 error = $"Could not find {asmdefName}.asmdef.";
                 return false;
             }
+
+            if (!PackageIsEditable(path, out error))
+                return false;
 
             try
             {
@@ -116,6 +119,20 @@ namespace LoogaSoft.Inspector.Editor
                 error = $"Could not update {asmdefName}.asmdef. If this package is installed from an immutable PackageCache location, embed the package or edit the source package before enabling optional support.\n\n{exception.Message}";
                 return false;
             }
+        }
+
+        private static bool PackageIsEditable(string assetPath, out string error)
+        {
+            error = string.Empty;
+            UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
+            if (packageInfo == null)
+                return true;
+
+            if (packageInfo.source == UnityEditor.PackageManager.PackageSource.Embedded || packageInfo.source == UnityEditor.PackageManager.PackageSource.Local)
+                return true;
+
+            error = $"{packageInfo.displayName} is installed as {packageInfo.source}. Optional support can only modify asmdefs for embedded or local packages. Embed the package, or edit the source package and update the package version, before enabling this support toggle.";
+            return false;
         }
 
         private static bool TryGetAsmdefPath(string asmdefName, out string path)
