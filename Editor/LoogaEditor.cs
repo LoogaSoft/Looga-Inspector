@@ -51,6 +51,7 @@ namespace LoogaSoft.Inspector.Editor
             DrawButtons(layout, true);
 
             DrawPropertiesScope(rootProperties, target.GetType(), "");
+            DrawUnmatchedSerializedProperties(rootProperties, layout);
 
             DrawButtons(layout, false);
             
@@ -298,6 +299,33 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
+        private static HashSet<string> GetLayoutPropertyNames(InspectorLayout layout)
+        {
+            HashSet<string> propertyNames = new();
+            for (int i = 0; i < layout.elements.Count; i++)
+                propertyNames.Add(layout.elements[i].propertyName);
+
+            return propertyNames;
+        }
+
+        private void DrawUnmatchedSerializedProperties(List<SerializedProperty> properties, InspectorLayout layout)
+        {
+            HashSet<string> layoutPropertyNames = GetLayoutPropertyNames(layout);
+            bool drewProperty = false;
+
+            for (int i = 0; i < properties.Count; i++)
+            {
+                SerializedProperty property = properties[i];
+                if (layoutPropertyNames.Contains(property.name))
+                    continue;
+
+                DrawCustomPropertyField(property);
+                drewProperty = true;
+            }
+
+            if (drewProperty)
+                EditorGUILayout.Space(1f);
+        }
         private void DrawCustomPropertyField(SerializedProperty property)
         {
             if (!PropertyUtils.IsVisible(property))
