@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using LoogaSoft.Inspector.Runtime;
 
 namespace LoogaSoft.Inspector.Editor
@@ -16,6 +16,7 @@ namespace LoogaSoft.Inspector.Editor
         public bool styledGroupIsFoldout;
         public bool styledGroupIsToggleFoldout;
         public bool endsStyledGroup;
+        public InspectorPropertyMetadata metadata;
 
         public bool inFoldoutGroup => inStyledGroup && styledGroupIsFoldout;
         public string foldoutGroupName => styledGroupName;
@@ -47,6 +48,11 @@ namespace LoogaSoft.Inspector.Editor
             inTabGroup = true;
             this.tabPath.AddRange(tabPath);
             tabName = tabPath[tabPath.Count - 1];
+        }
+
+        public void SetMetadata(InspectorPropertyMetadata metadata)
+        {
+            this.metadata = metadata;
         }
 
         public void SetFoldoutGroup(
@@ -92,15 +98,4 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 
-    public class TabGroup
-    {
-        public int currentTabIndex;
-        public List<string> tabNames;
-
-        public TabGroup(int currentTabIndex, List<string> tabNames)
-        {
-            this.currentTabIndex = currentTabIndex;
-            this.tabNames = tabNames;
-        }
-    }
 }

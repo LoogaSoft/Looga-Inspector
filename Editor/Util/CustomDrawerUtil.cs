@@ -52,7 +52,11 @@ namespace LoogaSoft.Inspector.Editor
 
         public static bool HasCustomDrawer(SerializedProperty property)
         {
-            Type targetType = GetTargetType(property);
+            return HasCustomDrawer(GetTargetType(property));
+        }
+
+        public static bool HasCustomDrawer(Type targetType)
+        {
             if (targetType == null)
                 return false;
             
@@ -60,9 +64,7 @@ namespace LoogaSoft.Inspector.Editor
                 return result;
             
             bool hasDrawer = CheckType(targetType);
-            
             DrawerCache[targetType] = hasDrawer;
-            
             return hasDrawer;
         }
 

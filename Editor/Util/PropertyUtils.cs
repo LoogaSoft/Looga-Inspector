@@ -10,6 +10,8 @@ namespace LoogaSoft.Inspector.Editor
 {
     public static class PropertyUtils
     {
+        private static readonly Dictionary<AttributeLookupKey, Array> AttributeCache = new();
+
         public static T GetAttribute<T>(SerializedProperty property) where T : class
         {
             if (property == null) 
@@ -22,13 +24,39 @@ namespace LoogaSoft.Inspector.Editor
         public static T[] GetAttributes<T>(SerializedProperty property) where T : class
         {
             if (property == null) 
-                return new T[] { };
+                return Array.Empty<T>();
             
             FieldInfo field = ReflectionUtils.GetField(GetTargetObjectWithProperty(property), property.name);
             if (field == null)
-                return new T[] { };
+                return Array.Empty<T>();
             
-            return field.GetCustomAttributes(typeof(T), true) as T[];
+            return GetCachedAttributes<T>(field);
+        }
+
+
+        private static T[] GetCachedAttributes<T>(FieldInfo field) where T : class
+        {
+            if (field == null)
+                return Array.Empty<T>();
+
+            AttributeLookupKey key = new(field, typeof(T));
+            if (AttributeCache.TryGetValue(key, out Array cachedAttributes))
+                return (T[])cachedAttributes;
+
+            object[] rawAttributes = field.GetCustomAttributes(typeof(T), true);
+            if (rawAttributes.Length == 0)
+            {
+                T[] emptyAttributes = Array.Empty<T>();
+                AttributeCache[key] = emptyAttributes;
+                return emptyAttributes;
+            }
+
+            T[] typedAttributes = new T[rawAttributes.Length];
+            for (int i = 0; i < rawAttributes.Length; i++)
+                typedAttributes[i] = rawAttributes[i] as T;
+
+            AttributeCache[key] = typedAttributes;
+            return typedAttributes;
         }
 
         public static GUIContent GetLabel(SerializedProperty property)
@@ -243,5 +271,37 @@ namespace LoogaSoft.Inspector.Editor
             
             return enumerator.Current;
         }
+
+        private readonly struct AttributeLookupKey : IEquatable<AttributeLookupKey>
+        {
+            private readonly FieldInfo _field;
+            private readonly Type _attributeType;
+
+            public AttributeLookupKey(FieldInfo field, Type attributeType)
+            {
+                _field = field;
+                _attributeType = attributeType;
+            }
+
+            public bool Equals(AttributeLookupKey other)
+            {
+                return Equals(_field, other._field) && _attributeType == other._attributeType;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is AttributeLookupKey other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((_field != null ? _field.GetHashCode() : 0) * 397)
+                        ^ (_attributeType != null ? _attributeType.GetHashCode() : 0);
+                }
+            }
+        }
     }
 }
+

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using UnityEditor;
 using UnityEngine;
@@ -15,44 +14,44 @@ namespace LoogaSoft.Inspector.Editor
         static DecoratorSystem()
         {
             _attributeField = typeof(DecoratorDrawer).GetField("m_Attribute", BindingFlags.Instance | BindingFlags.NonPublic);
-            
+
+            FieldInfo typeField = typeof(CustomPropertyDrawer).GetField(
+                "m_Type",
+                BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+            if (typeField == null)
+                return;
+
             var drawerTypes = TypeCache.GetTypesDerivedFrom<DecoratorDrawer>();
-
-            foreach (var drawerType in drawerTypes)
+            foreach (Type drawerType in drawerTypes)
             {
-                var customDrawerAttr = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), true)
-                    .Cast<CustomPropertyDrawer>()
-                    .FirstOrDefault();
-
-                if (customDrawerAttr != null)
+                object[] drawerAttributes = drawerType.GetCustomAttributes(typeof(CustomPropertyDrawer), true);
+                for (int i = 0; i < drawerAttributes.Length; i++)
                 {
-                    var typeField = typeof(CustomPropertyDrawer).GetField("m_Type", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-                    if (typeField != null)
-                    {
-                        var targetAttrType = (Type)typeField.GetValue(customDrawerAttr);
-                        if (targetAttrType != null && !_drawerCache.ContainsKey(targetAttrType))
-                            _drawerCache[targetAttrType] = drawerType;
-                    }
+                    if (drawerAttributes[i] is not CustomPropertyDrawer customDrawerAttribute)
+                        continue;
+
+                    Type targetAttributeType = (Type)typeField.GetValue(customDrawerAttribute);
+                    if (targetAttributeType != null && !_drawerCache.ContainsKey(targetAttributeType))
+                        _drawerCache[targetAttributeType] = drawerType;
+
+                    break;
                 }
             }
         }
+
         public static void DrawDecorators(SerializedProperty property, object targetObject)
         {
             bool isList = property.isArray && property.propertyType != SerializedPropertyType.String;
             if (!isList) 
                 return;
             
-            FieldInfo fieldInfo = targetObject.GetType().GetField(property.name,
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            
-            if (fieldInfo == null) 
-                return;
-
-            var attributes = fieldInfo.GetCustomAttributes<PropertyAttribute>();
-            foreach (var attr in attributes)
+            PropertyAttribute[] attributes = PropertyUtils.GetAttributes<PropertyAttribute>(property);
+            for (int i = 0; i < attributes.Length; i++)
             {
-                if (_drawerCache.TryGetValue(attr.GetType(), out Type drawerType))
-                    DrawDecoratorInstance(drawerType, attr);
+                PropertyAttribute attribute = attributes[i];
+                if (_drawerCache.TryGetValue(attribute.GetType(), out Type drawerType))
+                    DrawDecoratorInstance(drawerType, attribute);
             }
         }
 
