@@ -307,8 +307,20 @@ These draw common Unity dropdowns:
 [Layer]
 [SerializeField] private int _collisionLayer;
 
+[PhysicsLayer]
+[SerializeField] private string _physicsLayer;
+
+[PhysicsLayerMask]
+[SerializeField] private LayerMask _hitMask;
+
 [SortingLayer]
 [SerializeField] private string _sortingLayer;
+
+[NavMeshArea]
+[SerializeField] private int _walkableArea;
+
+[NavMeshAreaMask]
+[SerializeField] private int _agentAreaMask;
 
 [Scene]
 [SerializeField] private string _sceneName;
