@@ -17,6 +17,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float IconButtonGap = 3f;
         private const float AccentWidth = 4f;
         private const float TreeStep = 12f;
+        private const float AddButtonWidth = 72f;
+        private const float SyncButtonWidth = 104f;
 
         private static readonly Color CatalogColor = new(0.155f, 0.155f, 0.155f, 1f);
         private static readonly Color RowColor = new(0.17f, 0.17f, 0.17f, 1f);
@@ -377,33 +379,46 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DrawButtons(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType, bool canSync)
         {
-            int buttonCount = catalog.AllowAdd && canSync ? 2 : 1;
-            float width = buttonCount == 2 ? (rect.width - Gap) * 0.5f : rect.width;
-            Rect firstRect = new(rect.x, rect.y, width, rect.height);
-
             if (catalog.AllowAdd)
             {
-                if (GUI.Button(firstRect, $"Add {ObjectNames.NicifyVariableName(entryType.Name)}"))
+                string key = GetPendingNameKey(property, entryType);
+                float syncWidth = canSync ? SyncButtonWidth + Gap : 0f;
+                Rect nameRect = new(rect.x, rect.y, Mathf.Max(80f, rect.width - AddButtonWidth - Gap - syncWidth), rect.height);
+                Rect addRect = new(nameRect.xMax + Gap, rect.y, AddButtonWidth, rect.height);
+
+                string pendingName = SessionState.GetString(key, string.Empty);
+                string placeholder = $"New {ObjectNames.NicifyVariableName(entryType.Name)}";
+                EditorGUI.BeginChangeCheck();
+                pendingName = EditorGUI.TextField(nameRect, string.IsNullOrEmpty(pendingName) ? placeholder : pendingName);
+                if (EditorGUI.EndChangeCheck())
                 {
-                    AddEntry(property, catalog, entryType);
+                    SessionState.SetString(key, pendingName == placeholder ? string.Empty : pendingName);
                 }
-            }
-            else if (canSync && GUI.Button(firstRect, "Sync Sub-Assets"))
-            {
-                SyncFromSubAssets(property, entryType);
+
+                if (GUI.Button(addRect, "Add"))
+                {
+                    AddEntry(property, catalog, entryType, pendingName);
+                    SessionState.EraseString(key);
+                    GUI.FocusControl(null);
+                }
+
+                if (canSync)
+                {
+                    Rect syncRect = new(addRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
+                    if (GUI.Button(syncRect, "Sync Sub-Assets"))
+                    {
+                        SyncFromSubAssets(property, entryType);
+                    }
+                }
+
+                return;
             }
 
-            if (catalog.AllowAdd && canSync)
-            {
-                Rect syncRect = new(firstRect.xMax + Gap, rect.y, width, rect.height);
-                if (GUI.Button(syncRect, "Sync Sub-Assets"))
-                {
-                    SyncFromSubAssets(property, entryType);
-                }
-            }
+            if (canSync && GUI.Button(rect, "Sync Sub-Assets"))
+                SyncFromSubAssets(property, entryType);
         }
 
-        private static void AddEntry(SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
+        private static void AddEntry(SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType, string requestedName)
         {
             UnityEngine.Object owner = property.serializedObject.targetObject;
             string assetPath = AssetDatabase.GetAssetPath(owner);
@@ -414,7 +429,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             ScriptableObject entry = ScriptableObject.CreateInstance(entryType);
-            entry.name = GetUniqueName(owner, catalog, entryType);
+            entry.name = GetUniqueName(owner, catalog, entryType, requestedName);
             InitializeTreePath(entry, catalog);
 
             Undo.RegisterCreatedObjectUndo(entry, $"Add {ObjectNames.NicifyVariableName(entryType.Name)}");
@@ -434,6 +449,13 @@ namespace LoogaSoft.Inspector.Editor
 
             Selection.activeObject = entry;
             EditorGUIUtility.PingObject(entry);
+        }
+
+        private static string GetPendingNameKey(SerializedProperty property, Type entryType)
+        {
+            UnityEngine.Object owner = property.serializedObject.targetObject;
+            int ownerId = owner != null ? owner.GetInstanceID() : 0;
+            return $"LoogaCatalog_PendingName_{ownerId}_{property.propertyPath}_{entryType.FullName}";
         }
 
         private static void DeleteEntry(SerializedProperty property, int index, ScriptableObject definition, LoogaCatalogAttribute catalog)
@@ -523,9 +545,12 @@ namespace LoogaSoft.Inspector.Editor
             EditorUtility.SetDirty(property.serializedObject.targetObject);
         }
 
-        private static string GetUniqueName(UnityEngine.Object owner, LoogaCatalogAttribute catalog, Type entryType)
+        private static string GetUniqueName(UnityEngine.Object owner, LoogaCatalogAttribute catalog, Type entryType, string requestedName)
         {
-            string baseName = !string.IsNullOrWhiteSpace(catalog.CreateName)
+            string normalizedRequest = NormalizeEntryName(requestedName, catalog);
+            string baseName = !string.IsNullOrWhiteSpace(normalizedRequest)
+                ? normalizedRequest
+                : !string.IsNullOrWhiteSpace(catalog.CreateName)
                 ? catalog.CreateName
                 : $"New {ObjectNames.NicifyVariableName(entryType.Name)}";
 
