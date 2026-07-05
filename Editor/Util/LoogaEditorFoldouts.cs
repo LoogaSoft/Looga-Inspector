@@ -21,7 +21,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowLeftNudge = 0f;
         private const float HeaderTextArrowGap = 6f;
         private const int AccentRailWidth = 4;
-        private const int FlatBoxBorderWidth = 2;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -34,7 +33,6 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D _flatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
-        private static int _boxDepth;
         private static int _containedFoldoutDepth;
 
         public static GUIStyle SmallBoxStyle
@@ -64,46 +62,44 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.BeginVertical(boxStyle);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            using (BoxDepthScope())
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect text = GetHeaderTextRect(headerRect, 1f, boxStyle);
+            Rect arrow = GetHeaderArrowRect(headerRect, boxStyle);
+
+            Rect hoverRect = show ? headerRect : boxRect;
+            bool containsMouse = hoverRect.Contains(Event.current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
+                DrawHoverRect(hoverRect);
+
+            DrawHeaderUnderline(headerRect);
+            GUI.Label(text, title, _largeHeader);
+
+            bool newShow = show;
+            DrawFoldoutArrow(arrow, show);
+            if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition) && Event.current.button == 0)
             {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect text = GetHeaderTextRect(headerRect, 1f, boxStyle);
-                Rect arrow = GetHeaderArrowRect(headerRect, boxStyle);
+                newShow = !show;
+                Event.current.Use();
+            }
 
-                Rect hoverRect = show ? headerRect : boxRect;
-                bool containsMouse = hoverRect.Contains(Event.current.mousePosition);
-                RequestMouseMoveRepaint(containsMouse);
+            if (newShow != show)
+            {
+                EditorPrefs.SetBool(prefKey, newShow);
+                show = newShow;
+            }
 
-                if (containsMouse)
-                    DrawHoverRect(hoverRect);
-
-                GUI.Label(text, title, _largeHeader);
-
-                bool newShow = show;
-                DrawFoldoutArrow(arrow, show);
-                if (Event.current.type == EventType.MouseDown && headerRect.Contains(Event.current.mousePosition) && Event.current.button == 0)
-                {
-                    newShow = !show;
-                    Event.current.Use();
-                }
-
-                if (newShow != show)
-                {
-                    EditorPrefs.SetBool(prefKey, newShow);
-                    show = newShow;
-                }
-
-                if (show)
-                {
-                    EditorGUILayout.Space(2);
-                    content?.Invoke();
-                    EditorGUILayout.Space(2);
-                }
+            if (show)
+            {
+                EditorGUILayout.Space(2);
+                content?.Invoke();
+                EditorGUILayout.Space(2);
             }
 
             EditorGUILayout.EndVertical();
@@ -117,21 +113,19 @@ namespace LoogaSoft.Inspector.Editor
             GUIStyle boxStyle = GetLargeBoxStyle();
             EditorGUILayout.BeginVertical(boxStyle);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            using (BoxDepthScope())
-            {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect text = GetStaticHeaderTextRect(headerRect, 1f);
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect text = GetStaticHeaderTextRect(headerRect, 1f);
 
-                GUI.Label(text, title, _largeHeader);
-                EditorGUILayout.Space(2);
-                content?.Invoke();
-                EditorGUILayout.Space(2);
-            }
+            DrawHeaderUnderline(headerRect);
+            GUI.Label(text, title, _largeHeader);
+            EditorGUILayout.Space(2);
+            content?.Invoke();
+            EditorGUILayout.Space(2);
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(LargeFoldoutGap);
         }
@@ -172,6 +166,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (containsMouse)
                     DrawHoverRect(hoverRect);
 
+                DrawHeaderUnderline(headerRect);
                 GUI.Label(textRect, label, _largeHeader);
 
                 newExpanded = expanded;
@@ -268,23 +263,20 @@ namespace LoogaSoft.Inspector.Editor
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
             bool newExpanded;
-            using (BoxDepthScope())
-            {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect clickRect = expanded ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
-                newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, boxStyle);
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect clickRect = expanded ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
+            newExpanded = LoogaFoldoutSmallHeader(headerRect, clickRect, label, expanded, property, boxStyle);
 
-                if (newExpanded)
-                {
-                    EditorGUILayout.Space(2f);
-                    content?.Invoke();
-                    EditorGUILayout.Space(2f);
-                }
+            if (newExpanded)
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
             }
 
             EditorGUILayout.EndVertical();
@@ -303,21 +295,19 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.BeginVertical(boxStyle);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            using (BoxDepthScope())
-            {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
-                GUI.Label(textRect, label, _smallHeader);
-                EditorGUILayout.Space(2f);
-                content?.Invoke();
-                EditorGUILayout.Space(2f);
-            }
+            DrawHeaderUnderline(headerRect);
+            GUI.Label(textRect, label, _smallHeader);
+            EditorGUILayout.Space(2f);
+            content?.Invoke();
+            EditorGUILayout.Space(2f);
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(1f);
@@ -332,12 +322,6 @@ namespace LoogaSoft.Inspector.Editor
         {
             _containedFoldoutDepth++;
             return new ContainedFoldoutScopeInstance();
-        }
-
-        private static IDisposable BoxDepthScope()
-        {
-            _boxDepth++;
-            return new BoxDepthScopeInstance();
         }
 
         private static bool LoogaFoldoutSmallHeader(
@@ -364,6 +348,7 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse)
                 DrawHoverRect(clickRect);
 
+            DrawHeaderUnderline(headerRect);
             GUI.Label(textRect, label, _smallHeader);
 
             bool newExpanded = expanded;
@@ -396,58 +381,56 @@ namespace LoogaSoft.Inspector.Editor
 
             EditorGUILayout.BeginVertical(boxStyle);
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _largeHeader);
-            using (BoxDepthScope())
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect toggleRect = GetHeaderToggleRect(headerRect);
+            Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
+            Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
+
+            Event current = Event.current;
+            Rect hoverRect = show ? headerRect : boxRect;
+            bool containsMouse = hoverRect.Contains(current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
+                DrawHoverRect(hoverRect);
+
+            DrawHeaderUnderline(headerRect);
+            EditorGUI.BeginChangeCheck();
+            bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
+            if (EditorGUI.EndChangeCheck() && toggleProperty != null)
             {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect toggleRect = GetHeaderToggleRect(headerRect);
-                Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
-                Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
+                toggleProperty.boolValue = newEnabled;
+                enabled = newEnabled;
+                show = false;
+                EditorPrefs.SetBool(prefKey, false);
+            }
 
-                Event current = Event.current;
-                Rect hoverRect = show ? headerRect : boxRect;
-                bool containsMouse = hoverRect.Contains(current.mousePosition);
-                RequestMouseMoveRepaint(containsMouse);
+            GUI.Label(textRect, title, _largeHeader);
 
-                if (containsMouse)
-                    DrawHoverRect(hoverRect);
-
-                EditorGUI.BeginChangeCheck();
-                bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
-                if (EditorGUI.EndChangeCheck() && toggleProperty != null)
+            if (enabled)
+            {
+                DrawFoldoutArrow(arrowRect, show);
+                if (current.type == EventType.MouseDown
+                    && hoverRect.Contains(current.mousePosition)
+                    && !toggleRect.Contains(current.mousePosition)
+                    && current.button == 0)
                 {
-                    toggleProperty.boolValue = newEnabled;
-                    enabled = newEnabled;
-                    show = false;
-                    EditorPrefs.SetBool(prefKey, false);
+                    show = !show;
+                    EditorPrefs.SetBool(prefKey, show);
+                    current.Use();
                 }
+            }
 
-                GUI.Label(textRect, title, _largeHeader);
-
-                if (enabled)
-                {
-                    DrawFoldoutArrow(arrowRect, show);
-                    if (current.type == EventType.MouseDown
-                        && hoverRect.Contains(current.mousePosition)
-                        && !toggleRect.Contains(current.mousePosition)
-                        && current.button == 0)
-                    {
-                        show = !show;
-                        EditorPrefs.SetBool(prefKey, show);
-                        current.Use();
-                    }
-                }
-
-                if (enabled && show)
-                {
-                    EditorGUILayout.Space(2f);
-                    content?.Invoke();
-                    EditorGUILayout.Space(2f);
-                }
+            if (enabled && show)
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
             }
 
             EditorGUILayout.EndVertical();
@@ -466,62 +449,60 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.BeginVertical(boxStyle);
 
             Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
-            using (BoxDepthScope())
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            Rect headerRect = new(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            Rect toggleRect = GetHeaderToggleRect(headerRect);
+            Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
+            Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
+
+            Event current = Event.current;
+            Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
+            bool containsMouse = hoverRect.Contains(current.mousePosition);
+            RequestMouseMoveRepaint(containsMouse);
+
+            if (containsMouse)
+                DrawHoverRect(hoverRect);
+
+            DrawHeaderUnderline(headerRect);
+            if (property != null)
+                EditorGUI.BeginProperty(headerRect, label, property);
+
+            EditorGUI.BeginChangeCheck();
+            bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
+            if (EditorGUI.EndChangeCheck() && toggleProperty != null)
             {
-                Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
-                Rect headerRect = new(
-                    boxRect.x,
-                    boxRect.y,
-                    boxRect.width,
-                    baseRect.height + boxStyle.padding.top + 2f);
-                Rect toggleRect = GetHeaderToggleRect(headerRect);
-                Rect arrowRect = GetHeaderArrowRectAfter(headerRect, toggleRect);
-                Rect textRect = GetHeaderTextRectAfter(headerRect, arrowRect, 1f);
+                toggleProperty.boolValue = newEnabled;
+                enabled = newEnabled;
+                show = false;
+            }
 
-                Event current = Event.current;
-                Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
-                bool containsMouse = hoverRect.Contains(current.mousePosition);
-                RequestMouseMoveRepaint(containsMouse);
+            GUI.Label(textRect, label, _smallHeader);
 
-                if (containsMouse)
-                    DrawHoverRect(hoverRect);
-
-                if (property != null)
-                    EditorGUI.BeginProperty(headerRect, label, property);
-
-                EditorGUI.BeginChangeCheck();
-                bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
-                if (EditorGUI.EndChangeCheck() && toggleProperty != null)
+            if (enabled)
+            {
+                DrawFoldoutArrow(arrowRect, show);
+                if (current.type == EventType.MouseDown
+                    && hoverRect.Contains(current.mousePosition)
+                    && !toggleRect.Contains(current.mousePosition)
+                    && current.button == 0)
                 {
-                    toggleProperty.boolValue = newEnabled;
-                    enabled = newEnabled;
-                    show = false;
+                    show = !show;
+                    current.Use();
                 }
+            }
 
-                GUI.Label(textRect, label, _smallHeader);
+            if (property != null)
+                EditorGUI.EndProperty();
 
-                if (enabled)
-                {
-                    DrawFoldoutArrow(arrowRect, show);
-                    if (current.type == EventType.MouseDown
-                        && hoverRect.Contains(current.mousePosition)
-                        && !toggleRect.Contains(current.mousePosition)
-                        && current.button == 0)
-                    {
-                        show = !show;
-                        current.Use();
-                    }
-                }
-
-                if (property != null)
-                    EditorGUI.EndProperty();
-
-                if (enabled && show)
-                {
-                    EditorGUILayout.Space(2f);
-                    content?.Invoke();
-                    EditorGUILayout.Space(2f);
-                }
+            if (enabled && show)
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
             }
 
             EditorGUILayout.EndVertical();
@@ -684,14 +665,6 @@ namespace LoogaSoft.Inspector.Editor
             public void Dispose()
             {
                 _containedFoldoutDepth = Mathf.Max(0, _containedFoldoutDepth - 1);
-            }
-        }
-
-        private sealed class BoxDepthScopeInstance : IDisposable
-        {
-            public void Dispose()
-            {
-                _boxDepth = Mathf.Max(0, _boxDepth - 1);
             }
         }
 
@@ -1082,10 +1055,7 @@ namespace LoogaSoft.Inspector.Editor
         public static void DrawHoverRect(Rect rect)
         {
             Rect hoverRect = rect;
-            hoverRect.xMin += AccentRailWidth + FlatBoxBorderWidth;
-            hoverRect.xMax -= FlatBoxBorderWidth;
-            hoverRect.yMin += FlatBoxBorderWidth;
-            hoverRect.yMax -= FlatBoxBorderWidth;
+            hoverRect.xMin += AccentRailWidth;
             EditorGUI.DrawRect(hoverRect, GetFlatHoverColor());
             DrawAccentRail(rect);
         }
@@ -1093,11 +1063,24 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawAccentRail(Rect rect)
         {
             Rect railRect = new(
-                rect.x + FlatBoxBorderWidth,
-                rect.y + FlatBoxBorderWidth,
+                rect.x,
+                rect.y,
                 AccentRailWidth,
-                Mathf.Max(0f, rect.height - FlatBoxBorderWidth * 2f));
+                rect.height);
             EditorGUI.DrawRect(railRect, GetAccentRailColor());
+        }
+
+        private static void DrawHeaderUnderline(Rect headerRect)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            Rect lineRect = new(
+                headerRect.x + AccentRailWidth,
+                Mathf.Floor(headerRect.yMax - 1f),
+                Mathf.Max(0f, headerRect.width - AccentRailWidth),
+                1f);
+            EditorGUI.DrawRect(lineRect, GetHeaderUnderlineColor());
         }
 
         private static Color GetFlatHoverColor()
@@ -1147,9 +1130,7 @@ namespace LoogaSoft.Inspector.Editor
             {
                 margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = padding,
-                border = includeAccentRail
-                    ? new RectOffset(AccentRailWidth + FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth)
-                    : new RectOffset(FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth),
+                border = includeAccentRail ? new RectOffset(AccentRailWidth, 0, 0, 0) : new RectOffset(0, 0, 0, 0),
                 overflow = new RectOffset(0, 0, 0, 0)
             };
 
@@ -1167,8 +1148,8 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Texture2D CreateFlatTexture(Color color, bool includeAccentRail)
         {
-            const int width = 12;
-            const int height = 12;
+            const int width = 8;
+            const int height = 1;
             Texture2D texture = new(width, height)
             {
                 hideFlags = HideFlags.HideAndDontSave,
@@ -1176,21 +1157,14 @@ namespace LoogaSoft.Inspector.Editor
                 wrapMode = TextureWrapMode.Clamp
             };
 
-            Color borderColor = GetFlatBorderColor();
             Color accentColor = GetAccentRailColor();
 
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    bool isBorder = x < FlatBoxBorderWidth
-                        || x >= width - FlatBoxBorderWidth
-                        || y < FlatBoxBorderWidth
-                        || y >= height - FlatBoxBorderWidth;
-                    bool isAccentRail = includeAccentRail
-                        && x >= FlatBoxBorderWidth
-                        && x < FlatBoxBorderWidth + AccentRailWidth;
-                    Color pixelColor = isBorder ? borderColor : isAccentRail ? accentColor : color;
+                    bool isAccentRail = includeAccentRail && x < AccentRailWidth;
+                    Color pixelColor = isAccentRail ? accentColor : color;
                     texture.SetPixel(x, y, pixelColor);
                 }
             }
@@ -1209,15 +1183,15 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.174f, 0.174f, 0.174f, 1f)
-                : new Color(0.735f, 0.735f, 0.735f, 1f);
+                ? new Color(0.182f, 0.182f, 0.182f, 1f)
+                : new Color(0.748f, 0.748f, 0.748f, 1f);
         }
 
-        private static Color GetFlatBorderColor()
+        private static Color GetHeaderUnderlineColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.105f, 0.105f, 0.105f, 1f)
-                : new Color(0.54f, 0.54f, 0.54f, 1f);
+                ? new Color(0.255f, 0.255f, 0.255f, 1f)
+                : new Color(0.86f, 0.86f, 0.86f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
