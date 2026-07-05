@@ -1044,11 +1044,11 @@ namespace LoogaSoft.Inspector.Editor
             };
 
             _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
-            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), false);
+            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
             _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
-            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), false);
+            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
             _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
-            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), false);
+            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
             _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
         }
 
@@ -1076,9 +1076,9 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             Rect lineRect = new(
-                headerRect.x + AccentRailWidth,
+                headerRect.x,
                 Mathf.Floor(headerRect.yMax - 1f),
-                Mathf.Max(0f, headerRect.width - AccentRailWidth),
+                headerRect.width,
                 1f);
             EditorGUI.DrawRect(lineRect, GetHeaderUnderlineColor());
         }
