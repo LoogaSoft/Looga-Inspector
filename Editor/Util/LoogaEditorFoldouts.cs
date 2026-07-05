@@ -26,18 +26,11 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
         private static GUIStyle _largeFoldoutBox;
-        private static GUIStyle _nestedLargeBox;
-        private static GUIStyle _nestedLargeFoldoutBox;
         private static GUIStyle _smallBox;
         private static GUIStyle _smallFoldoutBox;
-        private static GUIStyle _nestedSmallBox;
-        private static GUIStyle _nestedSmallFoldoutBox;
         private static GUIStyle _smallLayoutBox;
         private static GUIStyle _smallLayoutFoldoutBox;
-        private static GUIStyle _nestedSmallLayoutBox;
-        private static GUIStyle _nestedSmallLayoutFoldoutBox;
         private static Texture2D _flatBoxTexture;
-        private static Texture2D _nestedFlatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
         private static int _boxDepth;
@@ -1077,33 +1070,32 @@ namespace LoogaSoft.Inspector.Editor
             };
 
             _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
-            _nestedFlatBoxTexture = CreateFlatTexture(GetNestedFlatBoxColor());
-
-            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), false, false);
-            _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, false);
-            _nestedLargeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), false, true);
-            _nestedLargeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, true);
-            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), false, false);
-            _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, false);
-            _nestedSmallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), false, true);
-            _nestedSmallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, true);
-            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), false, false);
-            _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, false);
-            _nestedSmallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), false, true);
-            _nestedSmallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, true);
+            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), false);
+            _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
+            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), false);
+            _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
+            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), false);
+            _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
         }
 
         public static void DrawHoverRect(Rect rect)
         {
             Rect hoverRect = rect;
-            hoverRect.xMin += Mathf.Max(0f, AccentRailWidth - 1f);
+            hoverRect.xMin += AccentRailWidth + 1f;
+            hoverRect.xMax -= 1f;
+            hoverRect.yMin += 1f;
+            hoverRect.yMax -= 1f;
             EditorGUI.DrawRect(hoverRect, GetFlatHoverColor());
             DrawAccentRail(rect);
         }
 
         private static void DrawAccentRail(Rect rect)
         {
-            Rect railRect = new(rect.x, rect.y, AccentRailWidth, rect.height);
+            Rect railRect = new(
+                rect.x + 1f,
+                rect.y + 1f,
+                AccentRailWidth,
+                Mathf.Max(0f, rect.height - 2f));
             EditorGUI.DrawRect(railRect, GetAccentRailColor());
         }
 
@@ -1116,51 +1108,45 @@ namespace LoogaSoft.Inspector.Editor
 
         private static GUIStyle GetLargeBoxStyle()
         {
-            return UseNestedStyle() ? _nestedLargeBox : _largeBox;
+            return _largeBox;
         }
 
         private static GUIStyle GetLargeFoldoutBoxStyle()
         {
-            return UseNestedStyle() ? _nestedLargeFoldoutBox : _largeFoldoutBox;
+            return _largeFoldoutBox;
         }
 
         private static GUIStyle GetSmallBoxStyle()
         {
-            return UseNestedStyle() ? _nestedSmallBox : _smallBox;
+            return _smallBox;
         }
 
         private static GUIStyle GetSmallFoldoutBoxStyle()
         {
-            return UseNestedStyle() ? _nestedSmallFoldoutBox : _smallFoldoutBox;
+            return _smallFoldoutBox;
         }
 
         private static GUIStyle GetSmallLayoutBoxStyle()
         {
-            return UseNestedStyle() ? _nestedSmallLayoutBox : _smallLayoutBox;
+            return _smallLayoutBox;
         }
 
         private static GUIStyle GetSmallLayoutFoldoutBoxStyle()
         {
-            return UseNestedStyle() ? _nestedSmallLayoutFoldoutBox : _smallLayoutFoldoutBox;
+            return _smallLayoutFoldoutBox;
         }
 
-        private static bool UseNestedStyle()
+        private static GUIStyle CreateFlatBoxStyle(RectOffset padding, bool includeAccentRail)
         {
-            return ((_boxDepth + _containedFoldoutDepth) & 1) == 1;
-        }
-
-        private static GUIStyle CreateFlatBoxStyle(RectOffset padding, bool includeAccentRail, bool nested)
-        {
-            Color boxColor = nested ? GetNestedFlatBoxColor() : GetFlatBoxColor();
             Texture2D texture = includeAccentRail
-                ? CreateFlatTexture(boxColor, GetAccentRailColor())
-                : nested ? _nestedFlatBoxTexture : _flatBoxTexture;
+                ? CreateFlatTexture(GetFlatBoxColor(), true)
+                : _flatBoxTexture;
 
             GUIStyle style = new(EditorStyles.label)
             {
                 margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = padding,
-                border = includeAccentRail ? new RectOffset(AccentRailWidth, 0, 0, 0) : new RectOffset(0, 0, 0, 0),
+                border = includeAccentRail ? new RectOffset(AccentRailWidth + 1, 1, 1, 1) : new RectOffset(1, 1, 1, 1),
                 overflow = new RectOffset(0, 0, 0, 0)
             };
 
@@ -1173,22 +1159,32 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Texture2D CreateFlatTexture(Color color)
         {
-            return CreateFlatTexture(color, color);
+            return CreateFlatTexture(color, false);
         }
 
-        private static Texture2D CreateFlatTexture(Color color, Color accentColor)
+        private static Texture2D CreateFlatTexture(Color color, bool includeAccentRail)
         {
-            const int width = 8;
-            Texture2D texture = new(width, 1)
+            const int width = 12;
+            const int height = 12;
+            Texture2D texture = new(width, height)
             {
                 hideFlags = HideFlags.HideAndDontSave,
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp
             };
 
-            for (int x = 0; x < width; x++)
+            Color borderColor = GetFlatBorderColor();
+            Color accentColor = GetAccentRailColor();
+
+            for (int y = 0; y < height; y++)
             {
-                texture.SetPixel(x, 0, x < AccentRailWidth ? accentColor : color);
+                for (int x = 0; x < width; x++)
+                {
+                    bool isBorder = x == 0 || x == width - 1 || y == 0 || y == height - 1;
+                    bool isAccentRail = includeAccentRail && x > 0 && x <= AccentRailWidth;
+                    Color pixelColor = isBorder ? borderColor : isAccentRail ? accentColor : color;
+                    texture.SetPixel(x, y, pixelColor);
+                }
             }
 
             texture.Apply();
@@ -1205,19 +1201,15 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.188f, 0.188f, 0.188f, 1f)
-                : new Color(0.76f, 0.76f, 0.76f, 1f);
+                ? new Color(0.174f, 0.174f, 0.174f, 1f)
+                : new Color(0.735f, 0.735f, 0.735f, 1f);
         }
 
-        private static Color GetNestedFlatBoxColor()
+        private static Color GetFlatBorderColor()
         {
-            Color baseColor = GetFlatBoxColor();
-            float offset = EditorGUIUtility.isProSkin ? -0.026f : -0.045f;
-            return new Color(
-                Mathf.Clamp01(baseColor.r + offset),
-                Mathf.Clamp01(baseColor.g + offset),
-                Mathf.Clamp01(baseColor.b + offset),
-                baseColor.a);
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.255f, 0.255f, 0.255f, 1f)
+                : new Color(0.86f, 0.86f, 0.86f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
