@@ -147,7 +147,7 @@ namespace LoogaSoft.Inspector.Editor
 
             float actionsWidth = IconButtonSize * 2f + IconButtonGap + 8f;
             Rect labelRect = new(rect.x + 8f, rect.y, rect.width - actionsWidth - 8f, rect.height);
-            DrawEntryContent(labelRect, definition, catalog, entryType);
+            DrawEntryContent(labelRect, property, definition, catalog, entryType);
 
             Rect editRect = new(rect.xMax - IconButtonSize * 2f - IconButtonGap - 4f, rect.y + 1f, IconButtonSize, IconButtonSize);
             using (new EditorGUI.DisabledScope(definition == null))
@@ -167,7 +167,7 @@ namespace LoogaSoft.Inspector.Editor
 
         }
 
-        private static void DrawEntryContent(Rect rect, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
+        private static void DrawEntryContent(Rect rect, SerializedProperty property, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
         {
             GUIContent content = definition != null
                 ? EditorGUIUtility.ObjectContent(definition, entryType)
@@ -196,20 +196,20 @@ namespace LoogaSoft.Inspector.Editor
                 string editedLabel = EditorGUI.DelayedTextField(labelRect, label);
                 if (EditorGUI.EndChangeCheck())
                 {
-                    RenameEntry(definition, catalog, editedLabel);
+                    RenameEntry(property, definition, catalog, editedLabel);
                     SetEditing(definition, false);
                 }
             }
             else
             {
                 EditorGUI.LabelField(labelRect, label);
-            }
 
-            if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && iconRect.Contains(Event.current.mousePosition))
-            {
-                Selection.activeObject = definition;
-                EditorGUIUtility.PingObject(definition);
-                Event.current.Use();
+                if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && rect.Contains(Event.current.mousePosition))
+                {
+                    Selection.activeObject = definition;
+                    EditorGUIUtility.PingObject(definition);
+                    Event.current.Use();
+                }
             }
         }
 
@@ -257,12 +257,23 @@ namespace LoogaSoft.Inspector.Editor
             return $"LoogaCatalog_Edit_{definition.GetInstanceID()}";
         }
 
-        private static void RenameEntry(ScriptableObject definition, LoogaCatalogAttribute catalog, string rawName)
+        private static void RenameEntry(SerializedProperty property, ScriptableObject definition, LoogaCatalogAttribute catalog, string rawName)
         {
             string newName = NormalizeEntryName(rawName, catalog);
-            if (string.IsNullOrWhiteSpace(newName) || string.Equals(definition.name, newName, StringComparison.Ordinal))
+            string oldName = GetEntryLabel(definition, catalog);
+            if (string.IsNullOrWhiteSpace(newName) || string.Equals(oldName, newName, StringComparison.Ordinal))
                 return;
 
+            RenameSingleEntry(definition, catalog, newName);
+
+            if (!string.IsNullOrWhiteSpace(catalog.TreePath))
+                RenameChildEntries(property, definition, catalog, oldName, newName);
+
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void RenameSingleEntry(ScriptableObject definition, LoogaCatalogAttribute catalog, string newName)
+        {
             Undo.RecordObject(definition, "Rename Catalog Entry");
             definition.name = newName;
 
@@ -278,7 +289,32 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             EditorUtility.SetDirty(definition);
-            AssetDatabase.SaveAssets();
+        }
+
+        private static void RenameChildEntries(
+            SerializedProperty property,
+            ScriptableObject renamedDefinition,
+            LoogaCatalogAttribute catalog,
+            string oldParentPath,
+            string newParentPath)
+        {
+            if (property == null || string.IsNullOrWhiteSpace(oldParentPath))
+                return;
+
+            string oldPrefix = $"{oldParentPath}.";
+            for (int i = 0; i < property.arraySize; i++)
+            {
+                SerializedProperty element = property.GetArrayElementAtIndex(i);
+                if (element.objectReferenceValue is not ScriptableObject child || child == renamedDefinition)
+                    continue;
+
+                string childPath = GetEntryLabel(child, catalog);
+                if (!childPath.StartsWith(oldPrefix, StringComparison.Ordinal))
+                    continue;
+
+                string childSuffix = childPath.Substring(oldPrefix.Length);
+                RenameSingleEntry(child, catalog, $"{newParentPath}.{childSuffix}");
+            }
         }
 
         private static string NormalizeEntryName(string rawName, LoogaCatalogAttribute catalog)
