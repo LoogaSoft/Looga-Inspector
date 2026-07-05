@@ -409,8 +409,8 @@ namespace LoogaSoft.Inspector.Editor
                 }
 
                 Rect nameRect = new(rect.x, rect.y, Mathf.Max(80f, rect.width - AddButtonWidth - CancelButtonWidth - Gap * 2f - syncWidth), rect.height);
-                Rect addRect = new(nameRect.xMax + Gap, rect.y, AddButtonWidth, rect.height);
-                Rect cancelRect = new(addRect.xMax + Gap, rect.y, CancelButtonWidth, rect.height);
+                Rect createRect = new(nameRect.xMax + Gap, rect.y, AddButtonWidth, rect.height);
+                Rect cancelRect = new(createRect.xMax + Gap, rect.y, CancelButtonWidth, rect.height);
 
                 EditorGUI.BeginChangeCheck();
                 string pendingName = EditorGUI.TextField(nameRect, SessionState.GetString(nameKey, string.Empty));
@@ -419,7 +419,7 @@ namespace LoogaSoft.Inspector.Editor
                     SessionState.SetString(nameKey, pendingName);
                 }
 
-                if (GUI.Button(addRect, "Create"))
+                if (GUI.Button(createRect, "Create"))
                 {
                     AddEntry(property, catalog, entryType, pendingName);
                     SessionState.SetBool(addingKey, false);
