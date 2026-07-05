@@ -21,6 +21,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowLeftNudge = 0f;
         private const float HeaderTextArrowGap = 6f;
         private const int AccentRailWidth = 4;
+        private const int FlatBoxBorderWidth = 2;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -1081,10 +1082,10 @@ namespace LoogaSoft.Inspector.Editor
         public static void DrawHoverRect(Rect rect)
         {
             Rect hoverRect = rect;
-            hoverRect.xMin += AccentRailWidth + 1f;
-            hoverRect.xMax -= 1f;
-            hoverRect.yMin += 1f;
-            hoverRect.yMax -= 1f;
+            hoverRect.xMin += AccentRailWidth + FlatBoxBorderWidth;
+            hoverRect.xMax -= FlatBoxBorderWidth;
+            hoverRect.yMin += FlatBoxBorderWidth;
+            hoverRect.yMax -= FlatBoxBorderWidth;
             EditorGUI.DrawRect(hoverRect, GetFlatHoverColor());
             DrawAccentRail(rect);
         }
@@ -1092,10 +1093,10 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawAccentRail(Rect rect)
         {
             Rect railRect = new(
-                rect.x + 1f,
-                rect.y + 1f,
+                rect.x + FlatBoxBorderWidth,
+                rect.y + FlatBoxBorderWidth,
                 AccentRailWidth,
-                Mathf.Max(0f, rect.height - 2f));
+                Mathf.Max(0f, rect.height - FlatBoxBorderWidth * 2f));
             EditorGUI.DrawRect(railRect, GetAccentRailColor());
         }
 
@@ -1146,7 +1147,9 @@ namespace LoogaSoft.Inspector.Editor
             {
                 margin = new RectOffset((int)BoxHorizontalInset, (int)BoxHorizontalInset, 0, 0),
                 padding = padding,
-                border = includeAccentRail ? new RectOffset(AccentRailWidth + 1, 1, 1, 1) : new RectOffset(1, 1, 1, 1),
+                border = includeAccentRail
+                    ? new RectOffset(AccentRailWidth + FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth)
+                    : new RectOffset(FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth, FlatBoxBorderWidth),
                 overflow = new RectOffset(0, 0, 0, 0)
             };
 
@@ -1180,8 +1183,13 @@ namespace LoogaSoft.Inspector.Editor
             {
                 for (int x = 0; x < width; x++)
                 {
-                    bool isBorder = x == 0 || x == width - 1 || y == 0 || y == height - 1;
-                    bool isAccentRail = includeAccentRail && x > 0 && x <= AccentRailWidth;
+                    bool isBorder = x < FlatBoxBorderWidth
+                        || x >= width - FlatBoxBorderWidth
+                        || y < FlatBoxBorderWidth
+                        || y >= height - FlatBoxBorderWidth;
+                    bool isAccentRail = includeAccentRail
+                        && x >= FlatBoxBorderWidth
+                        && x < FlatBoxBorderWidth + AccentRailWidth;
                     Color pixelColor = isBorder ? borderColor : isAccentRail ? accentColor : color;
                     texture.SetPixel(x, y, pixelColor);
                 }
@@ -1208,8 +1216,8 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBorderColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.255f, 0.255f, 0.255f, 1f)
-                : new Color(0.86f, 0.86f, 0.86f, 1f);
+                ? new Color(0.315f, 0.315f, 0.315f, 1f)
+                : new Color(0.9f, 0.9f, 0.9f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
