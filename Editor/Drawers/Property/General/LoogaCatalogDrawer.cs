@@ -24,13 +24,28 @@ namespace LoogaSoft.Inspector.Editor
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
             LoogaCatalogAttribute catalog = (LoogaCatalogAttribute)attribute;
-            Type entryType = GetEntryType();
-            if (!CanDrawCatalog(property, entryType))
+            Type entryType = GetEntryType(fieldInfo?.FieldType);
+            if (!CanDraw(property, entryType))
             {
                 EditorGUI.PropertyField(position, property, label, true);
                 return;
             }
 
+            Draw(position, property, catalog, entryType);
+        }
+
+        protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
+        {
+            Type entryType = GetEntryType(fieldInfo?.FieldType);
+            if (!CanDraw(property, entryType))
+                return EditorGUI.GetPropertyHeight(property, label, true);
+
+            LoogaCatalogAttribute catalog = (LoogaCatalogAttribute)attribute;
+            return GetHeight(property, catalog, entryType);
+        }
+
+        public static void Draw(Rect position, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
+        {
             Rect headerRect = new(position.x, position.y, position.width, RowHeight);
             DrawHeader(headerRect, property, catalog);
 
@@ -46,13 +61,8 @@ namespace LoogaSoft.Inspector.Editor
             DrawBody(bodyRect, property, catalog, entryType);
         }
 
-        protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
+        public static float GetHeight(SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
         {
-            Type entryType = GetEntryType();
-            if (!CanDrawCatalog(property, entryType))
-                return EditorGUI.GetPropertyHeight(property, label, true);
-
-            LoogaCatalogAttribute catalog = (LoogaCatalogAttribute)attribute;
             if (!property.isExpanded)
                 return RowHeight;
 
@@ -65,7 +75,7 @@ namespace LoogaSoft.Inspector.Editor
             return height;
         }
 
-        private static bool CanDrawCatalog(SerializedProperty property, Type entryType)
+        public static bool CanDraw(SerializedProperty property, Type entryType)
         {
             return property.isArray
                 && property.propertyType != SerializedPropertyType.String
@@ -73,7 +83,21 @@ namespace LoogaSoft.Inspector.Editor
                 && typeof(ScriptableObject).IsAssignableFrom(entryType);
         }
 
-        private void DrawHeader(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog)
+        public static Type GetEntryType(Type fieldType)
+        {
+            if (fieldType == null)
+                return null;
+
+            if (fieldType.IsArray)
+                return fieldType.GetElementType();
+
+            if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
+                return fieldType.GetGenericArguments()[0];
+
+            return null;
+        }
+
+        private static void DrawHeader(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog)
         {
             EditorGUI.DrawRect(rect, HeaderColor);
             EditorGUI.DrawRect(new Rect(rect.x, rect.y, 4f, rect.height), AccentColor);
@@ -93,7 +117,7 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private void DrawBody(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
+        private static void DrawBody(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
         {
             Rect contentRect = new(rect.x + Padding, rect.y + Padding, rect.width - Padding * 2f, rect.height - Padding * 2f);
             float y = contentRect.y;
@@ -124,7 +148,7 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private void DrawRow(Rect rect, SerializedProperty property, int index, LoogaCatalogAttribute catalog, Type entryType)
+        private static void DrawRow(Rect rect, SerializedProperty property, int index, LoogaCatalogAttribute catalog, Type entryType)
         {
             SerializedProperty element = property.GetArrayElementAtIndex(index);
             ScriptableObject definition = element.objectReferenceValue as ScriptableObject;
@@ -396,19 +420,5 @@ namespace LoogaSoft.Inspector.Editor
             serializedEntry.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        private Type GetEntryType()
-        {
-            Type fieldType = fieldInfo?.FieldType;
-            if (fieldType == null)
-                return null;
-
-            if (fieldType.IsArray)
-                return fieldType.GetElementType();
-
-            if (fieldType.IsGenericType && fieldType.GetGenericTypeDefinition() == typeof(List<>))
-                return fieldType.GetGenericArguments()[0];
-
-            return null;
-        }
     }
 }

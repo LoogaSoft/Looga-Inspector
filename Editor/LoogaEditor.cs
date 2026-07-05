@@ -321,13 +321,13 @@ namespace LoogaSoft.Inspector.Editor
             
             bool propertyEnabled = PropertyUtils.IsEnabled(property);
             bool isList = property.isArray && property.propertyType != SerializedPropertyType.String;
-            bool usesCatalogDrawer = PropertyUtils.GetAttribute<LoogaCatalogAttribute>(property) != null;
+            LoogaCatalogAttribute catalogAttribute = PropertyUtils.GetAttribute<LoogaCatalogAttribute>(property);
               
             //disable GUI (making the field readonly) if enabled is false
             using (new EditorGUI.DisabledScope(disabled: !propertyEnabled))
             {
-                if (usesCatalogDrawer)
-                    EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+                if (catalogAttribute != null && TryDrawCatalogProperty(property, metadata, catalogAttribute))
+                    return;
                 else if (isList)
                     DrawReorderableList(property);
                 else
@@ -371,10 +371,29 @@ namespace LoogaSoft.Inspector.Editor
                     if (EditorGUI.EndChangeCheck())
                         PropertyUtils.CallOnFieldChangedCallbacks(property);
                 }
-            }
-        }
+              }
+          }
 
-        private bool ShouldDrawNestedFoldout(SerializedProperty property, bool hasCustomDrawer)
+        private bool TryDrawCatalogProperty(
+            SerializedProperty property,
+            InspectorPropertyMetadata metadata,
+            LoogaCatalogAttribute catalogAttribute)
+        {
+            FieldInfo fieldInfo = metadata?.fieldInfo ?? ReflectionUtils.GetField(target.GetType(), property.name);
+            Type entryType = LoogaCatalogDrawer.GetEntryType(fieldInfo?.FieldType);
+            if (!LoogaCatalogDrawer.CanDraw(property, entryType))
+            {
+                EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+                return true;
+            }
+
+            float height = LoogaCatalogDrawer.GetHeight(property, catalogAttribute, entryType);
+            Rect rect = EditorGUILayout.GetControlRect(false, height);
+            LoogaCatalogDrawer.Draw(rect, property, catalogAttribute, entryType);
+            return true;
+        }
+  
+          private bool ShouldDrawNestedFoldout(SerializedProperty property, bool hasCustomDrawer)
         {
             return !hasCustomDrawer
                 && property.propertyType == SerializedPropertyType.Generic
