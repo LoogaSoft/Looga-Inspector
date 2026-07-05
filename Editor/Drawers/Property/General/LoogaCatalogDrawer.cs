@@ -19,7 +19,10 @@ namespace LoogaSoft.Inspector.Editor
         private const float TreeStep = 12f;
         private const float AddButtonWidth = 72f;
         private const float CancelButtonWidth = 72f;
-        private const float SyncButtonWidth = 104f;
+        private const float SyncButtonWidth = 64f;
+        private const string ActiveAddingKey = "LoogaCatalog_ActiveAddingKey";
+        private const string ActivePendingNameKey = "LoogaCatalog_ActivePendingNameKey";
+        private const string ActiveOwnerKey = "LoogaCatalog_ActiveOwner";
 
         private static readonly Color CatalogColor = new(0.155f, 0.155f, 0.155f, 1f);
         private static readonly Color RowColor = new(0.17f, 0.17f, 0.17f, 1f);
@@ -27,6 +30,12 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly Color EmptyColor = new(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color AccentColor = new(0.26f, 0.58f, 0.95f, 1f);
         private static readonly Color TreeLineColor = new(0.37f, 0.37f, 0.37f, 1f);
+
+        static LoogaCatalogDrawer()
+        {
+            Selection.selectionChanged -= CancelPendingAddWhenSelectionLeavesCatalog;
+            Selection.selectionChanged += CancelPendingAddWhenSelectionLeavesCatalog;
+        }
 
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -394,12 +403,13 @@ namespace LoogaSoft.Inspector.Editor
                     {
                         SessionState.SetBool(addingKey, true);
                         SessionState.SetString(nameKey, GetDefaultCreateName(catalog, entryType));
+                        SetActiveAddState(property, addingKey, nameKey);
                     }
 
                     if (canSync)
                     {
                         Rect syncRect = new(addRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
-                        if (GUI.Button(syncRect, "Sync Sub-Assets"))
+                        if (GUI.Button(syncRect, "Sync"))
                         {
                             SyncFromSubAssets(property, entryType);
                         }
@@ -422,22 +432,18 @@ namespace LoogaSoft.Inspector.Editor
                 if (GUI.Button(createRect, "Create"))
                 {
                     AddEntry(property, catalog, entryType, pendingName);
-                    SessionState.SetBool(addingKey, false);
-                    SessionState.EraseString(nameKey);
-                    GUI.FocusControl(null);
+                    CancelPendingAdd(addingKey, nameKey);
                 }
 
                 if (GUI.Button(cancelRect, "Cancel"))
                 {
-                    SessionState.SetBool(addingKey, false);
-                    SessionState.EraseString(nameKey);
-                    GUI.FocusControl(null);
+                    CancelPendingAdd(addingKey, nameKey);
                 }
 
                 if (canSync)
                 {
                     Rect syncRect = new(cancelRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
-                    if (GUI.Button(syncRect, "Sync Sub-Assets"))
+                    if (GUI.Button(syncRect, "Sync"))
                     {
                         SyncFromSubAssets(property, entryType);
                     }
@@ -446,8 +452,47 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            if (canSync && GUI.Button(rect, "Sync Sub-Assets"))
+            if (canSync && GUI.Button(rect, "Sync"))
                 SyncFromSubAssets(property, entryType);
+        }
+
+        private static void SetActiveAddState(SerializedProperty property, string addingKey, string nameKey)
+        {
+            UnityEngine.Object owner = property.serializedObject.targetObject;
+            SessionState.SetString(ActiveAddingKey, addingKey);
+            SessionState.SetString(ActivePendingNameKey, nameKey);
+            SessionState.SetInt(ActiveOwnerKey, owner != null ? owner.GetInstanceID() : 0);
+        }
+
+        private static void CancelPendingAdd(string addingKey, string nameKey)
+        {
+            SessionState.SetBool(addingKey, false);
+            SessionState.EraseString(nameKey);
+            SessionState.EraseString(ActiveAddingKey);
+            SessionState.EraseString(ActivePendingNameKey);
+            SessionState.EraseInt(ActiveOwnerKey);
+            GUI.FocusControl(null);
+        }
+
+        private static void CancelPendingAddWhenSelectionLeavesCatalog()
+        {
+            string addingKey = SessionState.GetString(ActiveAddingKey, string.Empty);
+            if (string.IsNullOrEmpty(addingKey))
+                return;
+
+            int ownerId = SessionState.GetInt(ActiveOwnerKey, 0);
+            UnityEngine.Object selected = Selection.activeObject;
+            if (selected != null && selected.GetInstanceID() == ownerId)
+                return;
+
+            string nameKey = SessionState.GetString(ActivePendingNameKey, string.Empty);
+            SessionState.SetBool(addingKey, false);
+            if (!string.IsNullOrEmpty(nameKey))
+                SessionState.EraseString(nameKey);
+
+            SessionState.EraseString(ActiveAddingKey);
+            SessionState.EraseString(ActivePendingNameKey);
+            SessionState.EraseInt(ActiveOwnerKey);
         }
 
         private static void AddEntry(SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType, string requestedName)
