@@ -26,13 +26,21 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _smallHeader;
         private static GUIStyle _largeBox;
         private static GUIStyle _largeFoldoutBox;
+        private static GUIStyle _alternateLargeBox;
+        private static GUIStyle _alternateLargeFoldoutBox;
         private static GUIStyle _smallBox;
         private static GUIStyle _smallFoldoutBox;
+        private static GUIStyle _alternateSmallBox;
+        private static GUIStyle _alternateSmallFoldoutBox;
         private static GUIStyle _smallLayoutBox;
         private static GUIStyle _smallLayoutFoldoutBox;
+        private static GUIStyle _alternateSmallLayoutBox;
+        private static GUIStyle _alternateSmallLayoutFoldoutBox;
         private static Texture2D _flatBoxTexture;
+        private static Texture2D _alternateFlatBoxTexture;
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
+        private static int _boxDepth;
         private static int _containedFoldoutDepth;
 
         public static GUIStyle SmallBoxStyle
@@ -97,9 +105,17 @@ namespace LoogaSoft.Inspector.Editor
 
             if (show)
             {
-                EditorGUILayout.Space(2);
-                content?.Invoke();
-                EditorGUILayout.Space(2);
+                PushBoxDepth();
+                try
+                {
+                    EditorGUILayout.Space(2);
+                    content?.Invoke();
+                    EditorGUILayout.Space(2);
+                }
+                finally
+                {
+                    PopBoxDepth();
+                }
             }
 
             EditorGUILayout.EndVertical();
@@ -123,9 +139,17 @@ namespace LoogaSoft.Inspector.Editor
 
             DrawHeaderUnderline(headerRect);
             GUI.Label(text, title, _largeHeader);
-            EditorGUILayout.Space(2);
-            content?.Invoke();
-            EditorGUILayout.Space(2);
+            PushBoxDepth();
+            try
+            {
+                EditorGUILayout.Space(2);
+                content?.Invoke();
+                EditorGUILayout.Space(2);
+            }
+            finally
+            {
+                PopBoxDepth();
+            }
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(LargeFoldoutGap);
         }
@@ -274,9 +298,17 @@ namespace LoogaSoft.Inspector.Editor
 
             if (newExpanded)
             {
-                EditorGUILayout.Space(2f);
-                content?.Invoke();
-                EditorGUILayout.Space(2f);
+                PushBoxDepth();
+                try
+                {
+                    EditorGUILayout.Space(2f);
+                    content?.Invoke();
+                    EditorGUILayout.Space(2f);
+                }
+                finally
+                {
+                    PopBoxDepth();
+                }
             }
 
             EditorGUILayout.EndVertical();
@@ -305,9 +337,17 @@ namespace LoogaSoft.Inspector.Editor
 
             DrawHeaderUnderline(headerRect);
             GUI.Label(textRect, label, _smallHeader);
-            EditorGUILayout.Space(2f);
-            content?.Invoke();
-            EditorGUILayout.Space(2f);
+            PushBoxDepth();
+            try
+            {
+                EditorGUILayout.Space(2f);
+                content?.Invoke();
+                EditorGUILayout.Space(2f);
+            }
+            finally
+            {
+                PopBoxDepth();
+            }
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(1f);
@@ -428,9 +468,17 @@ namespace LoogaSoft.Inspector.Editor
 
             if (enabled && show)
             {
-                EditorGUILayout.Space(2f);
-                content?.Invoke();
-                EditorGUILayout.Space(2f);
+                PushBoxDepth();
+                try
+                {
+                    EditorGUILayout.Space(2f);
+                    content?.Invoke();
+                    EditorGUILayout.Space(2f);
+                }
+                finally
+                {
+                    PopBoxDepth();
+                }
             }
 
             EditorGUILayout.EndVertical();
@@ -500,9 +548,17 @@ namespace LoogaSoft.Inspector.Editor
 
             if (enabled && show)
             {
-                EditorGUILayout.Space(2f);
-                content?.Invoke();
-                EditorGUILayout.Space(2f);
+                PushBoxDepth();
+                try
+                {
+                    EditorGUILayout.Space(2f);
+                    content?.Invoke();
+                    EditorGUILayout.Space(2f);
+                }
+                finally
+                {
+                    PopBoxDepth();
+                }
             }
 
             EditorGUILayout.EndVertical();
@@ -1044,12 +1100,19 @@ namespace LoogaSoft.Inspector.Editor
             };
 
             _flatBoxTexture = CreateFlatTexture(GetFlatBoxColor());
-            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
-            _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true);
-            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
-            _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true);
-            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
-            _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true);
+            _alternateFlatBoxTexture = CreateFlatTexture(GetAlternateFlatBoxColor());
+            _largeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, false);
+            _largeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, false);
+            _alternateLargeBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, true);
+            _alternateLargeFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 4, 2), true, true);
+            _smallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, false);
+            _smallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, false);
+            _alternateSmallBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, true);
+            _alternateSmallFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, 0), true, true);
+            _smallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, false);
+            _smallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, false);
+            _alternateSmallLayoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, true);
+            _alternateSmallLayoutFoldoutBox = CreateFlatBoxStyle(new RectOffset(8, 8, 3, -2), true, true);
         }
 
         public static void DrawHoverRect(Rect rect)
@@ -1076,9 +1139,9 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             Rect lineRect = new(
-                headerRect.x,
+                headerRect.x + AccentRailWidth,
                 Mathf.Floor(headerRect.yMax - 1f),
-                headerRect.width,
+                Mathf.Max(0f, headerRect.width - AccentRailWidth),
                 1f);
             EditorGUI.DrawRect(lineRect, GetHeaderUnderlineColor());
         }
@@ -1092,39 +1155,55 @@ namespace LoogaSoft.Inspector.Editor
 
         private static GUIStyle GetLargeBoxStyle()
         {
-            return _largeBox;
+            return UseAlternateBoxStyle() ? _alternateLargeBox : _largeBox;
         }
 
         private static GUIStyle GetLargeFoldoutBoxStyle()
         {
-            return _largeFoldoutBox;
+            return UseAlternateBoxStyle() ? _alternateLargeFoldoutBox : _largeFoldoutBox;
         }
 
         private static GUIStyle GetSmallBoxStyle()
         {
-            return _smallBox;
+            return UseAlternateBoxStyle() ? _alternateSmallBox : _smallBox;
         }
 
         private static GUIStyle GetSmallFoldoutBoxStyle()
         {
-            return _smallFoldoutBox;
+            return UseAlternateBoxStyle() ? _alternateSmallFoldoutBox : _smallFoldoutBox;
         }
 
         private static GUIStyle GetSmallLayoutBoxStyle()
         {
-            return _smallLayoutBox;
+            return UseAlternateBoxStyle() ? _alternateSmallLayoutBox : _smallLayoutBox;
         }
 
         private static GUIStyle GetSmallLayoutFoldoutBoxStyle()
         {
-            return _smallLayoutFoldoutBox;
+            return UseAlternateBoxStyle() ? _alternateSmallLayoutFoldoutBox : _smallLayoutFoldoutBox;
         }
 
-        private static GUIStyle CreateFlatBoxStyle(RectOffset padding, bool includeAccentRail)
+        private static bool UseAlternateBoxStyle()
         {
+            return ((_boxDepth + _containedFoldoutDepth) & 1) == 1;
+        }
+
+        private static void PushBoxDepth()
+        {
+            _boxDepth++;
+        }
+
+        private static void PopBoxDepth()
+        {
+            _boxDepth = Mathf.Max(0, _boxDepth - 1);
+        }
+
+        private static GUIStyle CreateFlatBoxStyle(RectOffset padding, bool includeAccentRail, bool alternate)
+        {
+            Color boxColor = alternate ? GetAlternateFlatBoxColor() : GetFlatBoxColor();
             Texture2D texture = includeAccentRail
-                ? CreateFlatTexture(GetFlatBoxColor(), true)
-                : _flatBoxTexture;
+                ? CreateFlatTexture(boxColor, true)
+                : alternate ? _alternateFlatBoxTexture : _flatBoxTexture;
 
             GUIStyle style = new(EditorStyles.label)
             {
@@ -1183,8 +1262,15 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.182f, 0.182f, 0.182f, 1f)
-                : new Color(0.748f, 0.748f, 0.748f, 1f);
+                ? new Color(0.192f, 0.192f, 0.192f, 1f)
+                : new Color(0.765f, 0.765f, 0.765f, 1f);
+        }
+
+        private static Color GetAlternateFlatBoxColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.215f, 0.215f, 0.215f, 1f)
+                : new Color(0.8f, 0.8f, 0.8f, 1f);
         }
 
         private static Color GetHeaderUnderlineColor()
