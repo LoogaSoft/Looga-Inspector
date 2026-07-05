@@ -18,6 +18,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float AccentWidth = 4f;
         private const float TreeStep = 12f;
         private const float AddButtonWidth = 72f;
+        private const float CancelButtonWidth = 72f;
         private const float SyncButtonWidth = 104f;
 
         private static readonly Color CatalogColor = new(0.155f, 0.155f, 0.155f, 1f);
@@ -381,30 +382,61 @@ namespace LoogaSoft.Inspector.Editor
         {
             if (catalog.AllowAdd)
             {
-                string key = GetPendingNameKey(property, entryType);
+                string nameKey = GetPendingNameKey(property, entryType);
+                string addingKey = GetAddingKey(property, entryType);
                 float syncWidth = canSync ? SyncButtonWidth + Gap : 0f;
-                Rect nameRect = new(rect.x, rect.y, Mathf.Max(80f, rect.width - AddButtonWidth - Gap - syncWidth), rect.height);
-                Rect addRect = new(nameRect.xMax + Gap, rect.y, AddButtonWidth, rect.height);
+                bool isAdding = SessionState.GetBool(addingKey, false);
 
-                string pendingName = SessionState.GetString(key, string.Empty);
-                string placeholder = $"New {ObjectNames.NicifyVariableName(entryType.Name)}";
-                EditorGUI.BeginChangeCheck();
-                pendingName = EditorGUI.TextField(nameRect, string.IsNullOrEmpty(pendingName) ? placeholder : pendingName);
-                if (EditorGUI.EndChangeCheck())
+                if (!isAdding)
                 {
-                    SessionState.SetString(key, pendingName == placeholder ? string.Empty : pendingName);
+                    Rect addRect = new(rect.x, rect.y, Mathf.Max(80f, rect.width - syncWidth), rect.height);
+                    if (GUI.Button(addRect, $"Add {ObjectNames.NicifyVariableName(entryType.Name)}"))
+                    {
+                        SessionState.SetBool(addingKey, true);
+                        SessionState.SetString(nameKey, GetDefaultCreateName(catalog, entryType));
+                    }
+
+                    if (canSync)
+                    {
+                        Rect syncRect = new(addRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
+                        if (GUI.Button(syncRect, "Sync Sub-Assets"))
+                        {
+                            SyncFromSubAssets(property, entryType);
+                        }
+                    }
+
+                    return;
                 }
 
-                if (GUI.Button(addRect, "Add"))
+                Rect nameRect = new(rect.x, rect.y, Mathf.Max(80f, rect.width - AddButtonWidth - CancelButtonWidth - Gap * 2f - syncWidth), rect.height);
+                Rect addRect = new(nameRect.xMax + Gap, rect.y, AddButtonWidth, rect.height);
+                Rect cancelRect = new(addRect.xMax + Gap, rect.y, CancelButtonWidth, rect.height);
+
+                EditorGUI.BeginChangeCheck();
+                string pendingName = EditorGUI.TextField(nameRect, SessionState.GetString(nameKey, string.Empty));
+                if (EditorGUI.EndChangeCheck())
+                {
+                    SessionState.SetString(nameKey, pendingName);
+                }
+
+                if (GUI.Button(addRect, "Create"))
                 {
                     AddEntry(property, catalog, entryType, pendingName);
-                    SessionState.EraseString(key);
+                    SessionState.SetBool(addingKey, false);
+                    SessionState.EraseString(nameKey);
+                    GUI.FocusControl(null);
+                }
+
+                if (GUI.Button(cancelRect, "Cancel"))
+                {
+                    SessionState.SetBool(addingKey, false);
+                    SessionState.EraseString(nameKey);
                     GUI.FocusControl(null);
                 }
 
                 if (canSync)
                 {
-                    Rect syncRect = new(addRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
+                    Rect syncRect = new(cancelRect.xMax + Gap, rect.y, SyncButtonWidth, rect.height);
                     if (GUI.Button(syncRect, "Sync Sub-Assets"))
                     {
                         SyncFromSubAssets(property, entryType);
@@ -456,6 +488,13 @@ namespace LoogaSoft.Inspector.Editor
             UnityEngine.Object owner = property.serializedObject.targetObject;
             int ownerId = owner != null ? owner.GetInstanceID() : 0;
             return $"LoogaCatalog_PendingName_{ownerId}_{property.propertyPath}_{entryType.FullName}";
+        }
+
+        private static string GetAddingKey(SerializedProperty property, Type entryType)
+        {
+            UnityEngine.Object owner = property.serializedObject.targetObject;
+            int ownerId = owner != null ? owner.GetInstanceID() : 0;
+            return $"LoogaCatalog_Adding_{ownerId}_{property.propertyPath}_{entryType.FullName}";
         }
 
         private static void DeleteEntry(SerializedProperty property, int index, ScriptableObject definition, LoogaCatalogAttribute catalog)
@@ -550,9 +589,7 @@ namespace LoogaSoft.Inspector.Editor
             string normalizedRequest = NormalizeEntryName(requestedName, catalog);
             string baseName = !string.IsNullOrWhiteSpace(normalizedRequest)
                 ? normalizedRequest
-                : !string.IsNullOrWhiteSpace(catalog.CreateName)
-                ? catalog.CreateName
-                : $"New {ObjectNames.NicifyVariableName(entryType.Name)}";
+                : GetDefaultCreateName(catalog, entryType);
 
             if (owner == null)
                 return baseName;
@@ -571,6 +608,13 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             return candidate;
+        }
+
+        private static string GetDefaultCreateName(LoogaCatalogAttribute catalog, Type entryType)
+        {
+            return !string.IsNullOrWhiteSpace(catalog.CreateName)
+                ? catalog.CreateName
+                : $"New {ObjectNames.NicifyVariableName(entryType.Name)}";
         }
 
         private static bool NameExists(UnityEngine.Object[] assets, string name)
