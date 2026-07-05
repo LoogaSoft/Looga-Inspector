@@ -1216,8 +1216,8 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetFlatBorderColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.315f, 0.315f, 0.315f, 1f)
-                : new Color(0.9f, 0.9f, 0.9f, 1f);
+                ? new Color(0.105f, 0.105f, 0.105f, 1f)
+                : new Color(0.54f, 0.54f, 0.54f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
