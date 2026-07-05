@@ -86,7 +86,6 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse)
                 DrawHoverRect(hoverRect);
 
-            DrawHeaderUnderline(headerRect);
             GUI.Label(text, title, _largeHeader);
 
             bool newShow = show;
@@ -137,7 +136,6 @@ namespace LoogaSoft.Inspector.Editor
                 baseRect.height + boxStyle.padding.top + 2f);
             Rect text = GetStaticHeaderTextRect(headerRect, 1f);
 
-            DrawHeaderUnderline(headerRect);
             GUI.Label(text, title, _largeHeader);
             PushBoxDepth();
             try
@@ -190,7 +188,6 @@ namespace LoogaSoft.Inspector.Editor
                 if (containsMouse)
                     DrawHoverRect(hoverRect);
 
-                DrawHeaderUnderline(headerRect);
                 GUI.Label(textRect, label, _largeHeader);
 
                 newExpanded = expanded;
@@ -335,7 +332,6 @@ namespace LoogaSoft.Inspector.Editor
                 baseRect.height + boxStyle.padding.top + 2f);
             Rect textRect = GetStaticHeaderTextRect(headerRect, 1f);
 
-            DrawHeaderUnderline(headerRect);
             GUI.Label(textRect, label, _smallHeader);
             PushBoxDepth();
             try
@@ -388,7 +384,6 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse)
                 DrawHoverRect(clickRect);
 
-            DrawHeaderUnderline(headerRect);
             GUI.Label(textRect, label, _smallHeader);
 
             bool newExpanded = expanded;
@@ -439,7 +434,6 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse)
                 DrawHoverRect(hoverRect);
 
-            DrawHeaderUnderline(headerRect);
             EditorGUI.BeginChangeCheck();
             bool newEnabled = EditorGUI.Toggle(toggleRect, enabled);
             if (EditorGUI.EndChangeCheck() && toggleProperty != null)
@@ -515,7 +509,6 @@ namespace LoogaSoft.Inspector.Editor
             if (containsMouse)
                 DrawHoverRect(hoverRect);
 
-            DrawHeaderUnderline(headerRect);
             if (property != null)
                 EditorGUI.BeginProperty(headerRect, label, property);
 
@@ -1133,19 +1126,6 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.DrawRect(railRect, GetAccentRailColor());
         }
 
-        private static void DrawHeaderUnderline(Rect headerRect)
-        {
-            if (Event.current.type != EventType.Repaint)
-                return;
-
-            Rect lineRect = new(
-                headerRect.x + AccentRailWidth,
-                Mathf.Floor(headerRect.yMax - 1f),
-                Mathf.Max(0f, headerRect.width - AccentRailWidth),
-                1f);
-            EditorGUI.DrawRect(lineRect, GetHeaderUnderlineColor());
-        }
-
         private static Color GetFlatHoverColor()
         {
             return EditorGUIUtility.isProSkin
@@ -1269,15 +1249,8 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetAlternateFlatBoxColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.215f, 0.215f, 0.215f, 1f)
-                : new Color(0.8f, 0.8f, 0.8f, 1f);
-        }
-
-        private static Color GetHeaderUnderlineColor()
-        {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.255f, 0.255f, 0.255f, 1f)
-                : new Color(0.86f, 0.86f, 0.86f, 1f);
+                ? new Color(0.225f, 0.225f, 0.225f, 1f)
+                : new Color(0.815f, 0.815f, 0.815f, 1f);
         }
 
         private static Rect ShrinkBoxRect(Rect rect)
