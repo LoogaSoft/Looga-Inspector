@@ -321,11 +321,14 @@ namespace LoogaSoft.Inspector.Editor
             
             bool propertyEnabled = PropertyUtils.IsEnabled(property);
             bool isList = property.isArray && property.propertyType != SerializedPropertyType.String;
-            
+            bool usesCatalogDrawer = PropertyUtils.GetAttribute<LoogaCatalogAttribute>(property) != null;
+              
             //disable GUI (making the field readonly) if enabled is false
             using (new EditorGUI.DisabledScope(disabled: !propertyEnabled))
             {
-                if (isList)
+                if (usesCatalogDrawer)
+                    EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+                else if (isList)
                     DrawReorderableList(property);
                 else
                 {
