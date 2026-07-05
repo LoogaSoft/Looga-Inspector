@@ -145,7 +145,7 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.DrawRect(rect, hovering ? RowHoverColor : RowColor);
 
             Rect labelRect = new(rect.x + 8f, rect.y, rect.width - DeleteButtonWidth - 14f, rect.height);
-            DrawEntryLabel(labelRect, definition, catalog, entryType);
+            DrawEntryField(labelRect, definition, catalog, entryType);
 
             Rect deleteRect = new(rect.xMax - DeleteButtonWidth - 4f, rect.y + 3f, DeleteButtonWidth, rect.height - 6f);
             using (new EditorGUI.DisabledScope(!catalog.AllowDelete))
@@ -156,15 +156,9 @@ namespace LoogaSoft.Inspector.Editor
                 }
             }
 
-            if (definition != null && Event.current.type == EventType.MouseDown && Event.current.button == 0 && labelRect.Contains(Event.current.mousePosition))
-            {
-                Selection.activeObject = definition;
-                EditorGUIUtility.PingObject(definition);
-                Event.current.Use();
-            }
         }
 
-        private static void DrawEntryLabel(Rect rect, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
+        private static void DrawEntryField(Rect rect, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
         {
             GUIContent content = definition != null
                 ? EditorGUIUtility.ObjectContent(definition, entryType)
@@ -181,7 +175,56 @@ namespace LoogaSoft.Inspector.Editor
             if (content.image != null)
                 GUI.DrawTexture(iconRect, content.image, ScaleMode.ScaleToFit);
 
-            EditorGUI.LabelField(labelRect, label);
+            if (definition == null)
+            {
+                EditorGUI.LabelField(labelRect, label);
+                return;
+            }
+
+            EditorGUI.BeginChangeCheck();
+            string editedLabel = EditorGUI.DelayedTextField(labelRect, label);
+            if (EditorGUI.EndChangeCheck())
+                RenameEntry(definition, catalog, editedLabel);
+
+            if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && iconRect.Contains(Event.current.mousePosition))
+            {
+                Selection.activeObject = definition;
+                EditorGUIUtility.PingObject(definition);
+                Event.current.Use();
+            }
+        }
+
+        private static void RenameEntry(ScriptableObject definition, LoogaCatalogAttribute catalog, string rawName)
+        {
+            string newName = NormalizeEntryName(rawName, catalog);
+            if (string.IsNullOrWhiteSpace(newName) || string.Equals(definition.name, newName, StringComparison.Ordinal))
+                return;
+
+            Undo.RecordObject(definition, "Rename Catalog Entry");
+            definition.name = newName;
+
+            if (!string.IsNullOrWhiteSpace(catalog.TreePath))
+            {
+                SerializedObject serializedDefinition = new(definition);
+                SerializedProperty treePath = serializedDefinition.FindProperty(catalog.TreePath);
+                if (treePath != null && treePath.propertyType == SerializedPropertyType.String)
+                {
+                    treePath.stringValue = newName;
+                    serializedDefinition.ApplyModifiedPropertiesWithoutUndo();
+                }
+            }
+
+            EditorUtility.SetDirty(definition);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static string NormalizeEntryName(string rawName, LoogaCatalogAttribute catalog)
+        {
+            string name = string.IsNullOrWhiteSpace(rawName) ? string.Empty : rawName.Trim();
+            if (string.IsNullOrWhiteSpace(catalog.TreePath))
+                return name;
+
+            return name.Replace('/', '.').Replace('\\', '.').Replace(' ', '.');
         }
 
         private static int GetTreeDepth(string label, LoogaCatalogAttribute catalog)
