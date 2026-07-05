@@ -131,7 +131,7 @@ namespace LoogaSoft.Inspector.Editor
             float[] minWidths = new float[tabNames.Length];
             for (int i = 0; i < tabNames.Length; i++)
             {
-                Vector2 size = buttonStyle.CalcSize(new GUIContent(tabNames[i]));
+                Vector2 size = buttonStyle.CalcSize(PropertyUtils.GetContent(tabNames[i]));
                 minWidths[i] = Mathf.Ceil(size.x + 16f);
             }
 

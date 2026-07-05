@@ -43,7 +43,7 @@ namespace LoogaSoft.Inspector.Editor
 
             return new InspectorPropertyMetadata(
                 fieldInfo,
-                new GUIContent(labelText),
+                PropertyUtils.GetContent(labelText),
                 fieldInfo.GetCustomAttribute<LoogaBoxAttribute>(),
                 fieldInfo.GetCustomAttribute<LoogaFoldoutAttribute>(),
                 fieldInfo.GetCustomAttribute<LoogaToggleFoldoutAttribute>(),

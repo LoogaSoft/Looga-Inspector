@@ -26,7 +26,7 @@ namespace LoogaSoft.Inspector.Editor
                 fontSize = 12
             };
 
-            GUIContent content = new GUIContent(attr.headerText);
+            GUIContent content = PropertyUtils.GetContent(attr.headerText);
             Vector2 textSize = style.CalcSize(content);
 
             Rect labelRect = position;

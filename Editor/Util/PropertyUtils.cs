@@ -11,6 +11,7 @@ namespace LoogaSoft.Inspector.Editor
     public static class PropertyUtils
     {
         private static readonly Dictionary<AttributeLookupKey, Array> AttributeCache = new();
+        private static readonly Dictionary<string, GUIContent> LabelCache = new();
 
         public static T GetAttribute<T>(SerializedProperty property) where T : class
         {
@@ -63,7 +64,18 @@ namespace LoogaSoft.Inspector.Editor
         {
             LabelAttribute labelAttribute = GetAttribute<LabelAttribute>(property);
             string labelString = labelAttribute == null ? property.displayName : labelAttribute.label;
-            return new GUIContent(labelString);
+            return GetContent(labelString);
+        }
+
+        public static GUIContent GetContent(string text)
+        {
+            text ??= string.Empty;
+            if (LabelCache.TryGetValue(text, out GUIContent content))
+                return content;
+
+            content = new GUIContent(text);
+            LabelCache.Add(text, content);
+            return content;
         }
 
         public static void CallOnFieldChangedCallbacks(SerializedProperty property)

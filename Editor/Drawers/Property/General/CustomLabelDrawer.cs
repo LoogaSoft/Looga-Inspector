@@ -11,7 +11,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             CustomLabelAttribute attr = (CustomLabelAttribute)attribute;
             
-            GUIContent newLabel = new GUIContent(attr.label);
+            GUIContent newLabel = PropertyUtils.GetContent(attr.label);
             
             EditorGUI.PropertyField(position, property, newLabel);
         }

@@ -417,7 +417,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             property.isExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(
-                new GUIContent(title),
+                PropertyUtils.GetContent(title),
                 property.isExpanded,
                 () =>
                 {
@@ -469,7 +469,7 @@ namespace LoogaSoft.Inspector.Editor
 
             bool expanded = SessionState.GetBool(stateKey, false);
             bool newExpanded = LoogaEditorFoldouts.LoogaToggleFoldoutSmall(
-                new GUIContent(title),
+                PropertyUtils.GetContent(title),
                 toggleProperty,
                 expanded,
                 () => DrawToggleFoldoutPropertyContent(property, toggleProperty, metadata),
@@ -519,7 +519,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            LoogaEditorFoldouts.LoogaBoxSmall(new GUIContent(title), () => DrawBoxPropertyContent(property, metadata));
+            LoogaEditorFoldouts.LoogaBoxSmall(PropertyUtils.GetContent(title), () => DrawBoxPropertyContent(property, metadata));
         }
 
         private void DrawBoxPropertyContent(SerializedProperty property, InspectorPropertyMetadata metadata = null)
@@ -590,7 +590,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             bool expanded = SessionState.GetBool(stateKey, false);
-            bool newExpanded = LoogaEditorFoldouts.LoogaToggleFoldoutSmall(new GUIContent(title), toggleProperty, expanded, () =>
+            bool newExpanded = LoogaEditorFoldouts.LoogaToggleFoldoutSmall(PropertyUtils.GetContent(title), toggleProperty, expanded, () =>
             {
                 DrawStyledGroupContent(contentProperties, scopeType);
             });
@@ -617,7 +617,7 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             bool expanded = SessionState.GetBool(stateKey, groupStart.styledGroupDefaultExpanded);
-            bool newExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(new GUIContent(title), expanded, () =>
+            bool newExpanded = LoogaEditorFoldouts.LoogaFoldoutSmall(PropertyUtils.GetContent(title), expanded, () =>
             {
                 DrawStyledGroupContent(groupProperties, scopeType);
             });
@@ -639,7 +639,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            LoogaEditorFoldouts.LoogaBoxSmall(new GUIContent(title), () => DrawStyledGroupContent(groupProperties, scopeType));
+            LoogaEditorFoldouts.LoogaBoxSmall(PropertyUtils.GetContent(title), () => DrawStyledGroupContent(groupProperties, scopeType));
         }
 
         private void DrawStyledGroupContent(List<SerializedProperty> groupProperties, Type scopeType)
@@ -783,7 +783,7 @@ namespace LoogaSoft.Inspector.Editor
                             rect.width -= 10f;
                             SerializedProperty element = property.GetArrayElementAtIndex(index);
                             rect.height = EditorGUI.GetPropertyHeight(element);
-                            EditorGUI.PropertyField(rect, element, new GUIContent(element.displayName), true);
+                            EditorGUI.PropertyField(rect, element, PropertyUtils.GetContent(element.displayName), true);
                             
                             EditorGUI.indentLevel = cachedIndent;
                         },
