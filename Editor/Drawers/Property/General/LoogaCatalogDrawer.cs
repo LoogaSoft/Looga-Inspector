@@ -14,12 +14,15 @@ namespace LoogaSoft.Inspector.Editor
         private const float RowHeight = 24f;
         private const float ButtonHeight = 24f;
         private const float DeleteButtonWidth = 46f;
+        private const float AccentWidth = 4f;
+        private const float TreeStep = 12f;
 
-        private static readonly Color HeaderColor = new(0.20f, 0.20f, 0.20f, 1f);
-        private static readonly Color RowColor = new(0.155f, 0.155f, 0.155f, 1f);
+        private static readonly Color CatalogColor = new(0.155f, 0.155f, 0.155f, 1f);
+        private static readonly Color RowColor = new(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color RowHoverColor = new(0.20f, 0.20f, 0.20f, 1f);
         private static readonly Color EmptyColor = new(0.17f, 0.17f, 0.17f, 1f);
         private static readonly Color AccentColor = new(0.26f, 0.58f, 0.95f, 1f);
+        private static readonly Color TreeLineColor = new(0.37f, 0.37f, 0.37f, 1f);
 
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -46,31 +49,29 @@ namespace LoogaSoft.Inspector.Editor
 
         public static void Draw(Rect position, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
         {
+            EditorGUI.DrawRect(position, CatalogColor);
+            EditorGUI.DrawRect(new Rect(position.x, position.y, AccentWidth, position.height), AccentColor);
+
             Rect headerRect = new(position.x, position.y, position.width, RowHeight);
             DrawHeader(headerRect, property, catalog);
 
-            if (!property.isExpanded)
-                return;
-
             Rect bodyRect = new(
                 position.x,
-                headerRect.yMax + Gap,
+                headerRect.yMax,
                 position.width,
-                position.height - RowHeight - Gap);
+                position.height - RowHeight);
 
             DrawBody(bodyRect, property, catalog, entryType);
         }
 
         public static float GetHeight(SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
         {
-            if (!property.isExpanded)
-                return RowHeight;
-
-            float height = RowHeight + Gap + Padding * 2f;
-            height += property.arraySize > 0 ? property.arraySize * RowHeight : RowHeight;
+            float height = RowHeight + Padding * 2f;
 
             if (catalog.AllowAdd || CanSyncFromSubAssets(property, entryType))
-                height += Gap + ButtonHeight;
+                height += ButtonHeight + Gap;
+
+            height += property.arraySize > 0 ? property.arraySize * RowHeight : RowHeight;
 
             return height;
         }
@@ -99,28 +100,22 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DrawHeader(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog)
         {
-            EditorGUI.DrawRect(rect, HeaderColor);
-            EditorGUI.DrawRect(new Rect(rect.x, rect.y, 4f, rect.height), AccentColor);
-
-            Rect foldoutRect = new(rect.x + 8f, rect.y, 20f, rect.height);
-            property.isExpanded = EditorGUI.Foldout(foldoutRect, property.isExpanded, GUIContent.none, true);
-
-            Rect labelRect = new(rect.x + 28f, rect.y, rect.width - 36f, rect.height);
+            Rect labelRect = new(rect.x + AccentWidth + Padding, rect.y, rect.width - AccentWidth - Padding * 2f, rect.height);
             string title = string.IsNullOrWhiteSpace(catalog.Title) ? property.displayName : catalog.Title;
             EditorGUI.LabelField(labelRect, $"{title} ({property.arraySize})", EditorStyles.boldLabel);
-
-            Rect clickRect = new(labelRect.x, rect.y, labelRect.width, rect.height);
-            if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && clickRect.Contains(Event.current.mousePosition))
-            {
-                property.isExpanded = !property.isExpanded;
-                Event.current.Use();
-            }
         }
 
         private static void DrawBody(Rect rect, SerializedProperty property, LoogaCatalogAttribute catalog, Type entryType)
         {
-            Rect contentRect = new(rect.x + Padding, rect.y + Padding, rect.width - Padding * 2f, rect.height - Padding * 2f);
+            Rect contentRect = new(rect.x + AccentWidth + Padding, rect.y + Padding, rect.width - AccentWidth - Padding * 2f, rect.height - Padding * 2f);
             float y = contentRect.y;
+            bool canSync = CanSyncFromSubAssets(property, entryType);
+
+            if (catalog.AllowAdd || canSync)
+            {
+                DrawButtons(new Rect(contentRect.x, y, contentRect.width, ButtonHeight), property, catalog, entryType, canSync);
+                y += ButtonHeight + Gap;
+            }
 
             if (property.arraySize == 0)
             {
@@ -139,12 +134,6 @@ namespace LoogaSoft.Inspector.Editor
                 }
 
                 y += Gap;
-            }
-
-            bool canSync = CanSyncFromSubAssets(property, entryType);
-            if (catalog.AllowAdd || canSync)
-            {
-                DrawButtons(new Rect(contentRect.x, y, contentRect.width, ButtonHeight), property, catalog, entryType, canSync);
             }
         }
 
@@ -182,8 +171,12 @@ namespace LoogaSoft.Inspector.Editor
                 : new GUIContent("<Missing>");
 
             string label = definition != null ? GetEntryLabel(definition, catalog) : "<Missing>";
-            Rect iconRect = new(rect.x, rect.y + 4f, 16f, 16f);
-            Rect labelRect = new(rect.x + 20f + GetTreeIndent(label, catalog), rect.y, rect.width - 20f, rect.height);
+            int depth = GetTreeDepth(label, catalog);
+            float treeIndent = depth * TreeStep;
+            Rect iconRect = new(rect.x + treeIndent, rect.y + 4f, 16f, 16f);
+            Rect labelRect = new(rect.x + treeIndent + 20f, rect.y, rect.width - treeIndent - 20f, rect.height);
+
+            DrawTreeLines(rect, depth);
 
             if (content.image != null)
                 GUI.DrawTexture(iconRect, content.image, ScaleMode.ScaleToFit);
@@ -191,10 +184,10 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.LabelField(labelRect, label);
         }
 
-        private static float GetTreeIndent(string label, LoogaCatalogAttribute catalog)
+        private static int GetTreeDepth(string label, LoogaCatalogAttribute catalog)
         {
             if (string.IsNullOrWhiteSpace(catalog.TreePath))
-                return 0f;
+                return 0;
 
             int depth = 0;
             for (int i = 0; i < label.Length; i++)
@@ -203,7 +196,25 @@ namespace LoogaSoft.Inspector.Editor
                     depth++;
             }
 
-            return depth * 12f;
+            return depth;
+        }
+
+        private static void DrawTreeLines(Rect rect, int depth)
+        {
+            if (depth <= 0)
+                return;
+
+            float centerY = Mathf.Round(rect.y + rect.height * 0.5f);
+            float startX = rect.x + 8f;
+            for (int i = 0; i < depth; i++)
+            {
+                float x = Mathf.Round(startX + i * TreeStep);
+                EditorGUI.DrawRect(new Rect(x, rect.y, 1f, rect.height), TreeLineColor);
+            }
+
+            float lastX = Mathf.Round(startX + (depth - 1) * TreeStep);
+            float endX = Mathf.Round(rect.x + depth * TreeStep - 2f);
+            EditorGUI.DrawRect(new Rect(lastX, centerY, Mathf.Max(1f, endX - lastX), 1f), TreeLineColor);
         }
 
         private static string GetEntryLabel(ScriptableObject definition, LoogaCatalogAttribute catalog)
