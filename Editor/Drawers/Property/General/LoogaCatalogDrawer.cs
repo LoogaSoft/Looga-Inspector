@@ -13,7 +13,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float Padding = 4f;
         private const float RowHeight = 24f;
         private const float ButtonHeight = 24f;
-        private const float DeleteButtonWidth = 46f;
+        private const float IconButtonSize = 22f;
+        private const float IconButtonGap = 3f;
         private const float AccentWidth = 4f;
         private const float TreeStep = 12f;
 
@@ -144,13 +145,21 @@ namespace LoogaSoft.Inspector.Editor
             bool hovering = rect.Contains(Event.current.mousePosition);
             EditorGUI.DrawRect(rect, hovering ? RowHoverColor : RowColor);
 
-            Rect labelRect = new(rect.x + 8f, rect.y, rect.width - DeleteButtonWidth - 14f, rect.height);
-            DrawEntryField(labelRect, definition, catalog, entryType);
+            float actionsWidth = IconButtonSize * 2f + IconButtonGap + 8f;
+            Rect labelRect = new(rect.x + 8f, rect.y, rect.width - actionsWidth - 8f, rect.height);
+            DrawEntryContent(labelRect, definition, catalog, entryType);
 
-            Rect deleteRect = new(rect.xMax - DeleteButtonWidth - 4f, rect.y + 3f, DeleteButtonWidth, rect.height - 6f);
+            Rect editRect = new(rect.xMax - IconButtonSize * 2f - IconButtonGap - 4f, rect.y + 1f, IconButtonSize, IconButtonSize);
+            using (new EditorGUI.DisabledScope(definition == null))
+            {
+                if (GUI.Button(editRect, GetEditContent(), EditorStyles.miniButtonLeft))
+                    ToggleEditing(definition);
+            }
+
+            Rect deleteRect = new(editRect.xMax + IconButtonGap, rect.y + 1f, IconButtonSize, IconButtonSize);
             using (new EditorGUI.DisabledScope(!catalog.AllowDelete))
             {
-                if (GUI.Button(deleteRect, "Del"))
+                if (GUI.Button(deleteRect, GetDeleteContent(), EditorStyles.miniButtonRight))
                 {
                     DeleteEntry(property, index, definition, catalog);
                 }
@@ -158,7 +167,7 @@ namespace LoogaSoft.Inspector.Editor
 
         }
 
-        private static void DrawEntryField(Rect rect, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
+        private static void DrawEntryContent(Rect rect, ScriptableObject definition, LoogaCatalogAttribute catalog, Type entryType)
         {
             GUIContent content = definition != null
                 ? EditorGUIUtility.ObjectContent(definition, entryType)
@@ -181,10 +190,20 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            EditorGUI.BeginChangeCheck();
-            string editedLabel = EditorGUI.DelayedTextField(labelRect, label);
-            if (EditorGUI.EndChangeCheck())
-                RenameEntry(definition, catalog, editedLabel);
+            if (IsEditing(definition))
+            {
+                EditorGUI.BeginChangeCheck();
+                string editedLabel = EditorGUI.DelayedTextField(labelRect, label);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    RenameEntry(definition, catalog, editedLabel);
+                    SetEditing(definition, false);
+                }
+            }
+            else
+            {
+                EditorGUI.LabelField(labelRect, label);
+            }
 
             if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && iconRect.Contains(Event.current.mousePosition))
             {
@@ -192,6 +211,50 @@ namespace LoogaSoft.Inspector.Editor
                 EditorGUIUtility.PingObject(definition);
                 Event.current.Use();
             }
+        }
+
+        private static GUIContent GetEditContent()
+        {
+            GUIContent content = EditorGUIUtility.IconContent("editicon.sml");
+            content.tooltip = "Edit";
+            if (content.image == null && string.IsNullOrEmpty(content.text))
+                content.text = "E";
+
+            return content;
+        }
+
+        private static GUIContent GetDeleteContent()
+        {
+            GUIContent content = EditorGUIUtility.IconContent("TreeEditor.Trash");
+            content.tooltip = "Delete";
+            if (content.image == null && string.IsNullOrEmpty(content.text))
+                content.text = "X";
+
+            return content;
+        }
+
+        private static bool IsEditing(ScriptableObject definition)
+        {
+            return definition != null && SessionState.GetBool(GetEditingKey(definition), false);
+        }
+
+        private static void ToggleEditing(ScriptableObject definition)
+        {
+            if (definition == null)
+                return;
+
+            SetEditing(definition, !IsEditing(definition));
+        }
+
+        private static void SetEditing(ScriptableObject definition, bool editing)
+        {
+            if (definition != null)
+                SessionState.SetBool(GetEditingKey(definition), editing);
+        }
+
+        private static string GetEditingKey(ScriptableObject definition)
+        {
+            return $"LoogaCatalog_Edit_{definition.GetInstanceID()}";
         }
 
         private static void RenameEntry(ScriptableObject definition, LoogaCatalogAttribute catalog, string rawName)
