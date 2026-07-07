@@ -55,6 +55,12 @@ namespace LoogaSoft.Inspector.Editor
             return HasCustomDrawer(GetTargetType(property));
         }
 
+        public static T GetTargetTypeAttribute<T>(SerializedProperty property) where T : Attribute
+        {
+            Type targetType = GetTargetType(property);
+            return targetType?.GetCustomAttribute<T>(inherit: true);
+        }
+
         public static bool HasCustomDrawer(Type targetType)
         {
             if (targetType == null)

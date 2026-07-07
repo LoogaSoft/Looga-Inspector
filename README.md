@@ -1,18 +1,18 @@
-﻿# Looga Inspector
+# Looga Inspector
 
-Looga Inspector is a small attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields or methods and the default Looga editor handles layout, visibility, validation, dropdowns, inline assets, buttons, and common Unity-specific selectors.
+Looga Inspector is a lightweight, attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields, methods, or component classes, and the default Looga editor handles common inspector workflows: layout, foldouts, tabs, validation, dropdowns, inline ScriptableObjects, catalog management, buttons, and Unity-specific selectors.
 
-The package is designed to keep most inspector polish close to the data it affects, without creating one-off custom editor scripts for every component.
+The goal is to keep most inspector polish beside the data it affects, without creating one-off custom editor scripts for every component.
 
 ## Setup
 
-Add the runtime namespace to scripts that use the attributes:
+Use the runtime namespace in scripts that use Looga Inspector attributes:
 
 ```csharp
 using LoogaSoft.Inspector.Runtime;
 ```
 
-For Unity-specific types in examples, also use:
+For Unity examples, also include:
 
 ```csharp
 using UnityEngine;
@@ -55,7 +55,7 @@ using UnityEngine;
 [SerializeField] private RecoilSettings _recoil;
 ```
 
-`LoogaFoldoutGroupAttribute` starts a foldout around multiple fields. End it with `LoogaFoldoutGroupEndAttribute`.
+`LoogaFoldoutGroupAttribute` starts a foldout around several sibling fields. End it with `LoogaFoldoutGroupEndAttribute`.
 
 ```csharp
 [LoogaFoldoutGroup("Audio", LoogaFoldoutStyle.Small)]
@@ -67,7 +67,7 @@ using UnityEngine;
 [SerializeField] private float _volume = 1f;
 ```
 
-`LoogaToggleFoldoutAttribute` draws a foldout with a toggle in its header. If the toggle is off, the foldout stays collapsed and hides the arrow. Attributes cannot receive live field references in C#, so nested-class toggles use a serialized child field name.
+`LoogaToggleFoldoutAttribute` draws a foldout with a toggle in its header. If the toggle is off, the foldout stays collapsed and hides the arrow. For nested classes, pass the serialized child bool name.
 
 ```csharp
 [Serializable]
@@ -103,7 +103,7 @@ For several sibling fields, use `LoogaToggleFoldoutGroupAttribute` on the bool f
 [SerializeField] private ProjectileSettings _projectile;
 ```
 
-`LoogaBoxGroupAttribute` and `LoogaBoxGroupEndAttribute` draw multiple fields inside a non-collapsible box.
+`LoogaBoxGroupAttribute` and `LoogaBoxGroupEndAttribute` draw multiple sibling fields inside a non-collapsible box.
 
 ```csharp
 [LoogaBoxGroup("Identity", LoogaFoldoutStyle.Small)]
@@ -114,6 +114,63 @@ For several sibling fields, use `LoogaToggleFoldoutGroupAttribute` on the bool f
 [LoogaBoxGroupEnd]
 [SerializeField] private string _description;
 ```
+
+`StructBoxAttribute` is a compact drawer for a single serializable struct/class. Use it when a nested value should look grouped without creating a wider layout group.
+
+```csharp
+[StructBox("Damage")]
+[SerializeField] private DamageSettings _damage;
+```
+
+You can also place it on the serializable type itself so every field or list element of that type uses the same boxed layout without a project-specific property drawer:
+
+```csharp
+[Serializable]
+[StructBox("Ingredient")]
+public struct IngredientDefinition
+{
+    public ItemQuantityPair item;
+    public int weight;
+}
+```
+
+### Inline Rows
+
+`InlineRowAttribute` draws multiple values on one line.
+
+When applied to one struct/class field, its visible child fields are drawn inline:
+
+```csharp
+[InlineRow]
+[SerializeField] private DamageRange _damage;
+```
+
+You can also place it on the serializable type itself. Child fields may use `InlineRowAttribute` only to define relative widths:
+
+```csharp
+[Serializable]
+[InlineRow]
+public class ItemQuantityPair
+{
+    [InlineRow(width: 0.65f)]
+    public ItemDefinition item;
+
+    [InlineRow(width: 0.35f)]
+    public int amount = 1;
+}
+```
+
+When applied to adjacent sibling fields with the same row id, those normal fields are drawn in one row. The optional width controls the relative column weight.
+
+```csharp
+[InlineRow("damage", 2f)]
+[SerializeField] private int _minimumDamage;
+
+[InlineRow("damage")]
+[SerializeField] private int _maximumDamage;
+```
+
+Use inline rows for small scalar values. Prefer boxes, foldouts, or tables for complex nested data.
 
 ### Headers And Separators
 
@@ -138,7 +195,24 @@ For several sibling fields, use `LoogaToggleFoldoutGroupAttribute` on the bool f
 [SerializeField] private bool _debugMode;
 ```
 
-`LoogaInspectorMessageAttribute` draws an info, warning, or error box at the top of a component inspector when a bool field, property, or method returns true. Use it for component-level setup warnings instead of writing a custom editor.
+`StatusBoxAttribute` draws an info, warning, or error box above a field or at the top of the whole inspector. It can be unconditional, conditional, or use a member as the message.
+
+```csharp
+[StatusBox("Assign a profile before entering play mode.", LoogaStatusBoxType.Warning, Condition = nameof(MissingProfile))]
+[SerializeField] private ScriptableObject _profile;
+
+private bool MissingProfile => _profile == null;
+```
+
+```csharp
+[StatusBox(nameof(GetStatusMessage), LoogaStatusBoxType.Info, UseMember = true)]
+public sealed class ExampleComponent : MonoBehaviour
+{
+    private string GetStatusMessage() => "Ready.";
+}
+```
+
+`LoogaInspectorMessageAttribute` is a class-level setup warning driven by a bool field, property, or method.
 
 ```csharp
 [LoogaInspectorMessage(nameof(MissingSource), "No source component found.", MessageMode.Warning)]
@@ -289,12 +363,44 @@ private DropdownOption[] GetOptions()
 }
 ```
 
-Or use `labelMember` and `valueMember` for object lists:
+Use `labelMember` and `valueMember` for object lists:
 
 ```csharp
 [Dropdown(nameof(_entries), labelMember: "Name", valueMember: "Id")]
 [SerializeField] private string _selectedId;
 ```
+
+### Filtered Enums
+
+`FilteredEnumAttribute` draws an enum field as a dropdown limited by a provider member. The provider can return enum values, enum names, ints, or a collection of those.
+
+```csharp
+[FilteredEnum(nameof(GetAllowedModes))]
+[SerializeField] private FireMode _mode;
+
+private FireMode[] GetAllowedModes()
+{
+    return new[] { FireMode.Single, FireMode.Burst };
+}
+```
+
+### Hierarchical Asset Dropdowns
+
+`HierarchicalAssetDropdownAttribute` draws object reference or string fields as a project asset dropdown. Entries are grouped by a path member on each asset, such as `Path`, `TagPath`, or `DisplayPath`.
+
+```csharp
+[HierarchicalAssetDropdown]
+[SerializeField] private GameplayTagDefinition _tag;
+```
+
+For string fields, pass the asset type explicitly:
+
+```csharp
+[HierarchicalAssetDropdown(typeof(GameplayTagDefinition), pathMemberName: "Path")]
+[SerializeField] private string _tagPath;
+```
+
+Use `searchFilter` to restrict the project search and `includeNone` to hide or show the `None` option.
 
 ### Unity Selectors
 
@@ -308,7 +414,7 @@ These draw common Unity dropdowns:
 [SerializeField] private int _collisionLayer;
 
 [PhysicsLayer]
-[SerializeField] private string _physicsLayer;
+[SerializeField] private int _physicsLayer;
 
 [PhysicsLayerMask]
 [SerializeField] private LayerMask _hitMask;
@@ -341,15 +447,6 @@ These draw common Unity dropdowns:
 
 [SecureString(true)]
 [SerializeField] private string _secret;
-```
-
-`BoolButtonAttribute` draws a bool with a button that calls a method.
-
-```csharp
-[BoolButton(nameof(TogglePreview), "Preview")]
-[SerializeField] private bool _previewEnabled;
-
-private void TogglePreview() { }
 ```
 
 ## Numeric And List Helpers
@@ -390,7 +487,9 @@ private void TogglePreview() { }
 
 Use table lists for compact data rows. Complex preview tools, filtering, or deeply nested data should still use a purpose-built editor.
 
-## Scriptable Object Fields
+## Assets And Catalogs
+
+### Scriptable Object Fields
 
 `ExposeScriptableAttribute` draws an assigned ScriptableObject inline. When the field is empty, the drawer shows a create button beside the object field. Creating an asset opens Unity's save panel, assigns the new asset, and pings it in the Project window while keeping the current inspector selection.
 
@@ -401,7 +500,34 @@ Use table lists for compact data rows. Complex preview tools, filtering, or deep
 
 If the declared field type has multiple concrete ScriptableObject types, the create button opens a type menu first.
 
-## Animator Helpers
+`AssetLinkAttribute` keeps an asset reference compact and adds quick Open/Ping controls. Use it for fields where designers often jump to the assigned asset.
+
+```csharp
+[AssetLink(readOnly: true)]
+[SerializeField] private WeaponProfile _profile;
+```
+
+### Catalog Fields
+
+`LoogaCatalogAttribute` draws a catalog asset list with add, delete, rename, and sync support. It is meant for ScriptableObject catalog assets that own sub-assets, such as gameplay tags, events, stats, or quest definitions.
+
+```csharp
+[LoogaCatalog("Gameplay Tags", TreePath = "Path", CreateName = "New Tag")]
+[SerializeField] private List<GameplayTagDefinition> _tags;
+```
+
+Useful options:
+
+```csharp
+[LoogaCatalog("Definitions", StoreAsSubAssets = true, AllowAdd = true, AllowDelete = true)]
+[SerializeField] private List<MyDefinition> _definitions;
+```
+
+`TreePath` enables hierarchical list drawing when entries expose a path-like string. Renaming parent paths updates child paths when supported by the drawer.
+
+## Unity Domain Helpers
+
+### Animator Helpers
 
 Animator attributes draw string fields as dropdowns from an Animator Controller or Animator reference member.
 
@@ -426,7 +552,7 @@ Animator attributes draw string fields as dropdowns from an Animator Controller 
 
 The referenced member can be a serialized field, property, or method that resolves to an Animator, Animator Controller, or compatible source supported by the helper.
 
-## Shader And Material Helpers
+### Shader And Material Helpers
 
 `ShaderPropertyAttribute` draws a string as a dropdown of shader property names from a referenced `Material` or `Shader`. Filter by `LoogaShaderPropertyType` when needed.
 
@@ -456,7 +582,31 @@ The referenced member can be a serialized field, property, or method that resolv
 
 The global list is built by scanning shader assets in the project.
 
-## Method Buttons
+### Volume Override Values
+
+`VolumeOverrideValueAttribute` works with `VolumeValue<T>` to select a value inside a referenced `VolumeProfile`. The drawer first selects the volume override, then the matching parameter of type `T`.
+
+```csharp
+[SerializeField] private VolumeProfile _hudVolumeProfile;
+
+[VolumeOverrideValue(nameof(_hudVolumeProfile))]
+[SerializeField] private VolumeValue<float> _lensIntensity;
+```
+
+At runtime, use the stored reference directly:
+
+```csharp
+_lensIntensity.SetValue(-0.1f);
+float current = _lensIntensity.GetValue();
+```
+
+You can also read or write against another profile:
+
+```csharp
+_lensIntensity.SetValue(0f, overrideProfile);
+```
+
+## Actions And Buttons
 
 `ButtonAttribute` draws a method as an inspector button. It supports labels, top placement, edit/play mode gating, confirmation prompts, custom height, and an optional bool condition.
 
@@ -473,9 +623,39 @@ private void Refresh() { }
 private bool CanSpawn() => Application.isPlaying;
 ```
 
+`BoolButtonAttribute` draws a bool with a button that calls a method.
+
+```csharp
+[BoolButton(nameof(TogglePreview), "Preview")]
+[SerializeField] private bool _previewEnabled;
+
+private void TogglePreview() { }
+```
+
+`OpenEditorWindowAttribute` adds a button that executes a Unity menu item. It can be used on a field or at class level.
+
+```csharp
+[OpenEditorWindow("Open Item Database", "Kubera/Databases/Item Database")]
+[SerializeField] private bool _openItemDatabase;
+```
+
+```csharp
+[OpenEditorWindow("Open Project Hub", "Kubera/Hub")]
+public sealed class ProjectSettingsComponent : MonoBehaviour
+{
+}
+```
+
+## Optional Integrations
+
+Looga Inspector can enable optional editor acceleration for ZLinq from:
+
+`LoogaSoft/Inspector/Enable ZLinq Support`
+
+Only enable optional support when the dependency is installed in the project and the package is editable or updated at the source package level.
+
 ## When To Use A Custom Editor
 
-Prefer Looga Inspector attributes for common inspector shaping: grouping, tabs, conditional fields, validation, inline ScriptableObjects, dropdowns, and simple tables.
+Prefer Looga Inspector attributes for common inspector shaping: grouping, tabs, conditional fields, validation, inline ScriptableObjects, dropdowns, catalog lists, quick links, and simple tables.
 
 Keep a custom editor or editor window when the workflow needs custom previews, graph editing, search/filter-heavy interfaces, drag-and-drop canvases, asset migration tools, or runtime debugging panels.
-

@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LoogaSoft.Inspector.Runtime
 {
-    [AttributeUsage(AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Class | AttributeTargets.Struct)]
     public sealed class InlineRowAttribute : PropertyAttribute, ILoogaAttribute
     {
         public readonly string RowId;

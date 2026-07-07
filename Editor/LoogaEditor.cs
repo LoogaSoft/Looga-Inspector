@@ -397,37 +397,51 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     EditorGUI.BeginChangeCheck();
 
-                    LoogaBoxAttribute boxAttribute = metadata?.boxAttribute ?? PropertyUtils.GetAttribute<LoogaBoxAttribute>(property);
-                    LoogaFoldoutAttribute foldoutAttribute = metadata?.foldoutAttribute ?? PropertyUtils.GetAttribute<LoogaFoldoutAttribute>(property);
-                    LoogaToggleFoldoutAttribute toggleFoldoutAttribute = metadata?.toggleFoldoutAttribute ?? PropertyUtils.GetAttribute<LoogaToggleFoldoutAttribute>(property);
-                    if (toggleFoldoutAttribute != null)
-                    {
-                        DrawToggleFoldoutProperty(property, toggleFoldoutAttribute, metadata);
-                    }
-                    else if (foldoutAttribute != null)
-                    {
-                        DrawFoldoutProperty(property, foldoutAttribute, metadata);
-                    }
-                    else if (boxAttribute != null)
-                    {
-                        DrawBoxProperty(property, boxAttribute, metadata);
-                    }
-                    else
-                    {
-                        bool hasCustomDrawer = metadata?.hasCustomDrawer ?? CustomDrawerUtil.HasCustomDrawer(property);
+                    InlineRowAttribute inlineTypeAttribute = GetStructuredInlineRowAttribute(property, metadata);
+                    StructBoxAttribute structBoxAttribute = GetStructuredBoxAttribute(property);
+                    bool drewStructuredProperty = inlineTypeAttribute != null
+                        && TryDrawInlineTypeProperty(property, GetPropertyLabel(property, metadata));
 
-                        bool customNestedFoldout = ShouldDrawNestedFoldout(property, hasCustomDrawer);
-                        if (customNestedFoldout)
+                    if (!drewStructuredProperty && structBoxAttribute != null)
+                    {
+                        DrawStructBoxProperty(property, structBoxAttribute, metadata);
+                        drewStructuredProperty = true;
+                    }
+
+                    if (!drewStructuredProperty)
+                    {
+                        LoogaBoxAttribute boxAttribute = metadata?.boxAttribute ?? PropertyUtils.GetAttribute<LoogaBoxAttribute>(property);
+                        LoogaFoldoutAttribute foldoutAttribute = metadata?.foldoutAttribute ?? PropertyUtils.GetAttribute<LoogaFoldoutAttribute>(property);
+                        LoogaToggleFoldoutAttribute toggleFoldoutAttribute = metadata?.toggleFoldoutAttribute ?? PropertyUtils.GetAttribute<LoogaToggleFoldoutAttribute>(property);
+                        if (toggleFoldoutAttribute != null)
                         {
-                            DrawNestedFoldoutProperty(property, metadata);
+                            DrawToggleFoldoutProperty(property, toggleFoldoutAttribute, metadata);
+                        }
+                        else if (foldoutAttribute != null)
+                        {
+                            DrawFoldoutProperty(property, foldoutAttribute, metadata);
+                        }
+                        else if (boxAttribute != null)
+                        {
+                            DrawBoxProperty(property, boxAttribute, metadata);
                         }
                         else
                         {
-                            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), false);
+                            bool hasCustomDrawer = metadata?.hasCustomDrawer ?? CustomDrawerUtil.HasCustomDrawer(property);
 
-                            if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
-                                property.hasVisibleChildren && property.isExpanded)
-                                DrawNestedPropertyChildren(property);
+                            bool customNestedFoldout = ShouldDrawNestedFoldout(property, hasCustomDrawer);
+                            if (customNestedFoldout)
+                            {
+                                DrawNestedFoldoutProperty(property, metadata);
+                            }
+                            else
+                            {
+                                EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), false);
+
+                                if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
+                                    property.hasVisibleChildren && property.isExpanded)
+                                    DrawNestedPropertyChildren(property);
+                            }
                         }
                     }
                     
@@ -845,6 +859,156 @@ namespace LoogaSoft.Inspector.Editor
             return true;
         }
 
+        private static InlineRowAttribute GetStructuredInlineRowAttribute(SerializedProperty property, InspectorPropertyMetadata metadata = null)
+        {
+            InlineRowAttribute inlineRow = metadata?.inlineRowAttribute ?? PropertyUtils.GetAttribute<InlineRowAttribute>(property);
+            return inlineRow ?? CustomDrawerUtil.GetTargetTypeAttribute<InlineRowAttribute>(property);
+        }
+
+        private static StructBoxAttribute GetStructuredBoxAttribute(SerializedProperty property)
+        {
+            StructBoxAttribute structBox = PropertyUtils.GetAttribute<StructBoxAttribute>(property);
+            return structBox ?? CustomDrawerUtil.GetTargetTypeAttribute<StructBoxAttribute>(property);
+        }
+
+        private static bool TryDrawInlineTypeProperty(SerializedProperty property, GUIContent label)
+        {
+            if (!CanDrawInlineTypeProperty(property))
+                return false;
+
+            Rect rowRect = EditorGUILayout.GetControlRect(false, InlineRowEditorUtility.SingleLineHeight);
+            Rect contentRect = IsArrayElement(property) ? rowRect : EditorGUI.PrefixLabel(rowRect, label);
+            DrawInlineTypeProperty(contentRect, property);
+            return true;
+        }
+
+        private static bool TryDrawInlineTypeProperty(Rect rect, SerializedProperty property, GUIContent label)
+        {
+            if (!CanDrawInlineTypeProperty(property))
+                return false;
+
+            Rect contentRect = IsArrayElement(property) ? rect : EditorGUI.PrefixLabel(rect, label);
+            DrawInlineTypeProperty(contentRect, property);
+            return true;
+        }
+
+        private static bool CanDrawInlineTypeProperty(SerializedProperty property)
+        {
+            return property != null
+                && property.propertyType == SerializedPropertyType.Generic
+                && property.hasVisibleChildren
+                && !property.isArray;
+        }
+
+        private static void DrawInlineTypeProperty(Rect rect, SerializedProperty property)
+        {
+            List<SerializedProperty> childProperties = InlineRowEditorUtility.GetVisibleChildren(property);
+            List<GUIContent> childLabels = new(childProperties.Count);
+            List<float> childWeights = new(childProperties.Count);
+
+            for (int i = 0; i < childProperties.Count; i++)
+            {
+                SerializedProperty childProperty = childProperties[i];
+                InlineRowAttribute childAttribute = PropertyUtils.GetAttribute<InlineRowAttribute>(childProperty);
+                childLabels.Add(PropertyUtils.GetLabel(childProperty));
+                childWeights.Add(childAttribute?.Width ?? 1f);
+            }
+
+            InlineRowEditorUtility.DrawProperties(rect, childProperties, childLabels, childWeights);
+        }
+
+        private void DrawStructBoxProperty(SerializedProperty property, StructBoxAttribute structBoxAttribute, InspectorPropertyMetadata metadata = null)
+        {
+            float height = GetStructBoxPropertyHeight(property);
+            Rect rect = EditorGUILayout.GetControlRect(false, height);
+            DrawStructBoxProperty(rect, property, structBoxAttribute, GetPropertyLabel(property, metadata));
+        }
+
+        private static void DrawStructBoxProperty(Rect position, SerializedProperty property, StructBoxAttribute structBoxAttribute, GUIContent label)
+        {
+            const float padding = 8f;
+            const float headerHeight = 20f;
+            const float spacing = 3f;
+
+            GUI.Box(position, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
+
+            Rect headerRect = new(position.x + padding, position.y + 3f, position.width - padding * 2f, headerHeight);
+            string title = string.IsNullOrWhiteSpace(structBoxAttribute.Title) ? label.text : structBoxAttribute.Title;
+            EditorGUI.LabelField(headerRect, title, EditorStyles.boldLabel);
+
+            Rect contentRect = new(
+                position.x + padding,
+                headerRect.yMax + spacing,
+                position.width - padding * 2f,
+                position.height - headerHeight - padding);
+
+            if (!CanDrawInlineTypeProperty(property))
+            {
+                EditorGUI.PropertyField(contentRect, property, GUIContent.none, true);
+                return;
+            }
+
+            List<SerializedProperty> children = InlineRowEditorUtility.GetVisibleChildren(property);
+            for (int i = 0; i < children.Count; i++)
+            {
+                SerializedProperty child = children[i];
+                float height = GetStructuredPropertyHeight(child);
+                Rect childRect = new(contentRect.x, contentRect.y, contentRect.width, height);
+                DrawStructuredProperty(childRect, child, PropertyUtils.GetLabel(child));
+                contentRect.y += height + EditorGUIUtility.standardVerticalSpacing;
+            }
+        }
+
+        private static void DrawStructuredProperty(Rect rect, SerializedProperty property, GUIContent label)
+        {
+            InlineRowAttribute inlineRow = GetStructuredInlineRowAttribute(property);
+            if (inlineRow != null && TryDrawInlineTypeProperty(rect, property, label))
+                return;
+
+            StructBoxAttribute structBox = GetStructuredBoxAttribute(property);
+            if (structBox != null)
+            {
+                DrawStructBoxProperty(rect, property, structBox, label);
+                return;
+            }
+
+            EditorGUI.PropertyField(rect, property, label, true);
+        }
+
+        private static float GetStructuredPropertyHeight(SerializedProperty property)
+        {
+            if (GetStructuredInlineRowAttribute(property) != null && CanDrawInlineTypeProperty(property))
+                return InlineRowEditorUtility.SingleLineHeight;
+
+            StructBoxAttribute structBox = GetStructuredBoxAttribute(property);
+            if (structBox != null)
+                return GetStructBoxPropertyHeight(property);
+
+            return EditorGUI.GetPropertyHeight(property, true);
+        }
+
+        private static float GetStructBoxPropertyHeight(SerializedProperty property)
+        {
+            const float padding = 8f;
+            const float headerHeight = 20f;
+            const float spacing = 3f;
+
+            float height = headerHeight + padding + spacing;
+            if (!CanDrawInlineTypeProperty(property))
+                return height + EditorGUI.GetPropertyHeight(property, true);
+
+            List<SerializedProperty> children = InlineRowEditorUtility.GetVisibleChildren(property);
+            for (int i = 0; i < children.Count; i++)
+                height += GetStructuredPropertyHeight(children[i]) + EditorGUIUtility.standardVerticalSpacing;
+
+            return height;
+        }
+
+        private static bool IsArrayElement(SerializedProperty property)
+        {
+            return property != null && property.propertyPath.Contains(".Array.data[");
+        }
+
         private void DrawNestedPropertyChildren(SerializedProperty property, string hiddenPropertyPath = null)
         {
             var childProperties = GetNestedSerializedProperties(property);
@@ -971,15 +1135,15 @@ namespace LoogaSoft.Inspector.Editor
                             rect.x += 10f;
                             rect.width -= 10f;
                             SerializedProperty element = property.GetArrayElementAtIndex(index);
-                            rect.height = EditorGUI.GetPropertyHeight(element);
-                            EditorGUI.PropertyField(rect, element, PropertyUtils.GetContent(element.displayName), true);
+                            rect.height = GetStructuredPropertyHeight(element);
+                            DrawStructuredProperty(rect, element, PropertyUtils.GetContent(element.displayName));
                             
                             EditorGUI.indentLevel = cachedIndent;
                         },
                         elementHeightCallback = index =>
                         {
                             SerializedProperty element = property.GetArrayElementAtIndex(index);
-                            return EditorGUI.GetPropertyHeight(element) + 2f;
+                            return GetStructuredPropertyHeight(element) + 2f;
                         }
                     };
 
