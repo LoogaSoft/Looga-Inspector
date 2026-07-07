@@ -18,6 +18,36 @@ For Unity examples, also include:
 using UnityEngine;
 ```
 
+## Package Organization
+
+Looga Inspector is organized by feature area so runtime attributes and editor drawers are easy to pair:
+
+```text
+Runtime/
+  Core/                  Shared runtime types.
+  Attributes/
+    Assets/              ScriptableObject, asset link, catalog, and asset dropdown attributes.
+    Animator/            Animator controller selector attributes.
+    Class/               Class-level inspector attributes.
+    Decorators/          Header and divider attributes.
+    Display/             Labels, read-only fields, fitted text, status boxes, and tooltip boxes.
+    Groups/              Foldouts, boxes, tabs, inline rows, and table lists.
+    Input/               Dropdowns, enum filters, bool buttons, ranges, and secure strings.
+    Rendering/           Shader, material, and volume profile attributes.
+    Unity/               Scene, tag, layer, sorting layer, physics layer, and navmesh selectors.
+    Validation/          Show/hide, enable/disable, change hooks, validation, and duplicate checks.
+
+Editor/
+  Core/                  Main inspector pipeline and cached metadata.
+  Styles/                Shared colors, foldouts, tabs, buttons, and layout primitives.
+  Utilities/             Reflection, property, shader, query, and member-value helpers.
+  Drawers/               Feature-matched drawers mirroring Runtime/Attributes.
+  OptionalSupport/       Toolbar and package-support toggles.
+  Optional/              Optional integration assemblies, such as ZLinq support.
+```
+
+When adding a new attribute, place the runtime attribute in the closest `Runtime/Attributes` feature folder and its drawer in the matching `Editor/Drawers` folder. Prefer adding shared drawing behavior to `Editor/Styles` or `Editor/Core` instead of duplicating GUI math inside individual drawers.
+
 ## Layout
 
 ### Tabs
