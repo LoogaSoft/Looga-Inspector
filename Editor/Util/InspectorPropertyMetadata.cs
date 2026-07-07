@@ -15,6 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         public readonly LoogaBoxAttribute boxAttribute;
         public readonly LoogaFoldoutAttribute foldoutAttribute;
         public readonly LoogaToggleFoldoutAttribute toggleFoldoutAttribute;
+        public readonly InlineRowAttribute inlineRowAttribute;
         public readonly bool hasCustomDrawer;
 
         private InspectorPropertyMetadata(
@@ -23,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
             LoogaBoxAttribute boxAttribute,
             LoogaFoldoutAttribute foldoutAttribute,
             LoogaToggleFoldoutAttribute toggleFoldoutAttribute,
+            InlineRowAttribute inlineRowAttribute,
             bool hasCustomDrawer)
         {
             this.fieldInfo = fieldInfo;
@@ -31,6 +33,7 @@ namespace LoogaSoft.Inspector.Editor
             this.boxAttribute = boxAttribute;
             this.foldoutAttribute = foldoutAttribute;
             this.toggleFoldoutAttribute = toggleFoldoutAttribute;
+            this.inlineRowAttribute = inlineRowAttribute;
             this.hasCustomDrawer = hasCustomDrawer;
         }
 
@@ -47,6 +50,7 @@ namespace LoogaSoft.Inspector.Editor
                 fieldInfo.GetCustomAttribute<LoogaBoxAttribute>(),
                 fieldInfo.GetCustomAttribute<LoogaFoldoutAttribute>(),
                 fieldInfo.GetCustomAttribute<LoogaToggleFoldoutAttribute>(),
+                fieldInfo.GetCustomAttribute<InlineRowAttribute>(),
                 CustomDrawerUtil.HasCustomDrawer(GetDrawableType(fieldInfo.FieldType)));
         }
 

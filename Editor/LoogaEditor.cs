@@ -17,6 +17,8 @@ namespace LoogaSoft.Inspector.Editor
         private readonly Dictionary<string, ReorderableList> _reorderableLists = new();
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
+        private static readonly Dictionary<Type, StatusBoxAttribute[]> _statusBoxCache = new();
+        private static readonly Dictionary<Type, OpenEditorWindowAttribute[]> _openWindowCache = new();
         
         #region Built-In
         private void OnDisable()
@@ -42,6 +44,8 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.Space(1f);
 
             DrawInspectorMessages(target.GetType());
+            DrawStatusBoxes(target.GetType());
+            DrawOpenEditorWindowButtons(target.GetType());
             
             DrawButtons(layout, true);
 
@@ -87,6 +91,62 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             return false;
+        }
+
+        private void DrawStatusBoxes(Type inspectedType)
+        {
+            StatusBoxAttribute[] statusBoxes = GetStatusBoxes(inspectedType);
+            if (statusBoxes.Length == 0)
+                return;
+
+            for (int i = 0; i < statusBoxes.Length; i++)
+            {
+                StatusBoxAttribute statusBox = statusBoxes[i];
+                if (!ShouldDrawStatusBox(statusBox, out string message))
+                    continue;
+
+                EditorGUILayout.HelpBox(message, StatusBoxDrawer.ToMessageType(statusBox.Type));
+                EditorGUILayout.Space(1f);
+            }
+        }
+
+        private bool ShouldDrawStatusBox(StatusBoxAttribute statusBox, out string message)
+        {
+            message = string.Empty;
+            if (statusBox == null)
+                return false;
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                if (!StatusBoxDrawer.ShouldShow(targets[i], statusBox))
+                    continue;
+
+                message = StatusBoxDrawer.ResolveMessage(targets[i], statusBox);
+                if (!string.IsNullOrWhiteSpace(message))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void DrawOpenEditorWindowButtons(Type inspectedType)
+        {
+            OpenEditorWindowAttribute[] openWindows = GetOpenEditorWindowAttributes(inspectedType);
+            if (openWindows.Length == 0)
+                return;
+
+            EditorGUILayout.BeginHorizontal();
+            for (int i = 0; i < openWindows.Length; i++)
+            {
+                OpenEditorWindowAttribute openWindow = openWindows[i];
+                using (new EditorGUI.DisabledScope(string.IsNullOrWhiteSpace(openWindow.MenuPath)))
+                {
+                    if (GUILayout.Button(openWindow.Label))
+                        EditorApplication.ExecuteMenuItem(openWindow.MenuPath);
+                }
+            }
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.Space(1f);
         }
 
         private void DrawPropertiesScope(List<SerializedProperty> properties, Type scopeType, string basePath)
@@ -255,6 +315,9 @@ namespace LoogaSoft.Inspector.Editor
                 InspectorElement element = elements[i];
                 if (!element.inStyledGroup)
                 {
+                    if (TryDrawInlineRow(elements, properties, ref i))
+                        continue;
+
                     SerializedProperty property = FindSerializedPropertyByName(properties, element.propertyName);
                     if (property != null)
                         DrawCustomPropertyField(property, element.metadata);
@@ -673,9 +736,113 @@ namespace LoogaSoft.Inspector.Editor
             {
                 SerializedProperty property = groupProperties[i];
                 layout.TryGetMetadata(property.name, out InspectorPropertyMetadata metadata);
+
+                if (TryDrawInlineRow(groupProperties, layout, ref i))
+                    continue;
+
                 DrawCustomPropertyField(property, metadata);
             }
             EditorGUI.indentLevel--;
+        }
+
+        private bool TryDrawInlineRow(List<InspectorElement> elements, List<SerializedProperty> properties, ref int index)
+        {
+            InspectorElement start = elements[index];
+            string rowId = GetInlineRowId(start.metadata);
+            if (string.IsNullOrWhiteSpace(rowId))
+                return false;
+
+            List<SerializedProperty> rowProperties = new();
+            List<GUIContent> rowLabels = new();
+            List<float> rowWeights = new();
+            int scanIndex = index;
+
+            while (scanIndex < elements.Count)
+            {
+                InspectorElement element = elements[scanIndex];
+                if (element.inStyledGroup || GetInlineRowId(element.metadata) != rowId)
+                    break;
+
+                SerializedProperty property = FindSerializedPropertyByName(properties, element.propertyName);
+                if (property != null)
+                {
+                    rowProperties.Add(property);
+                    rowLabels.Add(GetPropertyLabel(property, element.metadata));
+                    rowWeights.Add(element.metadata?.inlineRowAttribute?.Width ?? 1f);
+                }
+
+                scanIndex++;
+            }
+
+            if (!DrawInlineRow(rowProperties, rowLabels, rowWeights))
+                return false;
+
+            index = scanIndex - 1;
+            return true;
+        }
+
+        private bool TryDrawInlineRow(List<SerializedProperty> properties, InspectorLayout layout, ref int index)
+        {
+            SerializedProperty start = properties[index];
+            layout.TryGetMetadata(start.name, out InspectorPropertyMetadata startMetadata);
+            string rowId = GetInlineRowId(startMetadata);
+            if (string.IsNullOrWhiteSpace(rowId))
+                return false;
+
+            List<SerializedProperty> rowProperties = new();
+            List<GUIContent> rowLabels = new();
+            List<float> rowWeights = new();
+            int scanIndex = index;
+
+            while (scanIndex < properties.Count)
+            {
+                SerializedProperty property = properties[scanIndex];
+                layout.TryGetMetadata(property.name, out InspectorPropertyMetadata metadata);
+                if (GetInlineRowId(metadata) != rowId)
+                    break;
+
+                rowProperties.Add(property);
+                rowLabels.Add(GetPropertyLabel(property, metadata));
+                rowWeights.Add(metadata?.inlineRowAttribute?.Width ?? 1f);
+                scanIndex++;
+            }
+
+            if (!DrawInlineRow(rowProperties, rowLabels, rowWeights))
+                return false;
+
+            index = scanIndex - 1;
+            return true;
+        }
+
+        private bool DrawInlineRow(List<SerializedProperty> rowProperties, List<GUIContent> rowLabels, List<float> rowWeights)
+        {
+            if (rowProperties.Count == 0)
+                return false;
+
+            SerializedProperty onlyProperty = rowProperties.Count == 1 ? rowProperties[0] : null;
+            if (onlyProperty != null
+                && onlyProperty.propertyType == SerializedPropertyType.Generic
+                && onlyProperty.hasVisibleChildren
+                && !onlyProperty.isArray)
+            {
+                Rect rowRect = EditorGUILayout.GetControlRect(false, InlineRowEditorUtility.SingleLineHeight);
+                Rect contentRect = EditorGUI.PrefixLabel(rowRect, rowLabels[0]);
+                List<SerializedProperty> childProperties = InlineRowEditorUtility.GetVisibleChildren(onlyProperty);
+                List<GUIContent> childLabels = new(childProperties.Count);
+
+                for (int i = 0; i < childProperties.Count; i++)
+                    childLabels.Add(PropertyUtils.GetContent(childProperties[i].displayName));
+
+                InlineRowEditorUtility.DrawProperties(contentRect, childProperties, childLabels);
+                return true;
+            }
+
+            if (rowProperties.Count == 1)
+                return false;
+
+            Rect rect = EditorGUILayout.GetControlRect(false, InlineRowEditorUtility.SingleLineHeight);
+            InlineRowEditorUtility.DrawProperties(rect, rowProperties, rowLabels, rowWeights);
+            return true;
         }
 
         private void DrawNestedPropertyChildren(SerializedProperty property, string hiddenPropertyPath = null)
@@ -1079,6 +1246,37 @@ namespace LoogaSoft.Inspector.Editor
             messages = inspectedType.GetCustomAttributes<LoogaInspectorMessageAttribute>(inherit: true).ToArray();
             _messageCache[inspectedType] = messages;
             return messages;
+        }
+
+        private static StatusBoxAttribute[] GetStatusBoxes(Type inspectedType)
+        {
+            if (_statusBoxCache.TryGetValue(inspectedType, out StatusBoxAttribute[] statusBoxes))
+                return statusBoxes;
+
+            statusBoxes = inspectedType.GetCustomAttributes<StatusBoxAttribute>(inherit: true).ToArray();
+            _statusBoxCache[inspectedType] = statusBoxes;
+            return statusBoxes;
+        }
+
+        private static OpenEditorWindowAttribute[] GetOpenEditorWindowAttributes(Type inspectedType)
+        {
+            if (_openWindowCache.TryGetValue(inspectedType, out OpenEditorWindowAttribute[] openWindows))
+                return openWindows;
+
+            openWindows = inspectedType.GetCustomAttributes<OpenEditorWindowAttribute>(inherit: true).ToArray();
+            _openWindowCache[inspectedType] = openWindows;
+            return openWindows;
+        }
+
+        private static string GetInlineRowId(InspectorPropertyMetadata metadata)
+        {
+            InlineRowAttribute inlineRow = metadata?.inlineRowAttribute;
+            if (inlineRow == null)
+                return null;
+
+            return string.IsNullOrWhiteSpace(inlineRow.RowId)
+                ? metadata.propertyName
+                : inlineRow.RowId;
         }
         private bool IsButtonEnabled(InspectorButton button)
         {
