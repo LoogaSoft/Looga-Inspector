@@ -37,7 +37,10 @@ namespace LoogaSoft.Inspector.Editor
                 float width = availableWidth * (GetWeight(weights, i) / totalWeight);
                 Rect fieldRect = new(x, rect.y, width, SingleLineHeight);
                 GUIContent label = labels != null && i < labels.Count ? labels[i] : GUIContent.none;
+                float oldLabelWidth = EditorGUIUtility.labelWidth;
+                EditorGUIUtility.labelWidth = Mathf.Min(oldLabelWidth, Mathf.Max(42f, width * 0.35f));
                 EditorGUI.PropertyField(fieldRect, properties[i], label, false);
+                EditorGUIUtility.labelWidth = oldLabelWidth;
                 x += width + gap;
             }
 
