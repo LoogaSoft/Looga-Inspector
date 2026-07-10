@@ -1152,8 +1152,9 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListRowGap = 2f;
         private const float ListDragHandleWidth = 16f;
         private const float ListFooterGap = 5f;
-        private const float ListFooterHeight = 24f;
-        private const float ListButtonGap = 5f;
+        private const float ListFooterHeight = 20f;
+        private const float ListButtonGap = 2f;
+        private const float ListFooterButtonSize = 20f;
         private const float ListEmptyRowHeight = 22f;
 
         private void DrawLoogaList(SerializedProperty property)
@@ -1219,8 +1220,9 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            Rect bodyLayoutRect = EditorGUILayout.GetControlRect(false, GetListBodyHeight(property));
-            Rect bodyRect = new(headerRect.x - 3f, bodyLayoutRect.y, headerRect.width + 6f, bodyLayoutRect.height);
+            float expandedBodyHeight = GetListBodyHeight(property);
+            GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(expandedBodyHeight), GUILayout.ExpandWidth(true));
+            Rect bodyRect = new(headerRect.x - 3f, boxRect.yMax, headerRect.width + 6f, expandedBodyHeight);
             DrawListBody(property, key, bodyRect);
         }
 
@@ -1335,11 +1337,19 @@ namespace LoogaSoft.Inspector.Editor
 
         private void DrawListFooter(SerializedProperty property, string key, Rect footerRect)
         {
-            float buttonWidth = (footerRect.width - ListButtonGap) * 0.5f;
-            Rect addRect = new(footerRect.x, footerRect.y, buttonWidth, footerRect.height);
-            Rect removeRect = new(addRect.xMax + ListButtonGap, footerRect.y, buttonWidth, footerRect.height);
+            float buttonSize = Mathf.Min(ListFooterButtonSize, footerRect.height);
+            Rect removeRect = new(
+                footerRect.xMax - buttonSize,
+                CenterVertically(footerRect, buttonSize).y,
+                buttonSize,
+                buttonSize);
+            Rect addRect = new(
+                removeRect.x - ListButtonGap - buttonSize,
+                removeRect.y,
+                buttonSize,
+                buttonSize);
 
-            if (GUI.Button(addRect, "Add Item", EditorStyles.miniButton))
+            if (GUI.Button(addRect, new GUIContent("+", "Add item"), EditorStyles.miniButtonLeft))
             {
                 property.arraySize++;
                 _listSelectedIndices[key] = property.arraySize - 1;
@@ -1348,7 +1358,7 @@ namespace LoogaSoft.Inspector.Editor
 
             using (new EditorGUI.DisabledScope(property.arraySize == 0))
             {
-                if (GUI.Button(removeRect, "Remove Selected", EditorStyles.miniButton))
+                if (GUI.Button(removeRect, new GUIContent("-", "Remove selected item"), EditorStyles.miniButtonRight))
                 {
                     int index = GetSelectedListIndex(key, property.arraySize);
                     DeleteListElement(property, index);
