@@ -1229,21 +1229,19 @@ namespace LoogaSoft.Inspector.Editor
                 e.Use();
             }
 
-            GUIContent labelContent = PropertyUtils.GetLabel(property);
-            Vector2 labelSize = EditorStyles.label.CalcSize(labelContent);
-            Rect labelRect = new(
-                boxRect.x + ListHeaderLeftInset + ListHeaderAccentWidth,
-                boxRect.y + 1f,
-                Mathf.Max(0f, toggleRect.width - ListHeaderLeftInset * 2f - ListHeaderAccentWidth - ListHeaderArrowSize - ListHeaderTextArrowGap),
-                boxRect.height);
             Rect arrowRect = new(
-                Mathf.Min(labelRect.x + labelSize.x + ListHeaderTextArrowGap, toggleRect.xMax - ListHeaderArrowSize - ListHeaderTextArrowGap),
+                boxRect.x + ListHeaderLeftInset + ListHeaderAccentWidth,
                 CenterVertically(boxRect, ListHeaderArrowSize).y,
                 ListHeaderArrowSize,
                 ListHeaderArrowSize);
+            Rect labelRect = new(
+                arrowRect.xMax + ListHeaderTextArrowGap,
+                boxRect.y + 1f,
+                Mathf.Max(0f, toggleRect.xMax - arrowRect.xMax - ListHeaderTextArrowGap - ListHeaderLeftInset),
+                boxRect.height);
 
-            EditorGUI.LabelField(labelRect, labelContent, EditorStyles.label);
             DrawListFoldoutArrow(arrowRect, isExpanded);
+            EditorGUI.LabelField(labelRect, PropertyUtils.GetLabel(property), EditorStyles.label);
             
             int newSize = EditorGUI.DelayedIntField(sizeRect, property.arraySize);
 
@@ -1266,34 +1264,35 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DrawListFoldoutArrow(Rect rect, bool expanded)
         {
-            Color color = EditorStyles.label.normal.textColor;
-            Vector3[] points;
+            if (Event.current.type != EventType.Repaint)
+                return;
 
-            if (expanded)
-            {
-                points = new[]
+            Color previousColor = Handles.color;
+            Handles.color = EditorGUIUtility.isProSkin
+                ? new Color(0.68f, 0.68f, 0.68f, 1f)
+                : new Color(0.28f, 0.28f, 0.28f, 1f);
+
+            Vector2 center = rect.center;
+            float radius = ListHeaderArrowSize * 0.5f;
+            float verticalRadius = radius * Mathf.Sqrt(3f) * 0.5f;
+            Vector3[] points = expanded
+                ? new[]
                 {
-                    new Vector3(rect.xMin, rect.yMin + rect.height * 0.3f),
-                    new Vector3(rect.xMax, rect.yMin + rect.height * 0.3f),
-                    new Vector3(rect.center.x, rect.yMax - rect.height * 0.3f)
-                };
-            }
-            else
-            {
-                points = new[]
+                    new Vector3(center.x - radius, center.y - verticalRadius * 0.75f, 0f),
+                    new Vector3(center.x + radius, center.y - verticalRadius * 0.75f, 0f),
+                    new Vector3(center.x, center.y + verticalRadius * 0.75f, 0f)
+                }
+                : new[]
                 {
-                    new Vector3(rect.xMin + rect.width * 0.34f, rect.yMin),
-                    new Vector3(rect.xMin + rect.width * 0.34f, rect.yMax),
-                    new Vector3(rect.xMax - rect.width * 0.2f, rect.center.y)
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y - radius, 0f),
+                    new Vector3(center.x - verticalRadius * 0.5f, center.y + radius, 0f),
+                    new Vector3(center.x + verticalRadius, center.y, 0f)
                 };
-            }
 
             Handles.BeginGUI();
-            Color previousColor = Handles.color;
-            Handles.color = color;
             Handles.DrawAAConvexPolygon(points);
-            Handles.color = previousColor;
             Handles.EndGUI();
+            Handles.color = previousColor;
         }
 
         private static Rect CenterVertically(Rect rect, float height)
