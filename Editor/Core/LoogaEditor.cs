@@ -43,9 +43,7 @@ namespace LoogaSoft.Inspector.Editor
             
             EditorGUILayout.Space(1f);
 
-            DrawInspectorMessages(target.GetType());
-            DrawStatusBoxes(target.GetType());
-            DrawOpenEditorWindowButtons(target.GetType());
+            DrawHeaderAttributes(target.GetType());
             
             DrawButtons(layout, true);
 
@@ -59,6 +57,13 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
         
         #region Drawers
+        protected void DrawHeaderAttributes(Type inspectedType)
+        {
+            DrawInspectorMessages(inspectedType);
+            DrawStatusBoxes(inspectedType);
+            DrawOpenEditorWindowButtons(inspectedType);
+        }
+
         private void DrawInspectorMessages(Type inspectedType)
         {
             LoogaInspectorMessageAttribute[] messages = GetInspectorMessages(inspectedType);
