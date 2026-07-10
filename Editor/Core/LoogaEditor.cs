@@ -1575,9 +1575,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             HashSet<int> selection = GetListSelection(key);
             bool additive = EditorGUI.actionKey;
-            bool range = e.shift && _listSelectionAnchors.TryGetValue(key, out int anchor);
-
-            if (range)
+            if (e.shift && _listSelectionAnchors.TryGetValue(key, out int anchor))
             {
                 selection.Clear();
                 int start = Mathf.Min(anchor, index);
