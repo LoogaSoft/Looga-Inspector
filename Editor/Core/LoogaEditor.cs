@@ -1147,11 +1147,11 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListSizeFieldRightPadding = 8f;
         private const float ListBodyPaddingX = 7f;
         private const float ListBodyPaddingY = 5f;
+        private const float ListFooterTopGap = 4f;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
         private const float ListRowGap = 2f;
         private const float ListDragHandleWidth = 16f;
-        private const float ListFooterGap = 5f;
         private const float ListFooterHeight = 20f;
         private const float ListButtonGap = 2f;
         private const float ListFooterButtonSize = 20f;
@@ -1245,14 +1245,17 @@ namespace LoogaSoft.Inspector.Editor
         private void DrawListBody(SerializedProperty property, string key, Rect bodyRect)
         {
             Event e = Event.current;
-            GUI.Box(bodyRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
             ClearListDragOnMouseUp(key);
 
+            float listBoxHeight = GetListRowsHeight(property) + ListBodyPaddingY * 2f;
+            Rect listBoxRect = new(bodyRect.x, bodyRect.y, bodyRect.width, listBoxHeight);
+            GUI.Box(listBoxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
+
             Rect contentRect = new(
-                bodyRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
-                bodyRect.y + ListBodyPaddingY,
-                Mathf.Max(0f, bodyRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
-                Mathf.Max(0f, bodyRect.height - ListBodyPaddingY * 2f));
+                listBoxRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
+                listBoxRect.y + ListBodyPaddingY,
+                Mathf.Max(0f, listBoxRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
+                Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f));
             float y = contentRect.y;
 
             if (property.arraySize == 0)
@@ -1260,7 +1263,6 @@ namespace LoogaSoft.Inspector.Editor
                 Rect emptyRect = new(contentRect.x, y, contentRect.width, ListEmptyRowHeight);
                 DrawListRowBackground(emptyRect, false, emptyRect.Contains(e.mousePosition), false, false);
                 EditorGUI.LabelField(emptyRect, "Empty", EditorStyles.centeredGreyMiniLabel);
-                y = emptyRect.yMax + ListFooterGap;
             }
             else
             {
@@ -1289,11 +1291,13 @@ namespace LoogaSoft.Inspector.Editor
                     DrawListElement(elementRect, element);
                     y = rowRect.yMax + ListRowGap;
                 }
-
-                y += ListFooterGap - ListRowGap;
             }
 
-            Rect footerRect = new(contentRect.x, y, contentRect.width, ListFooterHeight);
+            Rect footerRect = new(
+                bodyRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
+                listBoxRect.yMax + ListFooterTopGap,
+                Mathf.Max(0f, bodyRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
+                ListFooterHeight);
             DrawListFooter(property, key, footerRect);
         }
 
@@ -1349,23 +1353,48 @@ namespace LoogaSoft.Inspector.Editor
                 buttonSize,
                 buttonSize);
 
-            if (GUI.Button(addRect, new GUIContent("+", "Add item"), EditorStyles.miniButtonLeft))
+            if (DrawListFooterButton(addRect, "+", "Add item", false))
             {
                 property.arraySize++;
                 _listSelectedIndices[key] = property.arraySize - 1;
                 GUI.changed = true;
             }
 
-            using (new EditorGUI.DisabledScope(property.arraySize == 0))
+            if (DrawListFooterButton(removeRect, "-", "Remove selected item", property.arraySize == 0))
             {
-                if (GUI.Button(removeRect, new GUIContent("-", "Remove selected item"), EditorStyles.miniButtonRight))
-                {
-                    int index = GetSelectedListIndex(key, property.arraySize);
-                    DeleteListElement(property, index);
-                    ClampListSelection(key, property.arraySize);
-                    GUI.changed = true;
-                }
+                int index = GetSelectedListIndex(key, property.arraySize);
+                DeleteListElement(property, index);
+                ClampListSelection(key, property.arraySize);
+                GUI.changed = true;
             }
+        }
+
+        private static bool DrawListFooterButton(Rect rect, string label, string tooltip, bool disabled)
+        {
+            Event e = Event.current;
+            bool hovered = !disabled && rect.Contains(e.mousePosition);
+
+            if (e.type == EventType.Repaint)
+            {
+                Color color = disabled ? GetListFooterButtonDisabledColor() : GetListFooterButtonColor();
+                if (hovered)
+                    color = Color.Lerp(color, GetListHoverColor(), 0.55f);
+
+                EditorGUI.DrawRect(rect, color);
+            }
+
+            GUIContent content = new(label, tooltip);
+            GUIStyle style = EditorStyles.centeredGreyMiniLabel;
+            Color previousColor = GUI.color;
+            GUI.color = disabled ? new Color(1f, 1f, 1f, 0.35f) : Color.white;
+            GUI.Label(rect, content, style);
+            GUI.color = previousColor;
+
+            if (disabled || e.type != EventType.MouseDown || e.button != 0 || !rect.Contains(e.mousePosition))
+                return false;
+
+            e.Use();
+            return true;
         }
 
         private static void DrawListHeaderBackground(Rect boxRect, Rect toggleRect)
@@ -1398,8 +1427,8 @@ namespace LoogaSoft.Inspector.Editor
             Color lineColor = EditorGUIUtility.isProSkin
                 ? new Color(0.48f, 0.48f, 0.48f, 1f)
                 : new Color(0.36f, 0.36f, 0.36f, 1f);
-            float centerX = Mathf.Round(rect.center.x);
-            float centerY = Mathf.Round(rect.center.y);
+            float centerX = Mathf.Round(rect.x + 5f);
+            float centerY = Mathf.Round(rect.center.y - 1f);
 
             for (int i = -1; i <= 1; i++)
             {
@@ -1443,11 +1472,15 @@ namespace LoogaSoft.Inspector.Editor
 
         private static float GetListBodyHeight(SerializedProperty property)
         {
-            float height = ListBodyPaddingY * 2f + ListFooterHeight;
+            return ListBodyPaddingY * 2f + GetListRowsHeight(property) + ListFooterTopGap + ListFooterHeight;
+        }
 
+        private static float GetListRowsHeight(SerializedProperty property)
+        {
             if (property.arraySize == 0)
-                return height + ListEmptyRowHeight + ListFooterGap;
+                return ListEmptyRowHeight;
 
+            float height = 0f;
             for (int i = 0; i < property.arraySize; i++)
             {
                 SerializedProperty element = property.GetArrayElementAtIndex(i);
@@ -1457,7 +1490,7 @@ namespace LoogaSoft.Inspector.Editor
                     height += ListRowGap;
             }
 
-            return height + ListFooterGap;
+            return height;
         }
 
         private int GetSelectedListIndex(string key, int arraySize)
@@ -1514,15 +1547,15 @@ namespace LoogaSoft.Inspector.Editor
         private static Color GetListRowColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.205f, 0.205f, 0.205f, 1f)
-                : new Color(0.72f, 0.72f, 0.72f, 1f);
+                ? new Color(0.16f, 0.16f, 0.16f, 1f)
+                : new Color(0.68f, 0.68f, 0.68f, 1f);
         }
 
         private static Color GetListAlternateRowColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.22f, 0.22f, 0.22f, 1f)
-                : new Color(0.76f, 0.76f, 0.76f, 1f);
+                ? new Color(0.185f, 0.185f, 0.185f, 1f)
+                : new Color(0.72f, 0.72f, 0.72f, 1f);
         }
 
         private static Color GetListHoverColor()
@@ -1537,6 +1570,20 @@ namespace LoogaSoft.Inspector.Editor
             return EditorGUIUtility.isProSkin
                 ? new Color(0.18f, 0.42f, 0.72f, 1f)
                 : new Color(0.28f, 0.55f, 0.90f, 1f);
+        }
+
+        private static Color GetListFooterButtonColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.26f, 0.26f, 0.26f, 1f)
+                : new Color(0.62f, 0.62f, 0.62f, 1f);
+        }
+
+        private static Color GetListFooterButtonDisabledColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.19f, 0.19f, 0.19f, 1f)
+                : new Color(0.70f, 0.70f, 0.70f, 1f);
         }
 
         private static Rect CenterVertically(Rect rect, float height)
