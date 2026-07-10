@@ -111,8 +111,47 @@ namespace LoogaSoft.Inspector.Editor
                     continue;
 
                 EditorGUILayout.HelpBox(message, StatusBoxDrawer.ToMessageType(statusBox.Type));
+                DrawStatusBoxAction(statusBox);
                 EditorGUILayout.Space(1f);
             }
+        }
+
+        private static void DrawStatusBoxAction(StatusBoxAttribute statusBox)
+        {
+            if (statusBox == null || string.IsNullOrWhiteSpace(statusBox.ButtonLabel))
+                return;
+
+            bool hasAssetPath = !string.IsNullOrWhiteSpace(statusBox.AssetPath);
+            bool hasMenuPath = !string.IsNullOrWhiteSpace(statusBox.MenuPath);
+            if (!hasAssetPath && !hasMenuPath)
+                return;
+
+            if (!GUILayout.Button(statusBox.ButtonLabel))
+                return;
+
+            if (hasAssetPath)
+            {
+                SelectAssetAtPath(statusBox.AssetPath);
+                return;
+            }
+
+            EditorApplication.ExecuteMenuItem(statusBox.MenuPath);
+        }
+
+        private static void SelectAssetAtPath(string assetPath)
+        {
+            Object asset = AssetDatabase.LoadAssetAtPath<Object>(assetPath);
+            if (asset == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "Asset Not Found",
+                    $"No asset was found at:\n{assetPath}",
+                    "OK");
+                return;
+            }
+
+            Selection.activeObject = asset;
+            EditorGUIUtility.PingObject(asset);
         }
 
         private bool ShouldDrawStatusBox(StatusBoxAttribute statusBox, out string message)

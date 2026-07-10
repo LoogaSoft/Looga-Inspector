@@ -242,6 +242,15 @@ public sealed class ExampleComponent : MonoBehaviour
 }
 ```
 
+A class-level status box can also draw one action button. Use `AssetPath` to select and ping an asset, or `MenuPath` to execute an editor menu item.
+
+```csharp
+[StatusBox("Managed by a shared configuration asset.", AssetPath = "Assets/Config/Game Settings.asset", ButtonLabel = "Open Settings")]
+public sealed class ConfiguredComponent : MonoBehaviour
+{
+}
+```
+
 `LoogaInspectorMessageAttribute` is a class-level setup warning driven by a bool field, property, or method.
 
 ```csharp
@@ -665,12 +674,12 @@ private void TogglePreview() { }
 `OpenEditorWindowAttribute` adds a button that executes a Unity menu item. It can be used on a field or at class level.
 
 ```csharp
-[OpenEditorWindow("Open Item Database", "Kubera/Databases/Item Database")]
+[OpenEditorWindow("Open Item Database", "Tools/Example/Open Item Database")]
 [SerializeField] private bool _openItemDatabase;
 ```
 
 ```csharp
-[OpenEditorWindow("Open Project Hub", "Kubera/Hub")]
+[OpenEditorWindow("Open Project Settings", "Tools/Example/Open Project Settings")]
 public sealed class ProjectSettingsComponent : MonoBehaviour
 {
 }
