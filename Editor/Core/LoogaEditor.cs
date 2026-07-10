@@ -13,9 +13,11 @@ namespace LoogaSoft.Inspector.Editor
     [CanEditMultipleObjects]
     public class LoogaEditor : UnityEditor.Editor
     {
-        private readonly Dictionary<string, int> _listSelectedIndices = new();
+        private readonly Dictionary<string, HashSet<int>> _listSelectedIndices = new();
+        private readonly Dictionary<string, int> _listSelectionAnchors = new();
         private string _draggingListKey = string.Empty;
         private int _draggingListIndex = -1;
+        private int _draggingListDropIndex = -1;
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
         private static readonly Dictionary<Type, StatusBoxAttribute[]> _statusBoxCache = new();
@@ -25,8 +27,10 @@ namespace LoogaSoft.Inspector.Editor
         private void OnDisable()
         {
             _listSelectedIndices.Clear();
+            _listSelectionAnchors.Clear();
             _draggingListKey = string.Empty;
             _draggingListIndex = -1;
+            _draggingListDropIndex = -1;
         }
 
         public override void OnInspectorGUI()
@@ -1143,19 +1147,19 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListHeaderAccentWidth = 4f;
         private const float ListHeaderLeftInset = 6f;
         private const float ListHeaderTextArrowGap = 6f;
+        private const float ListHeaderButtonSize = 19f;
+        private const float ListHeaderButtonGap = 2f;
         private const float ListSizeFieldWidth = 48f;
         private const float ListSizeFieldRightPadding = 8f;
         private const float ListBodyPaddingX = 7f;
         private const float ListBodyPaddingY = 5f;
-        private const float ListFooterTopGap = 4f;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
         private const float ListRowGap = 2f;
         private const float ListDragHandleWidth = 16f;
-        private const float ListFooterHeight = 20f;
-        private const float ListButtonGap = 2f;
-        private const float ListFooterButtonSize = 20f;
+        private const float ListRowDeleteWidth = 20f;
         private const float ListEmptyRowHeight = 22f;
+        private const float ListDropLineHeight = 2f;
 
         private void DrawLoogaList(SerializedProperty property)
         {
@@ -1166,8 +1170,18 @@ namespace LoogaSoft.Inspector.Editor
             string key = property.propertyPath;
             Rect headerRect = EditorGUILayout.GetControlRect(false, ListHeaderHeight);
             Rect boxRect = new(headerRect.x - 3f, headerRect.y, headerRect.width + 6f, headerRect.height);
+            Rect removeRect = new(
+                boxRect.xMax - ListHeaderButtonSize - ListSizeFieldRightPadding,
+                CenterVertically(headerRect, ListHeaderButtonSize).y,
+                ListHeaderButtonSize,
+                ListHeaderButtonSize);
+            Rect addRect = new(
+                removeRect.x - ListHeaderButtonGap - ListHeaderButtonSize,
+                removeRect.y,
+                ListHeaderButtonSize,
+                ListHeaderButtonSize);
             Rect sizeRect = new(
-                boxRect.xMax - ListSizeFieldWidth - ListSizeFieldRightPadding,
+                addRect.x - ListHeaderButtonGap - ListSizeFieldWidth,
                 CenterVertically(headerRect, EditorGUIUtility.singleLineHeight).y,
                 ListSizeFieldWidth,
                 EditorGUIUtility.singleLineHeight);
@@ -1214,9 +1228,11 @@ namespace LoogaSoft.Inspector.Editor
                 ClampListSelection(key, property.arraySize);
             }
 
+            DrawListHeaderButtons(property, key, addRect, removeRect);
+
             if (!property.isExpanded)
             {
-                ClearListDragOnMouseUp(key);
+                CancelListDrag(key);
                 return;
             }
 
@@ -1242,11 +1258,21 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUILayout.HelpBox(valInputAttr.message, msgType);
         }
 
+        private void DrawListHeaderButtons(SerializedProperty property, string key, Rect addRect, Rect removeRect)
+        {
+            if (GUI.Button(addRect, new GUIContent("+", "Add item"), EditorStyles.miniButtonLeft))
+                AddListElement(property, key);
+
+            using (new EditorGUI.DisabledScope(!HasListSelection(key)))
+            {
+                if (GUI.Button(removeRect, new GUIContent("-", "Remove selected items"), EditorStyles.miniButtonRight))
+                    DeleteSelectedListElements(property, key);
+            }
+        }
+
         private void DrawListBody(SerializedProperty property, string key, Rect bodyRect)
         {
             Event e = Event.current;
-            ClearListDragOnMouseUp(key);
-
             float listBoxHeight = GetListRowsHeight(property) + ListBodyPaddingY * 2f;
             Rect listBoxRect = new(bodyRect.x, bodyRect.y, bodyRect.width, listBoxHeight);
             GUI.Box(listBoxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
@@ -1256,12 +1282,14 @@ namespace LoogaSoft.Inspector.Editor
                 listBoxRect.y + ListBodyPaddingY,
                 Mathf.Max(0f, listBoxRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
                 Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f));
+
+            HandleListDragOver(property, key, contentRect);
             float y = contentRect.y;
 
             if (property.arraySize == 0)
             {
                 Rect emptyRect = new(contentRect.x, y, contentRect.width, ListEmptyRowHeight);
-                DrawListRowBackground(emptyRect, false, emptyRect.Contains(e.mousePosition), false, false);
+                DrawListRowBackground(emptyRect, false, emptyRect.Contains(e.mousePosition), false);
                 EditorGUI.LabelField(emptyRect, "Empty", EditorStyles.centeredGreyMiniLabel);
             }
             else
@@ -1272,63 +1300,102 @@ namespace LoogaSoft.Inspector.Editor
                     float elementHeight = GetStructuredPropertyHeight(element);
                     Rect rowRect = new(contentRect.x, y, contentRect.width, elementHeight + ListRowPaddingY * 2f);
 
-                    if (HandleListRowInput(property, key, rowRect, i))
+                    if (HandleListRowInput(key, rowRect, i))
                         return;
 
                     bool selected = IsListRowSelected(key, i);
                     bool dragging = _draggingListKey == key && _draggingListIndex == i;
                     bool hovered = rowRect.Contains(e.mousePosition);
-                    DrawListRowBackground(rowRect, selected, hovered, dragging, (i & 1) == 1);
+                    DrawListRowBackground(rowRect, selected, hovered, dragging);
 
+                    Rect deleteRect = new(
+                        rowRect.xMax - ListRowPaddingX - ListRowDeleteWidth,
+                        CenterVertically(rowRect, EditorGUIUtility.singleLineHeight).y,
+                        ListRowDeleteWidth,
+                        EditorGUIUtility.singleLineHeight);
                     Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
                     Rect elementRect = new(
                         dragRect.xMax + ListRowPaddingX,
                         rowRect.y + ListRowPaddingY,
-                        Mathf.Max(0f, rowRect.width - ListDragHandleWidth - ListRowPaddingX * 3f),
+                        Mathf.Max(0f, deleteRect.x - dragRect.xMax - ListRowPaddingX * 2f),
                         elementHeight);
 
                     DrawListDragHandle(dragRect);
                     DrawListElement(elementRect, element);
+
+                    if (GUI.Button(deleteRect, new GUIContent("-", "Remove item"), EditorStyles.miniButton))
+                    {
+                        DeleteListElement(property, i);
+                        ShiftListSelectionAfterDelete(key, i, property.arraySize);
+                        GUI.changed = true;
+                        return;
+                    }
+
                     y = rowRect.yMax + ListRowGap;
                 }
             }
 
-            Rect footerRect = new(
-                bodyRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
-                listBoxRect.yMax + ListFooterTopGap,
-                Mathf.Max(0f, bodyRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
-                ListFooterHeight);
-            DrawListFooter(property, key, footerRect);
+            DrawListDropLine(property, key, contentRect);
         }
 
-        private bool HandleListRowInput(SerializedProperty property, string key, Rect rowRect, int index)
+        private bool HandleListRowInput(string key, Rect rowRect, int index)
         {
             Event e = Event.current;
             Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
 
             if (e.type == EventType.MouseDown && e.button == 0 && rowRect.Contains(e.mousePosition))
-                _listSelectedIndices[key] = index;
-
-            if (e.type == EventType.MouseDown && e.button == 0 && dragRect.Contains(e.mousePosition))
             {
-                _draggingListKey = key;
-                _draggingListIndex = index;
-                e.Use();
-                return false;
+                SelectListRow(key, index, e);
+
+                if (dragRect.Contains(e.mousePosition))
+                {
+                    _draggingListKey = key;
+                    _draggingListIndex = index;
+                    _draggingListDropIndex = index;
+                    e.Use();
+                }
             }
 
-            if (e.type != EventType.MouseDrag || _draggingListKey != key || _draggingListIndex < 0)
-                return false;
+            return false;
+        }
 
-            if (!rowRect.Contains(e.mousePosition) || _draggingListIndex == index)
-                return false;
+        private void HandleListDragOver(SerializedProperty property, string key, Rect contentRect)
+        {
+            Event e = Event.current;
+            if (_draggingListKey != key || _draggingListIndex < 0)
+                return;
 
-            property.MoveArrayElement(_draggingListIndex, index);
-            _listSelectedIndices[key] = index;
-            _draggingListIndex = index;
-            GUI.changed = true;
+            if (e.type == EventType.MouseDrag)
+            {
+                _draggingListDropIndex = GetListDropIndex(property, contentRect, e.mousePosition.y);
+                GUI.changed = true;
+                e.Use();
+                return;
+            }
+
+            if (e.type != EventType.MouseUp)
+                return;
+
+            CommitListDrag(property, key);
             e.Use();
-            return true;
+        }
+
+        private void CommitListDrag(SerializedProperty property, string key)
+        {
+            int sourceIndex = _draggingListIndex;
+            int dropIndex = Mathf.Clamp(_draggingListDropIndex, 0, property.arraySize);
+            CancelListDrag(key);
+
+            if (sourceIndex < 0 || sourceIndex >= property.arraySize)
+                return;
+
+            if (dropIndex == sourceIndex || dropIndex == sourceIndex + 1)
+                return;
+
+            int targetIndex = dropIndex > sourceIndex ? dropIndex - 1 : dropIndex;
+            property.MoveArrayElement(sourceIndex, targetIndex);
+            SelectOnlyListRow(key, targetIndex);
+            GUI.changed = true;
         }
 
         private void DrawListElement(Rect rect, SerializedProperty element)
@@ -1339,64 +1406,6 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.indentLevel = cachedIndent;
         }
 
-        private void DrawListFooter(SerializedProperty property, string key, Rect footerRect)
-        {
-            float buttonSize = Mathf.Min(ListFooterButtonSize, footerRect.height);
-            Rect removeRect = new(
-                footerRect.xMax - buttonSize,
-                CenterVertically(footerRect, buttonSize).y,
-                buttonSize,
-                buttonSize);
-            Rect addRect = new(
-                removeRect.x - ListButtonGap - buttonSize,
-                removeRect.y,
-                buttonSize,
-                buttonSize);
-
-            if (DrawListFooterButton(addRect, "+", "Add item", false))
-            {
-                property.arraySize++;
-                _listSelectedIndices[key] = property.arraySize - 1;
-                GUI.changed = true;
-            }
-
-            if (DrawListFooterButton(removeRect, "-", "Remove selected item", property.arraySize == 0))
-            {
-                int index = GetSelectedListIndex(key, property.arraySize);
-                DeleteListElement(property, index);
-                ClampListSelection(key, property.arraySize);
-                GUI.changed = true;
-            }
-        }
-
-        private static bool DrawListFooterButton(Rect rect, string label, string tooltip, bool disabled)
-        {
-            Event e = Event.current;
-            bool hovered = !disabled && rect.Contains(e.mousePosition);
-
-            if (e.type == EventType.Repaint)
-            {
-                Color color = disabled ? GetListFooterButtonDisabledColor() : GetListFooterButtonColor();
-                if (hovered)
-                    color = Color.Lerp(color, GetListHoverColor(), 0.55f);
-
-                EditorGUI.DrawRect(rect, color);
-            }
-
-            GUIContent content = new(label, tooltip);
-            GUIStyle style = EditorStyles.centeredGreyMiniLabel;
-            Color previousColor = GUI.color;
-            GUI.color = disabled ? new Color(1f, 1f, 1f, 0.35f) : Color.white;
-            GUI.Label(rect, content, style);
-            GUI.color = previousColor;
-
-            if (disabled || e.type != EventType.MouseDown || e.button != 0 || !rect.Contains(e.mousePosition))
-                return false;
-
-            e.Use();
-            return true;
-        }
-
         private static void DrawListHeaderBackground(Rect boxRect, Rect toggleRect)
         {
             GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallFoldoutBoxStyle);
@@ -1405,16 +1414,18 @@ namespace LoogaSoft.Inspector.Editor
                 LoogaEditorFoldouts.DrawHoverRect(boxRect);
         }
 
-        private static void DrawListRowBackground(Rect rect, bool selected, bool hovered, bool dragging, bool alternate)
+        private static void DrawListRowBackground(Rect rect, bool selected, bool hovered, bool dragging)
         {
             if (Event.current.type != EventType.Repaint)
                 return;
 
-            Color color = alternate ? GetListAlternateRowColor() : GetListRowColor();
+            Color color = GetListRowColor();
             if (hovered)
                 color = Color.Lerp(color, GetListHoverColor(), 0.65f);
-            if (selected || dragging)
-                color = Color.Lerp(color, GetListSelectionColor(), dragging ? 0.45f : 0.32f);
+            if (selected)
+                color = Color.Lerp(color, GetListSelectionColor(), 0.32f);
+            if (dragging)
+                color = Color.Lerp(color, GetListSelectionColor(), 0.55f);
 
             EditorGUI.DrawRect(rect, color);
         }
@@ -1435,6 +1446,17 @@ namespace LoogaSoft.Inspector.Editor
                 Rect lineRect = new(centerX - 4f, centerY + i * 4f, 8f, 1f);
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
+        }
+
+        private void DrawListDropLine(SerializedProperty property, string key, Rect contentRect)
+        {
+            if (Event.current.type != EventType.Repaint || _draggingListKey != key || _draggingListIndex < 0)
+                return;
+
+            int dropIndex = Mathf.Clamp(_draggingListDropIndex, 0, property.arraySize);
+            float y = GetListDropLineY(property, contentRect, dropIndex);
+            Rect lineRect = new(contentRect.x, y - ListDropLineHeight * 0.5f, contentRect.width, ListDropLineHeight);
+            EditorGUI.DrawRect(lineRect, GetListDropLineColor());
         }
 
         private static void DrawListFoldoutArrow(Rect rect, bool expanded)
@@ -1472,7 +1494,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static float GetListBodyHeight(SerializedProperty property)
         {
-            return ListBodyPaddingY * 2f + GetListRowsHeight(property) + ListFooterTopGap + ListFooterHeight;
+            return ListBodyPaddingY * 2f + GetListRowsHeight(property);
         }
 
         private static float GetListRowsHeight(SerializedProperty property)
@@ -1493,32 +1515,158 @@ namespace LoogaSoft.Inspector.Editor
             return height;
         }
 
-        private int GetSelectedListIndex(string key, int arraySize)
+        private static int GetListDropIndex(SerializedProperty property, Rect contentRect, float mouseY)
         {
-            if (arraySize <= 0)
-                return -1;
+            if (property.arraySize == 0)
+                return 0;
 
-            if (_listSelectedIndices.TryGetValue(key, out int selectedIndex))
-                return Mathf.Clamp(selectedIndex, 0, arraySize - 1);
+            float y = contentRect.y;
+            for (int i = 0; i < property.arraySize; i++)
+            {
+                float rowHeight = GetStructuredPropertyHeight(property.GetArrayElementAtIndex(i)) + ListRowPaddingY * 2f;
+                if (mouseY < y + rowHeight * 0.5f)
+                    return i;
 
-            return arraySize - 1;
+                y += rowHeight + ListRowGap;
+            }
+
+            return property.arraySize;
+        }
+
+        private static float GetListDropLineY(SerializedProperty property, Rect contentRect, int dropIndex)
+        {
+            if (dropIndex <= 0 || property.arraySize == 0)
+                return contentRect.y;
+
+            float y = contentRect.y;
+            for (int i = 0; i < Mathf.Min(dropIndex, property.arraySize); i++)
+            {
+                float rowHeight = GetStructuredPropertyHeight(property.GetArrayElementAtIndex(i)) + ListRowPaddingY * 2f;
+                y += rowHeight;
+
+                if (i < dropIndex - 1)
+                    y += ListRowGap;
+            }
+
+            return y;
+        }
+
+        private HashSet<int> GetListSelection(string key)
+        {
+            if (_listSelectedIndices.TryGetValue(key, out HashSet<int> selection))
+                return selection;
+
+            selection = new HashSet<int>();
+            _listSelectedIndices[key] = selection;
+            return selection;
+        }
+
+        private bool HasListSelection(string key)
+        {
+            return _listSelectedIndices.TryGetValue(key, out HashSet<int> selection) && selection.Count > 0;
         }
 
         private bool IsListRowSelected(string key, int index)
         {
-            return _listSelectedIndices.TryGetValue(key, out int selectedIndex) && selectedIndex == index;
+            return _listSelectedIndices.TryGetValue(key, out HashSet<int> selection) && selection.Contains(index);
+        }
+
+        private void SelectListRow(string key, int index, Event e)
+        {
+            HashSet<int> selection = GetListSelection(key);
+            bool additive = EditorGUI.actionKey;
+            bool range = e.shift && _listSelectionAnchors.TryGetValue(key, out int anchor);
+
+            if (range)
+            {
+                selection.Clear();
+                int start = Mathf.Min(anchor, index);
+                int end = Mathf.Max(anchor, index);
+                for (int i = start; i <= end; i++)
+                    selection.Add(i);
+                return;
+            }
+
+            if (additive)
+            {
+                if (!selection.Add(index))
+                    selection.Remove(index);
+                _listSelectionAnchors[key] = index;
+                return;
+            }
+
+            SelectOnlyListRow(key, index);
+        }
+
+        private void SelectOnlyListRow(string key, int index)
+        {
+            HashSet<int> selection = GetListSelection(key);
+            selection.Clear();
+            selection.Add(index);
+            _listSelectionAnchors[key] = index;
         }
 
         private void ClampListSelection(string key, int arraySize)
         {
+            if (!_listSelectedIndices.TryGetValue(key, out HashSet<int> selection))
+                return;
+
             if (arraySize <= 0)
             {
-                _listSelectedIndices.Remove(key);
+                selection.Clear();
+                _listSelectionAnchors.Remove(key);
                 return;
             }
 
-            if (_listSelectedIndices.TryGetValue(key, out int selectedIndex))
-                _listSelectedIndices[key] = Mathf.Clamp(selectedIndex, 0, arraySize - 1);
+            selection.RemoveWhere(index => index < 0 || index >= arraySize);
+            if (_listSelectionAnchors.TryGetValue(key, out int anchor))
+                _listSelectionAnchors[key] = Mathf.Clamp(anchor, 0, arraySize - 1);
+        }
+
+        private void AddListElement(SerializedProperty property, string key)
+        {
+            property.arraySize++;
+            SelectOnlyListRow(key, property.arraySize - 1);
+            GUI.changed = true;
+        }
+
+        private void DeleteSelectedListElements(SerializedProperty property, string key)
+        {
+            if (!_listSelectedIndices.TryGetValue(key, out HashSet<int> selection) || selection.Count == 0)
+                return;
+
+            int[] indices = selection.Where(index => index >= 0 && index < property.arraySize).OrderByDescending(index => index).ToArray();
+            for (int i = 0; i < indices.Length; i++)
+                DeleteListElement(property, indices[i]);
+
+            selection.Clear();
+            _listSelectionAnchors.Remove(key);
+            ClampListSelection(key, property.arraySize);
+            GUI.changed = true;
+        }
+
+        private void ShiftListSelectionAfterDelete(string key, int deletedIndex, int arraySize)
+        {
+            if (!_listSelectedIndices.TryGetValue(key, out HashSet<int> selection))
+                return;
+
+            int[] shifted = selection
+                .Where(index => index != deletedIndex)
+                .Select(index => index > deletedIndex ? index - 1 : index)
+                .Where(index => index >= 0 && index < arraySize)
+                .ToArray();
+
+            selection.Clear();
+            for (int i = 0; i < shifted.Length; i++)
+                selection.Add(shifted[i]);
+
+            if (_listSelectionAnchors.TryGetValue(key, out int anchor))
+            {
+                if (anchor == deletedIndex)
+                    _listSelectionAnchors.Remove(key);
+                else
+                    _listSelectionAnchors[key] = Mathf.Clamp(anchor > deletedIndex ? anchor - 1 : anchor, 0, Mathf.Max(0, arraySize - 1));
+            }
         }
 
         private static void DeleteListElement(SerializedProperty property, int index)
@@ -1534,14 +1682,14 @@ namespace LoogaSoft.Inspector.Editor
                 property.DeleteArrayElementAtIndex(index);
         }
 
-        private void ClearListDragOnMouseUp(string key)
+        private void CancelListDrag(string key)
         {
-            Event e = Event.current;
-            if (e.type != EventType.MouseUp || _draggingListKey != key)
+            if (_draggingListKey != key)
                 return;
 
             _draggingListKey = string.Empty;
             _draggingListIndex = -1;
+            _draggingListDropIndex = -1;
         }
 
         private static Color GetListRowColor()
@@ -1549,13 +1697,6 @@ namespace LoogaSoft.Inspector.Editor
             return EditorGUIUtility.isProSkin
                 ? new Color(0.16f, 0.16f, 0.16f, 1f)
                 : new Color(0.68f, 0.68f, 0.68f, 1f);
-        }
-
-        private static Color GetListAlternateRowColor()
-        {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.185f, 0.185f, 0.185f, 1f)
-                : new Color(0.72f, 0.72f, 0.72f, 1f);
         }
 
         private static Color GetListHoverColor()
@@ -1572,20 +1713,12 @@ namespace LoogaSoft.Inspector.Editor
                 : new Color(0.28f, 0.55f, 0.90f, 1f);
         }
 
-        private static Color GetListFooterButtonColor()
+        private static Color GetListDropLineColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.26f, 0.26f, 0.26f, 1f)
-                : new Color(0.62f, 0.62f, 0.62f, 1f);
+                ? new Color(0.25f, 0.55f, 1f, 1f)
+                : new Color(0.10f, 0.38f, 0.95f, 1f);
         }
-
-        private static Color GetListFooterButtonDisabledColor()
-        {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.19f, 0.19f, 0.19f, 1f)
-                : new Color(0.70f, 0.70f, 0.70f, 1f);
-        }
-
         private static Rect CenterVertically(Rect rect, float height)
         {
             return new Rect(rect.x, rect.y + Mathf.Max(0f, (rect.height - height) * 0.5f), rect.width, height);
