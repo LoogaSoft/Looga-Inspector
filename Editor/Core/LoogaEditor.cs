@@ -1135,6 +1135,14 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
+        private const float ListHeaderHeight = 23f;
+        private const float ListHeaderArrowSize = 10.5f;
+        private const float ListHeaderAccentWidth = 4f;
+        private const float ListHeaderLeftInset = 6f;
+        private const float ListHeaderTextArrowGap = 6f;
+        private const float ListSizeFieldWidth = 48f;
+        private const float ListSizeFieldRightPadding = 8f;
+
         private void DrawReorderableList(SerializedProperty property)
         {
             FieldInfo field = ReflectionUtils.GetField(target.GetType(), property.name);
@@ -1194,22 +1202,22 @@ namespace LoogaSoft.Inspector.Editor
                 _reorderableLists[key] = list;
             }
 
-            Rect headerRect = EditorGUILayout.GetControlRect();
-            Rect sizeRect = new Rect(headerRect.x + headerRect.width - 50f, headerRect.y, 50f, headerRect.height);
-            Rect toggleRect = new Rect(headerRect.x - 4f, headerRect.y, headerRect.width - 55f + 8f, headerRect.height);
+            Rect headerRect = EditorGUILayout.GetControlRect(false, ListHeaderHeight);
+            Rect boxRect = new(headerRect.x - 3f, headerRect.y, headerRect.width + 6f, headerRect.height);
+            Rect sizeRect = new(
+                boxRect.xMax - ListSizeFieldWidth - ListSizeFieldRightPadding,
+                CenterVertically(headerRect, EditorGUIUtility.singleLineHeight).y,
+                ListSizeFieldWidth,
+                EditorGUIUtility.singleLineHeight);
+            Rect toggleRect = new(
+                boxRect.x,
+                boxRect.y,
+                Mathf.Max(0f, sizeRect.x - boxRect.x - ListSizeFieldRightPadding),
+                boxRect.height);
             
             EditorGUIUtility.AddCursorRect(toggleRect, MouseCursor.Arrow);
-            
-            HandleListDragAndDrop(property, headerRect, field);
-
-            if (toggleRect.Contains(e.mousePosition))
-            {
-                if (e.type == EventType.Repaint)
-                {
-                    Color hoverColor = new Color(0.1f, 0.1f, 0.1f, 0.2f);
-                    EditorGUI.DrawRect(toggleRect, hoverColor);
-                }
-            }
+            HandleListDragAndDrop(property, boxRect, field);
+            DrawListHeaderBackground(boxRect, toggleRect);
 
             EditorGUI.BeginChangeCheck();
             bool isExpanded = property.isExpanded;
@@ -1223,13 +1231,19 @@ namespace LoogaSoft.Inspector.Editor
 
             GUIContent labelContent = PropertyUtils.GetLabel(property);
             Vector2 labelSize = EditorStyles.label.CalcSize(labelContent);
-
-            Rect labelRect = toggleRect;
-            labelRect.xMin += 4f;
-            Rect arrowRect = new Rect(headerRect.x + labelSize.x + 15f, headerRect.y, 20f, headerRect.height);
+            Rect labelRect = new(
+                boxRect.x + ListHeaderLeftInset + ListHeaderAccentWidth,
+                boxRect.y + 1f,
+                Mathf.Max(0f, toggleRect.width - ListHeaderLeftInset * 2f - ListHeaderAccentWidth - ListHeaderArrowSize - ListHeaderTextArrowGap),
+                boxRect.height);
+            Rect arrowRect = new(
+                Mathf.Min(labelRect.x + labelSize.x + ListHeaderTextArrowGap, toggleRect.xMax - ListHeaderArrowSize - ListHeaderTextArrowGap),
+                CenterVertically(boxRect, ListHeaderArrowSize).y,
+                ListHeaderArrowSize,
+                ListHeaderArrowSize);
 
             EditorGUI.LabelField(labelRect, labelContent, EditorStyles.label);
-            EditorGUI.Foldout(arrowRect, isExpanded, GUIContent.none, true);
+            DrawListFoldoutArrow(arrowRect, isExpanded);
             
             int newSize = EditorGUI.DelayedIntField(sizeRect, property.arraySize);
 
@@ -1241,6 +1255,50 @@ namespace LoogaSoft.Inspector.Editor
 
             if (property.isExpanded)
                 list.DoLayoutList();
+        }
+        private static void DrawListHeaderBackground(Rect boxRect, Rect toggleRect)
+        {
+            GUI.Box(boxRect, GUIContent.none, LoogaEditorFoldouts.SmallFoldoutBoxStyle);
+
+            if (toggleRect.Contains(Event.current.mousePosition))
+                LoogaEditorFoldouts.DrawHoverRect(boxRect);
+        }
+
+        private static void DrawListFoldoutArrow(Rect rect, bool expanded)
+        {
+            Color color = EditorStyles.label.normal.textColor;
+            Vector3[] points;
+
+            if (expanded)
+            {
+                points = new[]
+                {
+                    new Vector3(rect.xMin, rect.yMin + rect.height * 0.3f),
+                    new Vector3(rect.xMax, rect.yMin + rect.height * 0.3f),
+                    new Vector3(rect.center.x, rect.yMax - rect.height * 0.3f)
+                };
+            }
+            else
+            {
+                points = new[]
+                {
+                    new Vector3(rect.xMin + rect.width * 0.34f, rect.yMin),
+                    new Vector3(rect.xMin + rect.width * 0.34f, rect.yMax),
+                    new Vector3(rect.xMax - rect.width * 0.2f, rect.center.y)
+                };
+            }
+
+            Handles.BeginGUI();
+            Color previousColor = Handles.color;
+            Handles.color = color;
+            Handles.DrawAAConvexPolygon(points);
+            Handles.color = previousColor;
+            Handles.EndGUI();
+        }
+
+        private static Rect CenterVertically(Rect rect, float height)
+        {
+            return new Rect(rect.x, rect.y + Mathf.Max(0f, (rect.height - height) * 0.5f), rect.width, height);
         }
         #endregion
         
