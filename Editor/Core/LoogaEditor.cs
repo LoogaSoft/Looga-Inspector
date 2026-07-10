@@ -1155,7 +1155,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListBodyPaddingY = 5f;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
-        private const float ListRowGap = 2f;
+        private const float ListRowGap = 1f;
         private const float ListDragHandleWidth = 16f;
         private const float ListRowDeleteWidth = 20f;
         private const float ListEmptyRowHeight = 22f;
@@ -1172,7 +1172,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect boxRect = new(headerRect.x - 3f, headerRect.y, headerRect.width + 6f, headerRect.height);
             Rect removeRect = new(
                 boxRect.xMax - ListHeaderButtonSize - ListSizeFieldRightPadding,
-                CenterVertically(headerRect, ListHeaderButtonSize).y,
+                CenterVertically(boxRect, ListHeaderButtonSize).y,
                 ListHeaderButtonSize,
                 ListHeaderButtonSize);
             Rect addRect = new(
@@ -1182,7 +1182,7 @@ namespace LoogaSoft.Inspector.Editor
                 ListHeaderButtonSize);
             Rect sizeRect = new(
                 addRect.x - ListHeaderButtonGap - ListSizeFieldWidth,
-                CenterVertically(headerRect, EditorGUIUtility.singleLineHeight).y,
+                CenterVertically(boxRect, EditorGUIUtility.singleLineHeight).y,
                 ListSizeFieldWidth,
                 EditorGUIUtility.singleLineHeight);
             Rect toggleRect = new(
