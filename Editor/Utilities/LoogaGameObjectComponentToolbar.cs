@@ -31,7 +31,7 @@ namespace LoogaSoft.Inspector.Editor
 
         static LoogaGameObjectComponentToolbar()
         {
-            Editor.finishedDefaultHeaderGUI += DrawToolbar;
+            UnityEditor.Editor.finishedDefaultHeaderGUI += DrawToolbar;
         }
 
         private static bool HasClipboard => CopiedComponents.Count > 0;
