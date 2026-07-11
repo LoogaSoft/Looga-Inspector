@@ -26,8 +26,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float ButtonGap = 2f;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
+        private static readonly Color SuccessIconTintColor = new(0.38f, 0.82f, 0.42f, 1f);
         private static readonly Color ButtonHoverColor = new(0.58f, 0.58f, 0.58f, 0.78f);
-        private static readonly Color ButtonPressedColor = new(0.44f, 0.44f, 0.44f, 0.92f);
         private const float RightOffset = 66f;
         private const float TopOffset = 4f;
 
@@ -38,6 +38,7 @@ namespace LoogaSoft.Inspector.Editor
         private static Object _copyIcon;
         private static Object _pasteIcon;
         private static Texture2D _generatedPasteIcon;
+        private static Texture2D _checkIcon;
 
         static LoogaComponentHeaderClipboardButtons()
         {
@@ -209,7 +210,7 @@ namespace LoogaSoft.Inspector.Editor
             container.style.height = ButtonSize;
             container.style.flexDirection = FlexDirection.Row;
 
-            Button copyButton = CreateHeaderButton(GetCopyIcon(), "Copy component", () => LoogaComponentClipboard.CopyComponent(component));
+            Button copyButton = CreateHeaderButton(GetCopyIcon(), "Copy component", () => LoogaComponentClipboard.CopyComponent(component), true);
             Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets));
             pasteButton.name = PasteButtonName;
             pasteButton.style.marginLeft = ButtonGap;
@@ -220,9 +221,15 @@ namespace LoogaSoft.Inspector.Editor
             UpdatePasteButton(container, targets);
         }
 
-        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked)
+        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked, bool flashSuccess = false)
         {
-            Button button = new(clicked)
+            Image iconImage = null;
+            Button button = new(() =>
+            {
+                clicked?.Invoke();
+                if (flashSuccess && iconImage != null)
+                    FlashSuccessIcon(iconImage, icon);
+            })
             {
                 tooltip = tooltip,
                 text = icon == null ? tooltip[..1] : string.Empty
@@ -252,31 +259,47 @@ namespace LoogaSoft.Inspector.Editor
 
             if (icon != null)
             {
-                Image image = new()
+                iconImage = new Image
                 {
                     pickingMode = PickingMode.Ignore,
-                    scaleMode = ScaleMode.ScaleToFit,
-                    tintColor = IconTintColor
+                    scaleMode = ScaleMode.ScaleToFit
                 };
-
-                if (icon is Texture2D textureIcon)
-                    image.image = textureIcon;
-                else if (icon is VectorImage vectorIcon)
-                    image.vectorImage = vectorIcon;
-
-                image.style.width = IconSize;
-                image.style.height = IconSize;
-                image.style.flexGrow = 0f;
-                image.style.flexShrink = 0f;
-                image.style.alignSelf = Align.Center;
-                button.Add(image);
+                SetIconImage(iconImage, icon, IconTintColor);
+                iconImage.style.width = IconSize;
+                iconImage.style.height = IconSize;
+                iconImage.style.flexGrow = 0f;
+                iconImage.style.flexShrink = 0f;
+                iconImage.style.alignSelf = Align.Center;
+                button.Add(iconImage);
             }
 
-            button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
+            button.RegisterCallback<MouseEnterEvent>(_ =>
+            {
+                if (button.enabledInHierarchy)
+                    button.style.backgroundColor = ButtonHoverColor;
+            });
             button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
-            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = ButtonPressedColor);
-            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
+            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
+            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = button.enabledInHierarchy ? ButtonHoverColor : ButtonIdleColor);
             return button;
+        }
+
+        private static void FlashSuccessIcon(Image image, Object normalIcon)
+        {
+            SetIconImage(image, GetCheckIcon(), SuccessIconTintColor);
+            image.schedule.Execute(() => SetIconImage(image, normalIcon, IconTintColor)).StartingIn(1000);
+        }
+
+        private static void SetIconImage(Image image, Object icon, Color tint)
+        {
+            image.image = null;
+            image.vectorImage = null;
+            image.tintColor = tint;
+
+            if (icon is Texture2D textureIcon)
+                image.image = textureIcon;
+            else if (icon is VectorImage vectorIcon)
+                image.vectorImage = vectorIcon;
         }
 
         private static void UpdatePasteButton(VisualElement container, Object[] targets)
@@ -286,6 +309,8 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             pasteButton.SetEnabled(LoogaComponentClipboard.CanPasteValuesIntoComponents(targets));
+            if (!pasteButton.enabledInHierarchy)
+                pasteButton.style.backgroundColor = ButtonIdleColor;
         }
 
         private static Object GetCopyIcon()
@@ -309,6 +334,58 @@ namespace LoogaSoft.Inspector.Editor
             return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
         }
 
+        private static Texture2D GetCheckIcon()
+        {
+            if (_checkIcon != null)
+                return _checkIcon;
+
+            Color32 clear = new(0, 0, 0, 0);
+            Color32 ink = new(255, 255, 255, 255);
+            _checkIcon = new Texture2D(16, 16, TextureFormat.RGBA32, false)
+            {
+                name = "Looga Component Copied Check Icon",
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point
+            };
+
+            Color32[] pixels = new Color32[16 * 16];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = clear;
+
+            void Pixel(int x, int y)
+            {
+                if (x < 0 || x >= 16 || y < 0 || y >= 16)
+                    return;
+
+                pixels[y * 16 + x] = ink;
+            }
+
+            Pixel(3, 8);
+            Pixel(4, 9);
+            Pixel(5, 10);
+            Pixel(6, 10);
+            Pixel(7, 9);
+            Pixel(8, 8);
+            Pixel(9, 7);
+            Pixel(10, 6);
+            Pixel(11, 5);
+            Pixel(12, 4);
+
+            Pixel(3, 9);
+            Pixel(4, 10);
+            Pixel(5, 11);
+            Pixel(6, 11);
+            Pixel(7, 10);
+            Pixel(8, 9);
+            Pixel(9, 8);
+            Pixel(10, 7);
+            Pixel(11, 6);
+            Pixel(12, 5);
+
+            _checkIcon.SetPixels32(pixels);
+            _checkIcon.Apply(false, true);
+            return _checkIcon;
+        }
         private static Texture2D GetGeneratedPasteIcon()
         {
             if (_generatedPasteIcon != null)
@@ -386,6 +463,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
