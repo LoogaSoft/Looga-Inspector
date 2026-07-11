@@ -1159,9 +1159,10 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListSizeFieldRightPadding = ListHeaderButtonGap;
         private const float ListBodyPaddingX = 7f;
         private const float ListBodyPaddingY = 5f;
+        private const float ListBodyPaddingRight = ListBodyPaddingY;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
-        private const float ListRowGap = 0f;
+        private const float ListRowGap = 1f;
         private const float ListDragHandleWidth = 16f;
         private const float ListRowDeleteWidth = 20f;
         private const float ListRowButtonInset = 3f;
@@ -1294,7 +1295,7 @@ namespace LoogaSoft.Inspector.Editor
             Rect contentRect = new(
                 listBoxRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
                 listBoxRect.y + ListBodyPaddingY,
-                Mathf.Max(0f, listBoxRect.width - ListHeaderAccentWidth - ListBodyPaddingX * 2f),
+                Mathf.Max(0f, listBoxRect.width - ListHeaderAccentWidth - ListBodyPaddingX - ListBodyPaddingRight),
                 Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f));
 
             HandleListDragOver(property, key, contentRect);
@@ -1319,7 +1320,7 @@ namespace LoogaSoft.Inspector.Editor
             {
                 SerializedProperty element = property.GetArrayElementAtIndex(i);
                 float elementHeight = GetStructuredPropertyHeight(element);
-                float rowHeight = elementHeight + ListRowPaddingY * 2f;
+                float rowHeight = GetListRowHeight(elementHeight);
 
                 if (draggingThisList && i == _draggingListIndex)
                 {
@@ -1501,11 +1502,11 @@ namespace LoogaSoft.Inspector.Editor
                 ? new Color(0.48f, 0.48f, 0.48f, 1f)
                 : new Color(0.36f, 0.36f, 0.36f, 1f);
             float centerX = Mathf.Round(rect.x + 5f);
-            float topY = Mathf.Round(rect.y + (rect.height - 5f) * 0.5f);
+            float centerY = Mathf.Round(rect.center.y);
 
-            for (int i = 0; i < 3; i++)
+            for (int i = -1; i <= 1; i++)
             {
-                Rect lineRect = new(centerX - 4f, topY + i * 2f, 8f, 1f);
+                Rect lineRect = new(centerX - 4f, centerY + i * 3f, 8f, 1f);
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
         }
@@ -1556,7 +1557,7 @@ namespace LoogaSoft.Inspector.Editor
             for (int i = 0; i < property.arraySize; i++)
             {
                 SerializedProperty element = property.GetArrayElementAtIndex(i);
-                height += GetStructuredPropertyHeight(element) + ListRowPaddingY * 2f;
+                height += GetListRowHeight(element);
 
                 if (i < property.arraySize - 1)
                     height += ListRowGap;
@@ -1565,12 +1566,21 @@ namespace LoogaSoft.Inspector.Editor
             return height;
         }
 
+        private static float GetListRowHeight(SerializedProperty element)
+        {
+            return GetListRowHeight(GetStructuredPropertyHeight(element));
+        }
+
+        private static float GetListRowHeight(float elementHeight)
+        {
+            return Mathf.Ceil(elementHeight + ListRowPaddingY * 2f);
+        }
         private static float GetListRowHeight(SerializedProperty property, int index)
         {
             if (index < 0 || index >= property.arraySize)
                 return 0f;
 
-            return GetStructuredPropertyHeight(property.GetArrayElementAtIndex(index)) + ListRowPaddingY * 2f;
+            return GetListRowHeight(property.GetArrayElementAtIndex(index));
         }
 
         private float GetListReorderAnimationT()
