@@ -1156,12 +1156,12 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListHeaderButtonSize = 18f;
         private const float ListHeaderButtonGap = 2f;
         private const float ListSizeFieldWidth = 48f;
-        private const float ListSizeFieldRightPadding = 12f;
+        private const float ListSizeFieldRightPadding = ListHeaderButtonGap;
         private const float ListBodyPaddingX = 7f;
         private const float ListBodyPaddingY = 5f;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
-        private const float ListRowGap = 1f;
+        private const float ListRowGap = 0f;
         private const float ListDragHandleWidth = 16f;
         private const float ListRowDeleteWidth = 20f;
         private const float ListRowButtonInset = 3f;
@@ -1333,11 +1333,11 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     float previousY = GetListVisualRowY(property, contentRect, i, _draggingListIndex, previousDropIndex, draggedRowHeight);
                     float targetY = GetListVisualRowY(property, contentRect, i, _draggingListIndex, dropIndex, draggedRowHeight);
-                    rowY = Mathf.Lerp(previousY, targetY, animationT);
+                    rowY = Mathf.Round(Mathf.Lerp(previousY, targetY, animationT));
                 }
                 else
                 {
-                    rowY = y;
+                    rowY = Mathf.Round(y);
                     y += rowHeight + ListRowGap;
                 }
 
@@ -1354,7 +1354,7 @@ namespace LoogaSoft.Inspector.Editor
 
             if (draggingThisList && draggedElement != null)
             {
-                float draggedY = GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y);
+                float draggedY = Mathf.Round(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
                 Rect draggedRowRect = new(contentRect.x, draggedY, contentRect.width, draggedRowHeight);
                 DrawListRowBackground(draggedRowRect, true, false, true);
                 DrawListRow(property, key, draggedRowRect, draggedElement, draggedElementHeight, _draggingListIndex);
@@ -1421,8 +1421,8 @@ namespace LoogaSoft.Inspector.Editor
             if (e.type == EventType.MouseDrag)
             {
                 float draggedRowHeight = GetListRowHeight(property, _draggingListIndex);
-                float draggedY = GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y);
-                int newDropIndex = GetListDropIndex(property, contentRect, draggedY + draggedRowHeight * 0.5f, _draggingListIndex);
+                float draggedY = Mathf.Round(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
+                int newDropIndex = GetListDropIndex(property, contentRect, e.mousePosition.y, _draggingListIndex);
                 if (newDropIndex != _draggingListDropIndex)
                 {
                     _draggingListPreviousDropIndex = _draggingListDropIndex;
@@ -1501,11 +1501,11 @@ namespace LoogaSoft.Inspector.Editor
                 ? new Color(0.48f, 0.48f, 0.48f, 1f)
                 : new Color(0.36f, 0.36f, 0.36f, 1f);
             float centerX = Mathf.Round(rect.x + 5f);
-            float topY = Mathf.Round(rect.y + (rect.height - 7f) * 0.5f);
+            float topY = Mathf.Round(rect.y + (rect.height - 5f) * 0.5f);
 
             for (int i = 0; i < 3; i++)
             {
-                Rect lineRect = new(centerX - 4f, topY + i * 3f, 8f, 1f);
+                Rect lineRect = new(centerX - 4f, topY + i * 2f, 8f, 1f);
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
         }
@@ -1595,11 +1595,11 @@ namespace LoogaSoft.Inspector.Editor
 
             for (int i = 0; i < property.arraySize; i++)
             {
-                if (i == sourceIndex)
-                    continue;
-
                 if (i == clampedDropIndex)
                     y += draggedRowHeight + ListRowGap;
+
+                if (i == sourceIndex)
+                    continue;
 
                 if (i == rowIndex)
                     return y;
@@ -1611,34 +1611,41 @@ namespace LoogaSoft.Inspector.Editor
         }
         private static int GetListDropIndex(SerializedProperty property, Rect contentRect, float mouseY, int sourceIndex)
         {
-            if (property.arraySize == 0)
+            if (property.arraySize == 0 || sourceIndex < 0 || sourceIndex >= property.arraySize)
                 return 0;
 
             float clampedMouseY = Mathf.Clamp(mouseY, contentRect.y, contentRect.yMax);
-            int visualSlot = 0;
-            float y = contentRect.y;
+            int dropIndex = sourceIndex;
 
-            for (int i = 0; i < property.arraySize; i++)
+            for (int i = sourceIndex + 1; i < property.arraySize; i++)
             {
-                if (i == sourceIndex)
-                    continue;
+                float lowerRowTop = GetListOriginalRowTop(property, contentRect, i);
+                if (clampedMouseY <= lowerRowTop)
+                    break;
 
-                float rowHeight = GetStructuredPropertyHeight(property.GetArrayElementAtIndex(i)) + ListRowPaddingY * 2f;
-                if (clampedMouseY < y + rowHeight * 0.5f)
-                    return VisualSlotToArrayIndex(property.arraySize, sourceIndex, visualSlot);
-
-                y += rowHeight + ListRowGap;
-                visualSlot++;
+                dropIndex = i + 1;
             }
 
-            return VisualSlotToArrayIndex(property.arraySize, sourceIndex, visualSlot);
+            for (int i = sourceIndex - 1; i >= 0; i--)
+            {
+                float upperRowBottom = GetListOriginalRowTop(property, contentRect, i) + GetListRowHeight(property, i);
+                if (clampedMouseY >= upperRowBottom)
+                    break;
+
+                dropIndex = i;
+            }
+
+            return Mathf.Clamp(dropIndex, 0, property.arraySize);
         }
 
-        private static int VisualSlotToArrayIndex(int arraySize, int sourceIndex, int visualSlot)
+        private static float GetListOriginalRowTop(SerializedProperty property, Rect contentRect, int rowIndex)
         {
-            int maxSlot = Mathf.Max(0, arraySize - 1);
-            int clampedSlot = Mathf.Clamp(visualSlot, 0, maxSlot);
-            return clampedSlot <= sourceIndex ? clampedSlot : clampedSlot + 1;
+            float y = contentRect.y;
+            int max = Mathf.Clamp(rowIndex, 0, property.arraySize);
+            for (int i = 0; i < max; i++)
+                y += GetListRowHeight(property, i) + ListRowGap;
+
+            return y;
         }
         private HashSet<int> GetListSelection(string key)
         {
