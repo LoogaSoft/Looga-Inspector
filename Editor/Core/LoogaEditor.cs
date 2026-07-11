@@ -1230,7 +1230,11 @@ namespace LoogaSoft.Inspector.Editor
                 boxRect.height);
 
             DrawListFoldoutArrow(arrowRect, isExpanded);
-            EditorGUI.LabelField(labelRect, PropertyUtils.GetLabel(property), EditorStyles.label);
+            GUIContent headerLabel = PropertyUtils.GetLabel(property);
+            if (!labelRect.Contains(e.mousePosition))
+                headerLabel = new GUIContent(headerLabel.text);
+
+            EditorGUI.LabelField(labelRect, headerLabel, EditorStyles.label);
 
             EditorGUI.BeginChangeCheck();
             int newSize = Mathf.Max(0, EditorGUI.DelayedIntField(sizeRect, property.arraySize));
@@ -1285,18 +1289,18 @@ namespace LoogaSoft.Inspector.Editor
         {
             Event e = Event.current;
             float listBoxHeight = GetListRowsHeight(property) + ListBodyPaddingY * 2f;
-            Rect listBoxRect = new(bodyRect.x, bodyRect.y, bodyRect.width, listBoxHeight);
+            Rect listBoxRect = PixelSnap(new Rect(bodyRect.x, bodyRect.y, bodyRect.width, listBoxHeight));
             GUI.Box(listBoxRect, GUIContent.none, LoogaEditorFoldouts.SmallBoxStyle);
             EditorGUIUtility.AddCursorRect(listBoxRect, MouseCursor.Arrow);
 
             if (e.type == EventType.MouseMove && listBoxRect.Contains(e.mousePosition))
                 Repaint();
 
-            Rect contentRect = new(
+            Rect contentRect = PixelSnap(new Rect(
                 listBoxRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
                 listBoxRect.y + ListBodyPaddingY,
                 Mathf.Max(0f, listBoxRect.width - ListHeaderAccentWidth - ListBodyPaddingX - ListBodyPaddingRight),
-                Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f));
+                Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f)));
 
             HandleListDragOver(property, key, contentRect);
             bool draggingThisList = _draggingListKey == key && _draggingListIndex >= 0 && _draggingListIndex < property.arraySize;
@@ -1310,7 +1314,7 @@ namespace LoogaSoft.Inspector.Editor
 
             if (property.arraySize == 0)
             {
-                Rect emptyRect = new(contentRect.x, y, contentRect.width, ListEmptyRowHeight);
+                Rect emptyRect = PixelSnap(new Rect(contentRect.x, y, contentRect.width, ListEmptyRowHeight));
                 DrawListRowBackground(emptyRect, false, emptyRect.Contains(e.mousePosition), false);
                 EditorGUI.LabelField(emptyRect, "Empty", EditorStyles.centeredGreyMiniLabel);
                 return;
@@ -1342,7 +1346,7 @@ namespace LoogaSoft.Inspector.Editor
                     y += rowHeight + ListRowGap;
                 }
 
-                Rect rowRect = new(contentRect.x, rowY, contentRect.width, rowHeight);
+                Rect rowRect = PixelSnap(new Rect(contentRect.x, rowY, contentRect.width, rowHeight));
                 EditorGUIUtility.AddCursorRect(rowRect, MouseCursor.Arrow);
                 if (HandleListRowInput(key, rowRect, i))
                     return;
@@ -1356,7 +1360,7 @@ namespace LoogaSoft.Inspector.Editor
             if (draggingThisList && draggedElement != null)
             {
                 float draggedY = Mathf.Round(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
-                Rect draggedRowRect = new(contentRect.x, draggedY, contentRect.width, draggedRowHeight);
+                Rect draggedRowRect = PixelSnap(new Rect(contentRect.x, draggedY, contentRect.width, draggedRowHeight));
                 DrawListRowBackground(draggedRowRect, true, false, true);
                 DrawListRow(property, key, draggedRowRect, draggedElement, draggedElementHeight, _draggingListIndex);
             }
@@ -1364,19 +1368,18 @@ namespace LoogaSoft.Inspector.Editor
         private void DrawListRow(SerializedProperty property, string key, Rect rowRect, SerializedProperty element, float elementHeight, int index)
         {
             float deleteHeight = EditorGUIUtility.singleLineHeight;
-            Rect deleteRect = new(
-                0f,
+            Rect deleteRect = PixelSnap(new Rect(
+                rowRect.xMax - ListRowButtonInset - ListRowDeleteWidth,
                 CenterVertically(rowRect, deleteHeight).y,
                 ListRowDeleteWidth,
-                deleteHeight);
-            deleteRect.x = rowRect.xMax - ListRowButtonInset - deleteRect.width;
+                deleteHeight));
 
-            Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
-            Rect elementRect = new(
+            Rect dragRect = PixelSnap(new Rect(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height));
+            Rect elementRect = PixelSnap(new Rect(
                 dragRect.xMax + ListRowPaddingX,
                 rowRect.y + ListRowPaddingY,
                 Mathf.Max(0f, deleteRect.x - dragRect.xMax - ListRowPaddingX * 2f),
-                elementHeight);
+                elementHeight));
 
             DrawListDragHandle(dragRect);
             DrawListElement(elementRect, element);
@@ -1392,7 +1395,7 @@ namespace LoogaSoft.Inspector.Editor
         private bool HandleListRowInput(string key, Rect rowRect, int index)
         {
             Event e = Event.current;
-            Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
+            Rect dragRect = PixelSnap(new Rect(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height));
 
             if (e.type == EventType.MouseDown && e.button == 0 && rowRect.Contains(e.mousePosition))
             {
@@ -1465,7 +1468,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             int cachedIndent = EditorGUI.indentLevel;
             EditorGUI.indentLevel = 0;
-            DrawStructuredProperty(rect, element, PropertyUtils.GetContent(element.displayName));
+            DrawStructuredProperty(PixelSnap(rect), element, new GUIContent(element.displayName, string.Empty));
             EditorGUI.indentLevel = cachedIndent;
         }
 
@@ -1501,12 +1504,12 @@ namespace LoogaSoft.Inspector.Editor
             Color lineColor = EditorGUIUtility.isProSkin
                 ? new Color(0.48f, 0.48f, 0.48f, 1f)
                 : new Color(0.36f, 0.36f, 0.36f, 1f);
-            float centerX = Mathf.Round(rect.x + 5f);
-            float centerY = Mathf.Round(rect.center.y);
+            Rect handleRect = PixelSnap(CenterVertically(rect, 7f));
+            float centerX = Mathf.Round(handleRect.x + 5f);
 
-            for (int i = -1; i <= 1; i++)
+            for (int i = 0; i < 3; i++)
             {
-                Rect lineRect = new(centerX - 4f, centerY + i * 3f, 8f, 1f);
+                Rect lineRect = PixelSnap(new Rect(centerX - 4f, handleRect.y + i * 3f, 8f, 1f));
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
         }
@@ -1818,6 +1821,14 @@ namespace LoogaSoft.Inspector.Editor
             return EditorGUIUtility.isProSkin
                 ? new Color(0.18f, 0.42f, 0.72f, 1f)
                 : new Color(0.28f, 0.55f, 0.90f, 1f);
+        }
+        private static Rect PixelSnap(Rect rect)
+        {
+            float xMin = Mathf.Round(rect.xMin);
+            float yMin = Mathf.Round(rect.yMin);
+            float xMax = Mathf.Round(rect.xMax);
+            float yMax = Mathf.Round(rect.yMax);
+            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
         }
         private static Rect CenterVertically(Rect rect, float height)
         {
