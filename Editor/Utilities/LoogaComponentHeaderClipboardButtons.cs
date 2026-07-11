@@ -22,8 +22,10 @@ namespace LoogaSoft.Inspector.Editor
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const float ButtonSize = 15f;
+        private const float IconSize = 11f;
         private const float ButtonGap = 2f;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
+        private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color ButtonHoverColor = new(0.58f, 0.58f, 0.58f, 0.78f);
         private static readonly Color ButtonPressedColor = new(0.44f, 0.44f, 0.44f, 0.92f);
         private const float RightOffset = 66f;
@@ -227,14 +229,16 @@ namespace LoogaSoft.Inspector.Editor
             };
             button.style.width = ButtonSize;
             button.style.height = ButtonSize;
-            button.style.paddingLeft = 3f;
-            button.style.paddingRight = 3f;
-            button.style.paddingTop = 3f;
-            button.style.paddingBottom = 3f;
+            button.style.paddingLeft = 0f;
+            button.style.paddingRight = 0f;
+            button.style.paddingTop = 0f;
+            button.style.paddingBottom = 0f;
             button.style.marginLeft = 0f;
             button.style.marginRight = 0f;
             button.style.marginTop = 0f;
             button.style.marginBottom = 0f;
+            button.style.alignItems = Align.Center;
+            button.style.justifyContent = Justify.Center;
             button.style.unityTextAlign = TextAnchor.MiddleCenter;
             button.style.backgroundColor = ButtonIdleColor;
             button.style.borderTopWidth = 0f;
@@ -248,11 +252,24 @@ namespace LoogaSoft.Inspector.Editor
 
             if (icon != null)
             {
+                Image image = new()
+                {
+                    pickingMode = PickingMode.Ignore,
+                    scaleMode = ScaleMode.ScaleToFit,
+                    tintColor = IconTintColor
+                };
+
                 if (icon is Texture2D textureIcon)
-                    button.style.backgroundImage = new StyleBackground(textureIcon);
+                    image.image = textureIcon;
                 else if (icon is VectorImage vectorIcon)
-                    button.style.backgroundImage = new StyleBackground(vectorIcon);
-                button.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
+                    image.vectorImage = vectorIcon;
+
+                image.style.width = IconSize;
+                image.style.height = IconSize;
+                image.style.flexGrow = 0f;
+                image.style.flexShrink = 0f;
+                image.style.alignSelf = Align.Center;
+                button.Add(image);
             }
 
             button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
@@ -369,6 +386,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
