@@ -1,101 +1,231 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
+using Object = UnityEngine.Object;
 
 namespace LoogaSoft.Inspector.Editor
 {
+    /// <summary>
+    /// Experimental component-header clipboard buttons. Unity does not expose a public API for the built-in
+    /// component header icon cluster, so this probes the Inspector UIElements tree and fails silently if it changes.
+    /// </summary>
+    [InitializeOnLoad]
     internal static class LoogaComponentHeaderClipboardButtons
     {
+        private const string InspectorListClassName = "unity-inspector-editors-list";
+        private const string ButtonContainerName = "looga-component-header-clipboard-buttons";
         private const float ButtonSize = 18f;
         private const float ButtonGap = 2f;
-        private const float BuiltInIconAreaWidth = 66f;
+        private const float RightOffset = 68f;
+        private const float TopOffset = 3f;
 
-        private static GUIStyle _buttonStyle;
-        private static GUIContent _copyIcon;
-        private static GUIContent _pasteIcon;
+        private static readonly Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+        private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly List<VisualElement> ScratchElements = new();
+        private static Texture2D _copyIcon;
+        private static Texture2D _pasteIcon;
 
-        // Unity does not expose a reliable public insertion point for the built-in component header icon cluster.
-        // Keep this utility dormant until we commit to an internal UIElements header injection path.
-        private static void InitializeDisabled()
+        static LoogaComponentHeaderClipboardButtons()
         {
-            UnityEditor.Editor.finishedDefaultHeaderGUI -= DrawButtons;
-            UnityEditor.Editor.finishedDefaultHeaderGUI += DrawButtons;
+            EditorApplication.update -= RefreshInspectorButtons;
+            EditorApplication.update += RefreshInspectorButtons;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             AssemblyReloadEvents.beforeAssemblyReload += Dispose;
         }
 
         private static void Dispose()
         {
-            UnityEditor.Editor.finishedDefaultHeaderGUI -= DrawButtons;
+            EditorApplication.update -= RefreshInspectorButtons;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
         }
 
-        private static void DrawButtons(UnityEditor.Editor editor)
+        private static void RefreshInspectorButtons()
         {
-            if (editor == null || editor.target is not Component component)
+            if (AllInspectorsField == null || InspectorWindowType == null)
                 return;
 
-            EnsureStyles();
+            if (AllInspectorsField.GetValue(null) is not IList windows)
+                return;
 
-            Rect anchorRect = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true));
-            Rect headerRect = new(0f, anchorRect.y - EditorGUIUtility.singleLineHeight - 3f, EditorGUIUtility.currentViewWidth, EditorGUIUtility.singleLineHeight + 4f);
-
-            float totalWidth = ButtonSize * 2f + ButtonGap;
-            float x = headerRect.xMax - BuiltInIconAreaWidth - totalWidth;
-            float y = headerRect.y + Mathf.Floor((headerRect.height - ButtonSize) * 0.5f);
-            Rect copyRect = LoogaEditorStyle.PixelSnap(new Rect(x, y, ButtonSize, ButtonSize));
-            Rect pasteRect = LoogaEditorStyle.PixelSnap(new Rect(copyRect.xMax + ButtonGap, y, ButtonSize, ButtonSize));
-
-            RequestMouseMoveRepaint(headerRect);
-
-            if (GUI.Button(copyRect, _copyIcon, _buttonStyle))
-                LoogaComponentClipboard.CopyComponent(component);
-
-            bool canPaste = LoogaComponentClipboard.CanPasteValuesIntoComponents(editor.targets);
-            using (new EditorGUI.DisabledScope(!canPaste))
+            for (int i = 0; i < windows.Count; i++)
             {
-                if (GUI.Button(pasteRect, _pasteIcon, _buttonStyle))
-                    LoogaComponentClipboard.PasteValuesIntoComponents(editor.targets);
+                if (windows[i] is not EditorWindow inspectorWindow || inspectorWindow.rootVisualElement == null)
+                    continue;
+
+                VisualElement editorList = inspectorWindow.rootVisualElement.Q(null, InspectorListClassName);
+                if (editorList == null)
+                    continue;
+
+                InjectIntoEditorTree(editorList);
             }
         }
 
-        private static void RequestMouseMoveRepaint(Rect rect)
+        private static void InjectIntoEditorTree(VisualElement root)
         {
-            Event current = Event.current;
-            if (!rect.Contains(current.mousePosition))
-                return;
+            ScratchElements.Clear();
+            CollectElements(root, ScratchElements);
 
-            EditorWindow window = EditorWindow.mouseOverWindow;
-            if (window != null)
-                window.wantsMouseMove = true;
-
-            if (current.type == EventType.MouseMove)
+            for (int i = 0; i < ScratchElements.Count; i++)
             {
-                window?.Repaint();
-                HandleUtility.Repaint();
+                VisualElement element = ScratchElements[i];
+                if (!IsLikelyEditorContainer(element) || !TryGetEditor(element, out UnityEditor.Editor editor))
+                    continue;
+
+                if (editor.target is not Component component)
+                    continue;
+
+                EnsureButtonContainer(element, component, editor.targets);
             }
         }
 
-        private static void EnsureStyles()
+        private static void CollectElements(VisualElement element, List<VisualElement> elements)
         {
-            _buttonStyle ??= new GUIStyle(EditorStyles.iconButton)
+            if (element == null)
+                return;
+
+            elements.Add(element);
+            for (int i = 0; i < element.childCount; i++)
+                CollectElements(element[i], elements);
+        }
+
+        private static bool IsLikelyEditorContainer(VisualElement element)
+        {
+            Type type = element.GetType();
+            string typeName = type.Name;
+            if (typeName.IndexOf("EditorElement", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            if (typeName.IndexOf("InspectorElement", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            return element.ClassListContains("unity-inspector-element");
+        }
+
+        private static bool TryGetEditor(VisualElement element, out UnityEditor.Editor editor)
+        {
+            editor = null;
+            Type type = element.GetType();
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+            while (type != null)
             {
-                alignment = TextAnchor.MiddleCenter,
-                padding = new RectOffset(2, 2, 2, 2),
-                margin = new RectOffset(0, 0, 0, 0)
+                FieldInfo[] fields = type.GetFields(Flags);
+                for (int i = 0; i < fields.Length; i++)
+                {
+                    if (!typeof(UnityEditor.Editor).IsAssignableFrom(fields[i].FieldType))
+                        continue;
+
+                    editor = fields[i].GetValue(element) as UnityEditor.Editor;
+                    if (editor != null)
+                        return true;
+                }
+
+                PropertyInfo[] properties = type.GetProperties(Flags);
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    if (!typeof(UnityEditor.Editor).IsAssignableFrom(properties[i].PropertyType) || properties[i].GetIndexParameters().Length > 0)
+                        continue;
+
+                    try
+                    {
+                        editor = properties[i].GetValue(element) as UnityEditor.Editor;
+                    }
+                    catch
+                    {
+                        editor = null;
+                    }
+
+                    if (editor != null)
+                        return true;
+                }
+
+                type = type.BaseType;
+            }
+
+            return false;
+        }
+
+        private static void EnsureButtonContainer(VisualElement editorElement, Component component, Object[] targets)
+        {
+            VisualElement existing = editorElement.Q<VisualElement>(ButtonContainerName);
+            if (existing != null)
+            {
+                UpdatePasteButton(existing, targets);
+                return;
+            }
+
+            VisualElement container = new()
+            {
+                name = ButtonContainerName,
+                pickingMode = PickingMode.Position
             };
+            container.style.position = Position.Absolute;
+            container.style.top = TopOffset;
+            container.style.right = RightOffset;
+            container.style.width = ButtonSize * 2f + ButtonGap;
+            container.style.height = ButtonSize;
+            container.style.flexDirection = FlexDirection.Row;
 
-            _copyIcon ??= GetIcon("TreeEditor.Duplicate", "Copy component");
-            _pasteIcon ??= GetIcon("Clipboard", "Paste values into this component");
+            Button copyButton = CreateHeaderButton(GetCopyIcon(), "Copy component", () => LoogaComponentClipboard.CopyComponent(component));
+            Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets));
+            pasteButton.name = "looga-component-header-paste-button";
+            pasteButton.style.marginLeft = ButtonGap;
+
+            container.Add(copyButton);
+            container.Add(pasteButton);
+            editorElement.Add(container);
+            UpdatePasteButton(container, targets);
         }
 
-        private static GUIContent GetIcon(string iconName, string tooltip)
+        private static Button CreateHeaderButton(Texture2D icon, string tooltip, Action clicked)
         {
-            GUIContent content = EditorGUIUtility.IconContent(iconName);
-            if (content == null || content.image == null)
-                content = new GUIContent(iconName == "Clipboard" ? "P" : "C");
+            Button button = new(clicked)
+            {
+                tooltip = tooltip,
+                text = icon == null ? tooltip[..1] : string.Empty
+            };
+            button.style.width = ButtonSize;
+            button.style.height = ButtonSize;
+            button.style.paddingLeft = 2f;
+            button.style.paddingRight = 2f;
+            button.style.paddingTop = 2f;
+            button.style.paddingBottom = 2f;
+            button.style.marginLeft = 0f;
+            button.style.marginRight = 0f;
+            button.style.marginTop = 0f;
+            button.style.marginBottom = 0f;
+            button.style.unityTextAlign = TextAnchor.MiddleCenter;
 
-            content.tooltip = tooltip;
-            return content;
+            if (icon != null)
+            {
+                button.style.backgroundImage = new StyleBackground(icon);
+                button.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
+            }
+
+            return button;
+        }
+
+        private static void UpdatePasteButton(VisualElement container, Object[] targets)
+        {
+            Button pasteButton = container.Q<Button>("looga-component-header-paste-button");
+            if (pasteButton == null)
+                return;
+
+            pasteButton.SetEnabled(LoogaComponentClipboard.CanPasteValuesIntoComponents(targets));
+        }
+
+        private static Texture2D GetCopyIcon()
+        {
+            return _copyIcon ??= EditorGUIUtility.IconContent("TreeEditor.Duplicate").image as Texture2D;
+        }
+
+        private static Texture2D GetPasteIcon()
+        {
+            return _pasteIcon ??= EditorGUIUtility.IconContent("Clipboard").image as Texture2D;
         }
     }
 }
