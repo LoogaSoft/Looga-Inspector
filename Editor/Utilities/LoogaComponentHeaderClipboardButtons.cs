@@ -19,6 +19,8 @@ namespace LoogaSoft.Inspector.Editor
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ButtonContainerName = "looga-component-header-clipboard-buttons";
         private const string PasteButtonName = "looga-component-header-paste-button";
+        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Lucide/copy.png";
+        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Lucide/clipboard-paste.png";
         private const float ButtonSize = 15f;
         private const float ButtonGap = 2f;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
@@ -268,12 +270,19 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Texture2D GetCopyIcon()
         {
-            return _copyIcon ??= EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_TreeEditor.Duplicate" : "TreeEditor.Duplicate").image as Texture2D;
+            _copyIcon ??= LoadPackageIcon(CopyIconPath);
+            return _copyIcon != null ? _copyIcon : EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_TreeEditor.Duplicate" : "TreeEditor.Duplicate").image as Texture2D;
         }
 
         private static Texture2D GetPasteIcon()
         {
-            return _pasteIcon ??= GetGeneratedPasteIcon();
+            _pasteIcon ??= LoadPackageIcon(PasteIconPath);
+            return _pasteIcon != null ? _pasteIcon : GetGeneratedPasteIcon();
+        }
+
+        private static Texture2D LoadPackageIcon(string assetPath)
+        {
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
         }
 
         private static Texture2D GetGeneratedPasteIcon()
