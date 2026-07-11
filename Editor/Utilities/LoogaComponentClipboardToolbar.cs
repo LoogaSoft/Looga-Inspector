@@ -120,17 +120,17 @@ namespace LoogaSoft.Inspector.Editor
 
             EnsureStyles();
 
-            Rect rect = GUILayoutUtility.GetRect(0f, ToolbarHeight, GUILayout.ExpandWidth(true));
-            rect = LoogaEditorStyle.PixelSnap(new Rect(
-                rect.x + HorizontalPadding,
-                rect.y,
-                rect.width - HorizontalPadding * 2f,
-                rect.height));
+            Rect rect = LoogaEditorStyle.PixelSnap(GUILayoutUtility.GetRect(0f, ToolbarHeight, GUILayout.ExpandWidth(true)));
 
             if (Event.current.type == EventType.Repaint)
                 _toolbarStyle.Draw(rect, GUIContent.none, false, false, false, false);
 
-            Rect buttonRect = GetCenteredRect(rect, rect.x + HorizontalPadding, ButtonWidth, ButtonHeight);
+            Rect contentRect = LoogaEditorStyle.PixelSnap(new Rect(
+                rect.x + HorizontalPadding,
+                rect.y,
+                rect.width - HorizontalPadding * 2f,
+                rect.height));
+            Rect buttonRect = GetCenteredRect(contentRect, contentRect.x, ButtonWidth, ButtonHeight);
             if (GUI.Button(buttonRect, "Copy Components", _buttonStyle))
                 CopyComponents(gameObject);
 
@@ -368,8 +368,13 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.minHeight = ToolbarHeight;
                 _toolbar.style.marginLeft = 0f;
                 _toolbar.style.marginRight = 0f;
+                _toolbar.style.paddingLeft = 0f;
+                _toolbar.style.paddingRight = 0f;
+                _toolbar.style.paddingTop = 0f;
+                _toolbar.style.paddingBottom = 0f;
+                _toolbar.style.flexShrink = 0f;
                 _toolbar.style.marginTop = 0f;
-                _toolbar.style.marginBottom = 2f;
+                _toolbar.style.marginBottom = 0f;
             }
 
             private void RemoveDuplicateToolbar()
@@ -402,3 +407,4 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
