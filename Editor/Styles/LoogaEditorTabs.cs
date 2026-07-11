@@ -123,7 +123,7 @@ namespace LoogaSoft.Inspector.Editor
                     if (hovered && Event.current.type == EventType.MouseMove)
                         HandleUtility.Repaint();
 
-                    DrawTab(tabRect, tabNames[tabIndex], selected, hovered);
+                    DrawTab(tabRect, tabNames[tabIndex], selected, hovered, localIndex < row.Count - 1);
 
                     if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && hovered)
                     {
@@ -144,7 +144,7 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.DrawRect(rect, GetTabBarColor());
         }
 
-        private static void DrawTab(Rect rect, string label, bool selected, bool hovered)
+        private static void DrawTab(Rect rect, string label, bool selected, bool hovered, bool drawSeparator)
         {
             if (Event.current.type == EventType.Repaint)
             {
@@ -154,8 +154,11 @@ namespace LoogaSoft.Inspector.Editor
 
                 EditorGUI.DrawRect(rect, color);
 
-                Rect separatorRect = PixelSnap(new Rect(rect.xMax - Pixels(TabSeparatorWidth), rect.y, Pixels(TabSeparatorWidth), rect.height));
-                EditorGUI.DrawRect(separatorRect, GetSeparatorColor());
+                if (drawSeparator)
+                {
+                    Rect separatorRect = PixelSnap(new Rect(rect.xMax - Pixels(TabSeparatorWidth), rect.y, Pixels(TabSeparatorWidth), rect.height));
+                    EditorGUI.DrawRect(separatorRect, GetSeparatorColor());
+                }
 
                 if (selected)
                 {

@@ -1,4 +1,4 @@
-﻿# Looga Inspector
+# Looga Inspector
 
 Looga Inspector is a lightweight, attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields, methods, or component classes, and the default Looga editor handles common inspector workflows: layout, foldouts, tabs, validation, dropdowns, inline ScriptableObjects, catalog management, buttons, and Unity-specific selectors.
 
@@ -79,6 +79,13 @@ _selectedTab = LoogaGUI.Tabs(tabRect, _selectedTab, Tabs);
 ```
 
 Keep low-level classes such as `LoogaEditorTabs` and `LoogaEditorFoldouts` as implementation details unless you are editing Looga Inspector itself.
+
+## GameObject Component Toolbar
+
+Looga Inspector adds a compact toolbar beneath Unity's built-in GameObject header. Use it to copy all non-Transform components from the selected GameObject and paste them as new components onto another selected GameObject. The clipboard is editor-session only and preserves serialized component values through Unity's `EditorJsonUtility`.
+
+Useful future toolbar actions could include pasting values into matching existing components, copying component order, removing all copied component types from the target, or saving a copied component set as a reusable preset.
+
 ## Layout
 
 ### Tabs
