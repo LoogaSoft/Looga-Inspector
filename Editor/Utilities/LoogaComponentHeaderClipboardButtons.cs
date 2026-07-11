@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -24,9 +24,9 @@ namespace LoogaSoft.Inspector.Editor
         private const float ButtonSize = 15f;
         private const float ButtonGap = 2f;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
-        private static readonly Color ButtonHoverColor = new(0.42f, 0.42f, 0.42f, 0.72f);
-        private static readonly Color ButtonPressedColor = new(0.30f, 0.30f, 0.30f, 0.9f);
-        private const float RightOffset = 68f;
+        private static readonly Color ButtonHoverColor = new(0.58f, 0.58f, 0.58f, 0.78f);
+        private static readonly Color ButtonPressedColor = new(0.44f, 0.44f, 0.44f, 0.92f);
+        private const float RightOffset = 66f;
         private const float TopOffset = 4f;
 
         private static readonly Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
@@ -227,10 +227,10 @@ namespace LoogaSoft.Inspector.Editor
             };
             button.style.width = ButtonSize;
             button.style.height = ButtonSize;
-            button.style.paddingLeft = 2f;
-            button.style.paddingRight = 2f;
-            button.style.paddingTop = 2f;
-            button.style.paddingBottom = 2f;
+            button.style.paddingLeft = 3f;
+            button.style.paddingRight = 3f;
+            button.style.paddingTop = 3f;
+            button.style.paddingBottom = 3f;
             button.style.marginLeft = 0f;
             button.style.marginRight = 0f;
             button.style.marginTop = 0f;
@@ -362,3 +362,4 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+

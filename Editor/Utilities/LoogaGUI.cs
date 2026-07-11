@@ -14,16 +14,16 @@ namespace LoogaSoft.Inspector.Editor
         private const float StatusActionSize = 18f;
 
         private static Color StatusActionColor => EditorGUIUtility.isProSkin
-            ? new Color(0.56f, 0.56f, 0.56f, 1f)
-            : new Color(0.72f, 0.72f, 0.72f, 1f);
+            ? new Color(0.376f, 0.376f, 0.376f, 1f)
+            : new Color(0.742f, 0.742f, 0.742f, 1f);
 
         private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
-            ? new Color(0.66f, 0.66f, 0.66f, 1f)
-            : new Color(0.80f, 0.80f, 0.80f, 1f);
+            ? new Color(0.46f, 0.46f, 0.46f, 1f)
+            : new Color(0.79f, 0.79f, 0.79f, 1f);
 
         private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
-            ? new Color(0.48f, 0.48f, 0.48f, 1f)
-            : new Color(0.62f, 0.62f, 0.62f, 1f);
+            ? new Color(0.32f, 0.32f, 0.32f, 1f)
+            : new Color(0.68f, 0.68f, 0.68f, 1f);
 
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
@@ -235,3 +235,4 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
