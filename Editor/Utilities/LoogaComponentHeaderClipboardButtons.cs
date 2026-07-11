@@ -33,6 +33,7 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly Dictionary<int, HeaderCandidate> CandidateByComponent = new();
         private static Texture2D _copyIcon;
         private static Texture2D _pasteIcon;
+        private static Texture2D _generatedPasteIcon;
 
         static LoogaComponentHeaderClipboardButtons()
         {
@@ -272,7 +273,65 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Texture2D GetPasteIcon()
         {
-            return _pasteIcon ??= EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_Clipboard" : "Clipboard").image as Texture2D;
+            return _pasteIcon ??= GetGeneratedPasteIcon();
+        }
+
+        private static Texture2D GetGeneratedPasteIcon()
+        {
+            if (_generatedPasteIcon != null)
+                return _generatedPasteIcon;
+
+            Color32 clear = new(0, 0, 0, 0);
+            Color32 ink = EditorGUIUtility.isProSkin ? new Color32(190, 190, 190, 255) : new Color32(80, 80, 80, 255);
+            _generatedPasteIcon = new Texture2D(16, 16, TextureFormat.RGBA32, false)
+            {
+                name = "Looga Generated Paste Icon",
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point
+            };
+
+            Color32[] pixels = new Color32[16 * 16];
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = clear;
+
+            void Pixel(int x, int y)
+            {
+                if (x < 0 || x >= 16 || y < 0 || y >= 16)
+                    return;
+
+                pixels[y * 16 + x] = ink;
+            }
+
+            for (int x = 4; x <= 11; x++)
+            {
+                Pixel(x, 3);
+                Pixel(x, 12);
+            }
+
+            for (int y = 3; y <= 12; y++)
+            {
+                Pixel(4, y);
+                Pixel(11, y);
+            }
+
+            for (int x = 6; x <= 9; x++)
+            {
+                Pixel(x, 13);
+                Pixel(x, 14);
+            }
+
+            Pixel(5, 13);
+            Pixel(10, 13);
+            for (int x = 6; x <= 9; x++)
+                Pixel(x, 10);
+            for (int x = 6; x <= 9; x++)
+                Pixel(x, 8);
+            for (int x = 6; x <= 8; x++)
+                Pixel(x, 6);
+
+            _generatedPasteIcon.SetPixels32(pixels);
+            _generatedPasteIcon.Apply(false, true);
+            return _generatedPasteIcon;
         }
 
         private readonly struct HeaderCandidate

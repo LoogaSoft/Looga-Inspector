@@ -152,11 +152,93 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            Rect iconRect = new(statusRect.x + 6f, statusRect.y + 5f, 34f, statusRect.height - 10f);
+            Rect iconRect = new(statusRect.x + 8f, statusRect.y + 6f, 24f, statusRect.height - 12f);
             string tooltip = string.IsNullOrWhiteSpace(statusBox.ActionTooltip) ? "Open" : statusBox.ActionTooltip;
-            EditorGUIUtility.AddCursorRect(iconRect, MouseCursor.Link);
-            if (GUI.Button(iconRect, new GUIContent(string.Empty, tooltip), GUIStyle.none))
+            if (DrawStatusBoxActionIcon(iconRect, tooltip))
                 ExecuteStatusBoxAction(statusBox, hasAssetPath);
+        }
+
+        private static bool DrawStatusBoxActionIcon(Rect rect, string tooltip)
+        {
+            int controlId = GUIUtility.GetControlID("LoogaStatusBoxAction".GetHashCode(), FocusType.Passive, rect);
+            Event current = Event.current;
+            bool hovered = rect.Contains(current.mousePosition);
+            bool pressed = GUIUtility.hotControl == controlId;
+
+            if (hovered)
+                EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
+
+            if (current.type == EventType.Repaint)
+            {
+                Rect background = AlignToPixels(rect);
+                Color color = pressed
+                    ? new Color(0.23f, 0.23f, 0.23f, 1f)
+                    : hovered
+                        ? new Color(0.36f, 0.36f, 0.36f, 1f)
+                        : new Color(0.27f, 0.27f, 0.27f, 1f);
+                EditorGUI.DrawRect(background, color);
+                DrawOpenGlyph(background, hovered || pressed);
+            }
+
+            if (current.type == EventType.MouseDown && current.button == 0 && hovered)
+            {
+                GUIUtility.hotControl = controlId;
+                current.Use();
+                return false;
+            }
+
+            if (current.type == EventType.MouseUp && GUIUtility.hotControl == controlId)
+            {
+                GUIUtility.hotControl = 0;
+                current.Use();
+                return hovered;
+            }
+
+            if (current.type == EventType.MouseMove && hovered)
+                GUI.Label(rect, new GUIContent(string.Empty, tooltip));
+
+            return false;
+        }
+
+        private static void DrawOpenGlyph(Rect rect, bool highlighted)
+        {
+            Color lineColor = highlighted ? new Color(0.96f, 0.96f, 0.96f, 1f) : new Color(0.76f, 0.76f, 0.76f, 1f);
+            Rect glyph = new(
+                Mathf.Round(rect.x + 6f),
+                Mathf.Round(rect.y + 6f),
+                Mathf.Round(rect.width - 12f),
+                Mathf.Round(rect.height - 12f));
+
+            Handles.BeginGUI();
+            Color previous = Handles.color;
+            Handles.color = lineColor;
+
+            Vector3 bottomLeft = new(glyph.xMin, glyph.yMax - 1f, 0f);
+            Vector3 topLeft = new(glyph.xMin, glyph.yMin + 4f, 0f);
+            Vector3 bottomRight = new(glyph.xMax - 4f, glyph.yMax - 1f, 0f);
+            Vector3 topRight = new(glyph.xMax, glyph.yMin, 0f);
+            Vector3 arrowStart = new(glyph.xMin + 4f, glyph.yMax - 5f, 0f);
+            Vector3 arrowEnd = new(glyph.xMax, glyph.yMin, 0f);
+
+            Handles.DrawAAPolyLine(1.5f, bottomLeft, topLeft, bottomLeft, bottomRight);
+            Handles.DrawAAPolyLine(1.5f, arrowStart, arrowEnd);
+            Handles.DrawAAPolyLine(1.5f,
+                new Vector3(topRight.x - 4f, topRight.y, 0f),
+                topRight,
+                new Vector3(topRight.x, topRight.y + 4f, 0f));
+
+            Handles.color = previous;
+            Handles.EndGUI();
+        }
+
+        private static Rect AlignToPixels(Rect rect)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return new Rect(
+                Mathf.Round(rect.x * pixelsPerPoint) / pixelsPerPoint,
+                Mathf.Round(rect.y * pixelsPerPoint) / pixelsPerPoint,
+                Mathf.Round(rect.width * pixelsPerPoint) / pixelsPerPoint,
+                Mathf.Round(rect.height * pixelsPerPoint) / pixelsPerPoint);
         }
 
         private static void ExecuteStatusBoxAction(StatusBoxAttribute statusBox, bool hasAssetPath)
