@@ -35,9 +35,8 @@ namespace LoogaSoft.Inspector.Editor
 
             EnsureStyles();
 
-            Rect headerRect = GUILayoutUtility.GetLastRect();
-            if (headerRect.width <= 0f || headerRect.height <= 0f)
-                return;
+            Rect anchorRect = GUILayoutUtility.GetRect(0f, 0f, GUILayout.ExpandWidth(true));
+            Rect headerRect = new(0f, anchorRect.y - EditorGUIUtility.singleLineHeight - 3f, EditorGUIUtility.currentViewWidth, EditorGUIUtility.singleLineHeight + 4f);
 
             float totalWidth = ButtonSize * 2f + ButtonGap;
             float x = headerRect.xMax - BuiltInIconAreaWidth - totalWidth;
