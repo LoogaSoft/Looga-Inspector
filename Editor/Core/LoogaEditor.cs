@@ -18,6 +18,7 @@ namespace LoogaSoft.Inspector.Editor
         private string _draggingListKey = string.Empty;
         private int _draggingListIndex = -1;
         private int _draggingListDropIndex = -1;
+        private float _draggingListMouseOffsetY;
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
         private static readonly Dictionary<Type, StatusBoxAttribute[]> _statusBoxCache = new();
@@ -31,6 +32,7 @@ namespace LoogaSoft.Inspector.Editor
             _draggingListKey = string.Empty;
             _draggingListIndex = -1;
             _draggingListDropIndex = -1;
+            _draggingListMouseOffsetY = 0f;
         }
 
         public override void OnInspectorGUI()
@@ -1147,7 +1149,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListHeaderAccentWidth = 4f;
         private const float ListHeaderLeftInset = 6f;
         private const float ListHeaderTextArrowGap = 6f;
-        private const float ListHeaderButtonSize = 19f;
+        private const float ListHeaderButtonSize = 18f;
         private const float ListHeaderButtonGap = 2f;
         private const float ListSizeFieldWidth = 48f;
         private const float ListSizeFieldRightPadding = 8f;
@@ -1159,7 +1161,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListDragHandleWidth = 16f;
         private const float ListRowDeleteWidth = 20f;
         private const float ListEmptyRowHeight = 22f;
-        private const float ListDropLineHeight = 2f;
 
         private void DrawLoogaList(SerializedProperty property)
         {
@@ -1170,21 +1171,22 @@ namespace LoogaSoft.Inspector.Editor
             string key = property.propertyPath;
             Rect headerRect = EditorGUILayout.GetControlRect(false, ListHeaderHeight);
             Rect boxRect = new(headerRect.x - 3f, headerRect.y, headerRect.width + 6f, headerRect.height);
-            Rect removeRect = new(
-                boxRect.xMax - ListHeaderButtonSize - ListSizeFieldRightPadding,
-                CenterVertically(boxRect, ListHeaderButtonSize).y,
-                ListHeaderButtonSize,
-                ListHeaderButtonSize);
-            Rect addRect = new(
-                removeRect.x - ListHeaderButtonGap - ListHeaderButtonSize,
-                removeRect.y,
-                ListHeaderButtonSize,
-                ListHeaderButtonSize);
+            float headerControlY = Mathf.Round(CenterVertically(boxRect, EditorGUIUtility.singleLineHeight).y);
             Rect sizeRect = new(
-                addRect.x - ListHeaderButtonGap - ListSizeFieldWidth,
-                CenterVertically(boxRect, EditorGUIUtility.singleLineHeight).y,
+                boxRect.xMax - ListSizeFieldWidth - ListHeaderButtonSize * 2f - ListHeaderButtonGap * 2f - ListSizeFieldRightPadding,
+                headerControlY,
                 ListSizeFieldWidth,
                 EditorGUIUtility.singleLineHeight);
+            Rect addRect = new(
+                sizeRect.xMax + ListHeaderButtonGap,
+                sizeRect.y,
+                ListHeaderButtonSize,
+                sizeRect.height);
+            Rect removeRect = new(
+                addRect.xMax + ListHeaderButtonGap,
+                sizeRect.y,
+                ListHeaderButtonSize,
+                sizeRect.height);
             Rect toggleRect = new(
                 boxRect.x,
                 boxRect.y,
@@ -1284,6 +1286,11 @@ namespace LoogaSoft.Inspector.Editor
                 Mathf.Max(0f, listBoxRect.height - ListBodyPaddingY * 2f));
 
             HandleListDragOver(property, key, contentRect);
+            bool draggingThisList = _draggingListKey == key && _draggingListIndex >= 0 && _draggingListIndex < property.arraySize;
+            int dropIndex = draggingThisList ? Mathf.Clamp(_draggingListDropIndex, 0, property.arraySize) : -1;
+            SerializedProperty draggedElement = null;
+            float draggedElementHeight = 0f;
+            float draggedRowHeight = 0f;
             float y = contentRect.y;
 
             if (property.arraySize == 0)
@@ -1298,44 +1305,71 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     SerializedProperty element = property.GetArrayElementAtIndex(i);
                     float elementHeight = GetStructuredPropertyHeight(element);
-                    Rect rowRect = new(contentRect.x, y, contentRect.width, elementHeight + ListRowPaddingY * 2f);
+                    float rowHeight = elementHeight + ListRowPaddingY * 2f;
 
+                    if (draggingThisList && i == _draggingListIndex)
+                    {
+                        draggedElement = element;
+                        draggedElementHeight = elementHeight;
+                        draggedRowHeight = rowHeight;
+                    }
+
+                    if (draggingThisList && i == dropIndex)
+                        y += draggedRowHeight + ListRowGap;
+
+                    if (draggingThisList && i == _draggingListIndex)
+                        continue;
+
+                    Rect rowRect = new(contentRect.x, y, contentRect.width, rowHeight);
                     if (HandleListRowInput(key, rowRect, i))
                         return;
 
                     bool selected = IsListRowSelected(key, i);
-                    bool dragging = _draggingListKey == key && _draggingListIndex == i;
                     bool hovered = rowRect.Contains(e.mousePosition);
-                    DrawListRowBackground(rowRect, selected, hovered, dragging);
-
-                    Rect deleteRect = new(
-                        rowRect.xMax - ListRowPaddingX - ListRowDeleteWidth,
-                        CenterVertically(rowRect, EditorGUIUtility.singleLineHeight).y,
-                        ListRowDeleteWidth,
-                        EditorGUIUtility.singleLineHeight);
-                    Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
-                    Rect elementRect = new(
-                        dragRect.xMax + ListRowPaddingX,
-                        rowRect.y + ListRowPaddingY,
-                        Mathf.Max(0f, deleteRect.x - dragRect.xMax - ListRowPaddingX * 2f),
-                        elementHeight);
-
-                    DrawListDragHandle(dragRect);
-                    DrawListElement(elementRect, element);
-
-                    if (GUI.Button(deleteRect, new GUIContent("-", "Remove item"), EditorStyles.miniButton))
-                    {
-                        DeleteListElement(property, i);
-                        ShiftListSelectionAfterDelete(key, i, property.arraySize);
-                        GUI.changed = true;
-                        return;
-                    }
-
+                    DrawListRowBackground(rowRect, selected, hovered, false);
+                    DrawListRow(property, key, rowRect, element, elementHeight, i);
                     y = rowRect.yMax + ListRowGap;
                 }
-            }
 
-            DrawListDropLine(property, key, contentRect);
+                if (draggingThisList && dropIndex == property.arraySize)
+                    y += draggedRowHeight + ListRowGap;
+
+                if (draggingThisList && draggedElement != null)
+                {
+                    Rect draggedRowRect = new(contentRect.x, e.mousePosition.y - _draggingListMouseOffsetY, contentRect.width, draggedRowHeight);
+                    DrawListRowBackground(draggedRowRect, true, false, true);
+                    DrawListRow(property, key, draggedRowRect, draggedElement, draggedElementHeight, _draggingListIndex);
+                }
+            }
+        }
+
+        private void DrawListRow(SerializedProperty property, string key, Rect rowRect, SerializedProperty element, float elementHeight, int index)
+        {
+            float deleteHeight = EditorGUIUtility.singleLineHeight;
+            Rect deleteRect = new(
+                0f,
+                CenterVertically(rowRect, deleteHeight).y,
+                ListRowDeleteWidth,
+                deleteHeight);
+            float deleteRightInset = deleteRect.y - rowRect.y;
+            deleteRect.x = rowRect.xMax - deleteRightInset - deleteRect.width;
+
+            Rect dragRect = new(rowRect.x + ListRowPaddingX, rowRect.y, ListDragHandleWidth, rowRect.height);
+            Rect elementRect = new(
+                dragRect.xMax + ListRowPaddingX,
+                rowRect.y + ListRowPaddingY,
+                Mathf.Max(0f, deleteRect.x - dragRect.xMax - ListRowPaddingX * 2f),
+                elementHeight);
+
+            DrawListDragHandle(dragRect);
+            DrawListElement(elementRect, element);
+
+            if (GUI.Button(deleteRect, new GUIContent("-", "Remove item"), EditorStyles.miniButton))
+            {
+                DeleteListElement(property, index);
+                ShiftListSelectionAfterDelete(key, index, property.arraySize);
+                GUI.changed = true;
+            }
         }
 
         private bool HandleListRowInput(string key, Rect rowRect, int index)
@@ -1352,6 +1386,7 @@ namespace LoogaSoft.Inspector.Editor
                     _draggingListKey = key;
                     _draggingListIndex = index;
                     _draggingListDropIndex = index;
+                    _draggingListMouseOffsetY = e.mousePosition.y - rowRect.y;
                     e.Use();
                 }
             }
@@ -1447,18 +1482,6 @@ namespace LoogaSoft.Inspector.Editor
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
         }
-
-        private void DrawListDropLine(SerializedProperty property, string key, Rect contentRect)
-        {
-            if (Event.current.type != EventType.Repaint || _draggingListKey != key || _draggingListIndex < 0)
-                return;
-
-            int dropIndex = Mathf.Clamp(_draggingListDropIndex, 0, property.arraySize);
-            float y = GetListDropLineY(property, contentRect, dropIndex);
-            Rect lineRect = new(contentRect.x, y - ListDropLineHeight * 0.5f, contentRect.width, ListDropLineHeight);
-            EditorGUI.DrawRect(lineRect, GetListDropLineColor());
-        }
-
         private static void DrawListFoldoutArrow(Rect rect, bool expanded)
         {
             if (Event.current.type != EventType.Repaint)
@@ -1532,25 +1555,6 @@ namespace LoogaSoft.Inspector.Editor
 
             return property.arraySize;
         }
-
-        private static float GetListDropLineY(SerializedProperty property, Rect contentRect, int dropIndex)
-        {
-            if (dropIndex <= 0 || property.arraySize == 0)
-                return contentRect.y;
-
-            float y = contentRect.y;
-            for (int i = 0; i < Mathf.Min(dropIndex, property.arraySize); i++)
-            {
-                float rowHeight = GetStructuredPropertyHeight(property.GetArrayElementAtIndex(i)) + ListRowPaddingY * 2f;
-                y += rowHeight;
-
-                if (i < dropIndex - 1)
-                    y += ListRowGap;
-            }
-
-            return y;
-        }
-
         private HashSet<int> GetListSelection(string key)
         {
             if (_listSelectedIndices.TryGetValue(key, out HashSet<int> selection))
@@ -1688,13 +1692,14 @@ namespace LoogaSoft.Inspector.Editor
             _draggingListKey = string.Empty;
             _draggingListIndex = -1;
             _draggingListDropIndex = -1;
+            _draggingListMouseOffsetY = 0f;
         }
 
         private static Color GetListRowColor()
         {
             return EditorGUIUtility.isProSkin
-                ? new Color(0.16f, 0.16f, 0.16f, 1f)
-                : new Color(0.68f, 0.68f, 0.68f, 1f);
+                ? new Color(0.255f, 0.255f, 0.255f, 1f)
+                : new Color(0.76f, 0.76f, 0.76f, 1f);
         }
 
         private static Color GetListHoverColor()
@@ -1709,13 +1714,6 @@ namespace LoogaSoft.Inspector.Editor
             return EditorGUIUtility.isProSkin
                 ? new Color(0.18f, 0.42f, 0.72f, 1f)
                 : new Color(0.28f, 0.55f, 0.90f, 1f);
-        }
-
-        private static Color GetListDropLineColor()
-        {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.25f, 0.55f, 1f, 1f)
-                : new Color(0.10f, 0.38f, 0.95f, 1f);
         }
         private static Rect CenterVertically(Rect rect, float height)
         {
