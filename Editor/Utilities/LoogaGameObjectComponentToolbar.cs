@@ -6,12 +6,11 @@ using UnityEngine;
 namespace LoogaSoft.Inspector.Editor
 {
     /// <summary>
-    /// Adds a Looga-styled component clipboard immediately above the Transform component header.
+    /// Adds a Looga-styled component clipboard beneath Unity's built-in GameObject header.
     /// The clipboard is editor-session only and copies serialized component data, excluding Transform.
     /// </summary>
-    [CustomEditor(typeof(Transform))]
-    [CanEditMultipleObjects]
-    internal sealed class LoogaGameObjectComponentToolbar : UnityEditor.Editor
+    [InitializeOnLoad]
+    internal static class LoogaGameObjectComponentToolbar
     {
         private const float ToolbarHeight = 26f;
         private const float ButtonHeight = 18f;
@@ -30,65 +29,16 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D _buttonActiveTexture;
         private static string _sourceName;
 
-        private UnityEditor.Editor _transformEditor;
+        static LoogaGameObjectComponentToolbar()
+        {
+            UnityEditor.Editor.finishedDefaultHeaderGUI += DrawToolbar;
+        }
 
         private static bool HasClipboard => CopiedComponents.Count > 0;
 
-        private void OnEnable()
+        private static void DrawToolbar(UnityEditor.Editor editor)
         {
-            CreateTransformEditor();
-        }
-
-        private void OnDisable()
-        {
-            if (_transformEditor != null)
-            {
-                DestroyImmediate(_transformEditor);
-                _transformEditor = null;
-            }
-        }
-
-        protected override void OnHeaderGUI()
-        {
-            DrawComponentToolbar();
-
-            if (_transformEditor != null)
-            {
-                _transformEditor.DrawHeader();
-                return;
-            }
-
-            base.OnHeaderGUI();
-        }
-
-        public override void OnInspectorGUI()
-        {
-            if (_transformEditor != null)
-            {
-                _transformEditor.OnInspectorGUI();
-                return;
-            }
-
-            DrawDefaultInspector();
-        }
-
-        public override bool RequiresConstantRepaint()
-        {
-            return _transformEditor != null && _transformEditor.RequiresConstantRepaint();
-        }
-
-        private void CreateTransformEditor()
-        {
-            Type transformInspectorType = Type.GetType("UnityEditor.TransformInspector, UnityEditor");
-            if (transformInspectorType == null)
-                return;
-
-            _transformEditor = CreateEditor(targets, transformInspectorType);
-        }
-
-        private void DrawComponentToolbar()
-        {
-            if (target is not Transform transform)
+            if (editor == null || editor.target is not GameObject gameObject)
                 return;
 
             EnsureStyles();
@@ -105,14 +55,14 @@ namespace LoogaSoft.Inspector.Editor
 
             Rect buttonRect = GetCenteredRect(rect, rect.x + HorizontalPadding, ButtonWidth, ButtonHeight);
             if (GUI.Button(buttonRect, "Copy Components", _buttonStyle))
-                CopyComponents(transform.gameObject);
+                CopyComponents(gameObject);
 
             float nextX = buttonRect.xMax + ButtonGap;
             if (HasClipboard)
             {
                 Rect pasteRect = GetCenteredRect(rect, nextX, ButtonWidth, ButtonHeight);
                 if (GUI.Button(pasteRect, "Paste Components", _buttonStyle))
-                    PasteComponents(targets);
+                    PasteComponents(editor.targets);
 
                 nextX = pasteRect.xMax + ButtonGap;
                 Rect countRect = GetCenteredRect(rect, nextX, CountLabelWidth, ButtonHeight);
@@ -157,18 +107,17 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private static void PasteComponents(UnityEngine.Object[] transformTargets)
+        private static void PasteComponents(UnityEngine.Object[] targets)
         {
-            if (!HasClipboard || transformTargets == null)
+            if (!HasClipboard || targets == null)
                 return;
 
             int pastedCount = 0;
-            for (int i = 0; i < transformTargets.Length; i++)
+            for (int i = 0; i < targets.Length; i++)
             {
-                if (transformTargets[i] is not Transform transform)
+                if (targets[i] is not GameObject targetGameObject)
                     continue;
 
-                GameObject targetGameObject = transform.gameObject;
                 for (int componentIndex = 0; componentIndex < CopiedComponents.Count; componentIndex++)
                 {
                     CopiedComponent copied = CopiedComponents[componentIndex];
