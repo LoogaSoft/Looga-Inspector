@@ -453,7 +453,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (catalogAttribute != null && TryDrawCatalogProperty(property, metadata, catalogAttribute))
                     return;
                 else if (isList)
-                    DrawLoogaList(property);
+                    DrawLoogaList(property, PropertyUtils.GetAttribute<ExpandedListAttribute>(property));
                 else
                 {
                     EditorGUI.BeginChangeCheck();
@@ -1173,13 +1173,16 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListEmptyRowHeight = 22f;
         private const float ListReorderAnimationSeconds = 0.08f;
 
-        private void DrawLoogaList(SerializedProperty property)
+        private void DrawLoogaList(SerializedProperty property, ExpandedListAttribute expandedListAttribute)
         {
             FieldInfo field = ReflectionUtils.GetField(target.GetType(), property.name);
             DrawListValidation(property, field);
 
             Event e = Event.current;
             string key = property.propertyPath;
+            bool alwaysExpanded = expandedListAttribute != null;
+            if (alwaysExpanded)
+                property.isExpanded = true;
             Rect headerRect = EditorGUILayout.GetControlRect(false, ListHeaderHeight);
             Rect boxRect = new(headerRect.x - 3f, headerRect.y, headerRect.width + 6f, headerRect.height);
             float headerControlY = Mathf.Round(CenterVertically(boxRect, EditorGUIUtility.singleLineHeight).y);
@@ -1204,18 +1207,19 @@ namespace LoogaSoft.Inspector.Editor
                 Mathf.Max(0f, sizeRect.x - boxRect.x - ListSizeFieldRightPadding),
                 boxRect.height);
 
-            float bodyHeight = property.isExpanded ? GetListBodyHeight(property) : 0f;
+            float bodyHeight = (alwaysExpanded || property.isExpanded) ? GetListBodyHeight(property) : 0f;
             Rect fullRect = new(boxRect.x, boxRect.y, boxRect.width, boxRect.height + bodyHeight);
 
-            EditorGUIUtility.AddCursorRect(toggleRect, MouseCursor.Arrow);
+            if (!alwaysExpanded)
+                EditorGUIUtility.AddCursorRect(toggleRect, MouseCursor.Arrow);
             if (e.type == EventType.MouseMove && fullRect.Contains(e.mousePosition))
                 Repaint();
 
             HandleListDragAndDrop(property, fullRect, field);
             DrawListHeaderBackground(boxRect, toggleRect);
 
-            bool isExpanded = property.isExpanded;
-            if (e.type == EventType.MouseDown && toggleRect.Contains(e.mousePosition) && e.button == 0)
+            bool isExpanded = alwaysExpanded || property.isExpanded;
+            if (!alwaysExpanded && e.type == EventType.MouseDown && toggleRect.Contains(e.mousePosition) && e.button == 0)
             {
                 property.isExpanded = !property.isExpanded;
                 isExpanded = property.isExpanded;
@@ -1227,13 +1231,15 @@ namespace LoogaSoft.Inspector.Editor
                 CenterVertically(boxRect, ListHeaderArrowSize).y,
                 ListHeaderArrowSize,
                 ListHeaderArrowSize);
+            float labelX = alwaysExpanded ? arrowRect.x : arrowRect.xMax + ListHeaderTextArrowGap;
             Rect labelRect = new(
-                arrowRect.xMax + ListHeaderTextArrowGap,
+                labelX,
                 boxRect.y + 1f,
-                Mathf.Max(0f, toggleRect.xMax - arrowRect.xMax - ListHeaderTextArrowGap - ListHeaderLeftInset),
+                Mathf.Max(0f, toggleRect.xMax - labelX - ListHeaderLeftInset),
                 boxRect.height);
 
-            DrawListFoldoutArrow(arrowRect, isExpanded);
+            if (!alwaysExpanded)
+                DrawListFoldoutArrow(arrowRect, isExpanded);
             GUIContent headerLabel = PropertyUtils.GetLabel(property);
             if (!labelRect.Contains(e.mousePosition))
                 headerLabel = new GUIContent(headerLabel.text);
@@ -1250,7 +1256,7 @@ namespace LoogaSoft.Inspector.Editor
 
             DrawListHeaderButtons(property, key, addRect, removeRect);
 
-            if (!property.isExpanded)
+            if (!alwaysExpanded && !property.isExpanded)
             {
                 CancelListDrag(key);
                 return;

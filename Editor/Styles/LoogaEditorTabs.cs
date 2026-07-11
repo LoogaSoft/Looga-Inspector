@@ -6,62 +6,30 @@ namespace LoogaSoft.Inspector.Editor
 {
     public static class LoogaEditorTabs
     {
-        private static readonly Dictionary<string, float> ToolbarWidthCache = new();
+        private const float TabHeight = 24f;
+        private const float TabRowGap = 2f;
+        private const float TabTextPadding = 24f;
+        private const float TabSeparatorWidth = 1f;
+        private const float SelectedAccentHeight = 2f;
 
-        /// <summary>
-        /// Draws a toolbar that keeps Unity's native GUILayout.Toolbar styling while wrapping
-        /// long tab groups onto extra rows before labels clip.
-        /// </summary>
+        private static readonly Dictionary<string, float> ToolbarWidthCache = new();
+        private static GUIStyle _tabLabelStyle;
+
         public static int DrawWrappingToolbar(int selectedIndex, string[] tabNames, string cacheKey)
         {
             if (tabNames == null || tabNames.Length == 0)
                 return selectedIndex;
 
             selectedIndex = Mathf.Clamp(selectedIndex, 0, tabNames.Length - 1);
-
-            ToolbarWidthCache.TryGetValue(cacheKey, out float availableWidth);
-            if (availableWidth <= 0f)
-                availableWidth = float.MaxValue;
-
+            float availableWidth = GetCachedWidth(cacheKey, EditorGUIUtility.currentViewWidth);
             List<List<int>> rows = BuildRows(tabNames, availableWidth);
+            float totalHeight = GetRowsHeight(rows.Count);
+            Rect fullRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(totalHeight), GUILayout.ExpandWidth(true));
 
-            int newSelectedIndex = selectedIndex;
-            bool firstRow = true;
+            if (Event.current.type == EventType.Repaint)
+                ToolbarWidthCache[cacheKey] = fullRect.width;
 
-            for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
-            {
-                List<int> row = rows[rowIndex];
-                string[] rowLabels = new string[row.Count];
-                for (int r = 0; r < row.Count; r++)
-                    rowLabels[r] = tabNames[row[r]];
-
-                int localSelected = -1;
-                for (int r = 0; r < row.Count; r++)
-                {
-                    if (row[r] == selectedIndex)
-                    {
-                        localSelected = r;
-                        break;
-                    }
-                }
-
-                int localResult = GUILayout.Toolbar(localSelected, rowLabels, GUILayout.ExpandWidth(true));
-
-                if (firstRow && Event.current.type == EventType.Repaint)
-                {
-                    Rect lastRect = GUILayoutUtility.GetLastRect();
-                    ToolbarWidthCache[cacheKey] = lastRect.width;
-                    firstRow = false;
-                }
-
-                if (localResult >= 0 && localResult != localSelected)
-                    newSelectedIndex = row[localResult];
-
-                if (rowIndex < rows.Count - 1)
-                    GUILayout.Space(-EditorGUIUtility.standardVerticalSpacing);
-            }
-
-            return newSelectedIndex;
+            return DrawRows(fullRect, rows, tabNames, selectedIndex);
         }
 
         public static int DrawWrappingToolbarWithRightControl(
@@ -76,63 +44,122 @@ namespace LoogaSoft.Inspector.Editor
                 return selectedIndex;
 
             selectedIndex = Mathf.Clamp(selectedIndex, 0, tabNames.Length - 1);
-
-            ToolbarWidthCache.TryGetValue(cacheKey, out float fullWidth);
-            if (fullWidth <= 0f)
-                fullWidth = EditorGUIUtility.currentViewWidth;
-
+            float fullWidth = GetCachedWidth(cacheKey, EditorGUIUtility.currentViewWidth);
             float reservedWidth = drawRightControl != null ? rightControlWidth + rightControlGap : 0f;
             float toolbarWidth = Mathf.Max(1f, fullWidth - reservedWidth);
             List<List<int>> rows = BuildRows(tabNames, toolbarWidth);
+            float totalHeight = GetRowsHeight(rows.Count);
 
-            int newSelectedIndex = selectedIndex;
-            bool firstRow = true;
+            Rect fullRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none, GUILayout.Height(totalHeight), GUILayout.ExpandWidth(true));
+            if (Event.current.type == EventType.Repaint)
+                ToolbarWidthCache[cacheKey] = fullRect.width;
 
-            for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+            Rect tabsRect = new(fullRect.x, fullRect.y, Mathf.Max(1f, fullRect.width - reservedWidth), fullRect.height);
+            int newSelectedIndex = DrawRows(tabsRect, rows, tabNames, selectedIndex);
+
+            if (drawRightControl != null)
             {
-                using (new EditorGUILayout.HorizontalScope())
-                {
-                    List<int> row = rows[rowIndex];
-                    int localSelected = GetLocalSelected(row, selectedIndex);
-                    int localResult = GUILayout.Toolbar(localSelected, GetRowLabels(row, tabNames), GUILayout.Width(toolbarWidth));
-
-                    if (firstRow && Event.current.type == EventType.Repaint)
-                    {
-                        Rect lastRect = GUILayoutUtility.GetLastRect();
-                        ToolbarWidthCache[cacheKey] = lastRect.width + reservedWidth;
-                        firstRow = false;
-                    }
-
-                    if (localResult >= 0 && localResult != localSelected)
-                        newSelectedIndex = row[localResult];
-
-                    if (drawRightControl != null)
-                    {
-                        GUILayout.Space(rightControlGap);
-
-                        if (rowIndex == 0)
-                            drawRightControl();
-                        else
-                            GUILayout.Space(rightControlWidth);
-                    }
-                }
-
-                if (rowIndex < rows.Count - 1)
-                    GUILayout.Space(-EditorGUIUtility.standardVerticalSpacing);
+                Rect controlRect = new(fullRect.xMax - rightControlWidth, fullRect.y, rightControlWidth, TabHeight);
+                GUILayout.BeginArea(controlRect);
+                drawRightControl();
+                GUILayout.EndArea();
             }
 
             return newSelectedIndex;
         }
 
+        private static int DrawRows(Rect fullRect, List<List<int>> rows, string[] tabNames, int selectedIndex)
+        {
+            EnsureStyles();
+            if (Event.current.type == EventType.MouseMove && fullRect.Contains(Event.current.mousePosition))
+                HandleUtility.Repaint();
+
+            int newSelectedIndex = selectedIndex;
+
+            for (int rowIndex = 0; rowIndex < rows.Count; rowIndex++)
+            {
+                Rect rowRect = PixelSnap(new Rect(
+                    fullRect.x,
+                    fullRect.y + rowIndex * (TabHeight + TabRowGap),
+                    fullRect.width,
+                    TabHeight));
+                List<int> row = rows[rowIndex];
+                DrawRowBackground(rowRect);
+
+                if (row.Count == 0)
+                    continue;
+
+                float tabWidth = rowRect.width / row.Count;
+                for (int localIndex = 0; localIndex < row.Count; localIndex++)
+                {
+                    int tabIndex = row[localIndex];
+                    Rect tabRect = PixelSnap(new Rect(
+                        rowRect.x + localIndex * tabWidth,
+                        rowRect.y,
+                        localIndex == row.Count - 1 ? rowRect.xMax - (rowRect.x + localIndex * tabWidth) : tabWidth,
+                        rowRect.height));
+                    bool selected = tabIndex == selectedIndex;
+                    bool hovered = tabRect.Contains(Event.current.mousePosition);
+
+                    if (hovered && Event.current.type == EventType.MouseMove)
+                        HandleUtility.Repaint();
+
+                    DrawTab(tabRect, tabNames[tabIndex], selected, hovered);
+
+                    if (Event.current.type == EventType.MouseDown && Event.current.button == 0 && hovered)
+                    {
+                        newSelectedIndex = tabIndex;
+                        Event.current.Use();
+                    }
+                }
+            }
+
+            return newSelectedIndex;
+        }
+
+        private static void DrawRowBackground(Rect rect)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            EditorGUI.DrawRect(rect, GetTabBarColor());
+        }
+
+        private static void DrawTab(Rect rect, string label, bool selected, bool hovered)
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                Color color = selected ? GetSelectedTabColor() : GetTabColor();
+                if (hovered && !selected)
+                    color = Color.Lerp(color, GetHoverTabColor(), 0.75f);
+
+                EditorGUI.DrawRect(rect, color);
+
+                Rect separatorRect = PixelSnap(new Rect(rect.xMax - Pixels(TabSeparatorWidth), rect.y + Pixels(3f), Pixels(1f), rect.height - Pixels(6f)));
+                EditorGUI.DrawRect(separatorRect, GetSeparatorColor());
+
+                if (selected)
+                {
+                    Rect accentRect = PixelSnap(new Rect(rect.x, rect.yMax - Pixels(SelectedAccentHeight), rect.width, Pixels(SelectedAccentHeight)));
+                    EditorGUI.DrawRect(accentRect, GetAccentColor());
+                }
+            }
+
+            Color previousColor = GUI.color;
+            GUI.color = selected ? GetSelectedTextColor() : GetTextColor();
+            GUI.Label(rect, label, _tabLabelStyle);
+            GUI.color = previousColor;
+        }
+
         private static List<List<int>> BuildRows(string[] tabNames, float availableWidth)
         {
-            GUIStyle buttonStyle = EditorStyles.toolbarButton;
+            EnsureStyles();
 
             float[] minWidths = new float[tabNames.Length];
             for (int i = 0; i < tabNames.Length; i++)
             {
-                Vector2 size = buttonStyle.CalcSize(PropertyUtils.GetContent(tabNames[i]));
-                minWidths[i] = Mathf.Ceil(size.x + 16f);
+                Vector2 size = _tabLabelStyle.CalcSize(PropertyUtils.GetContent(tabNames[i]));
+                minWidths[i] = Mathf.Ceil(size.x + TabTextPadding);
             }
 
             var rows = new List<List<int>>();
@@ -162,22 +189,110 @@ namespace LoogaSoft.Inspector.Editor
             return rows;
         }
 
-        private static string[] GetRowLabels(List<int> row, string[] tabNames)
+        private static float GetCachedWidth(string cacheKey, float fallbackWidth)
         {
-            string[] rowLabels = new string[row.Count];
-            for (int r = 0; r < row.Count; r++)
-                rowLabels[r] = tabNames[row[r]];
-
-            return rowLabels;
+            return ToolbarWidthCache.TryGetValue(cacheKey, out float width) && width > 0f
+                ? width
+                : Mathf.Max(1f, fallbackWidth - 40f);
         }
 
-        private static int GetLocalSelected(List<int> row, int selectedIndex)
+        private static float GetRowsHeight(int rowCount)
         {
-            for (int r = 0; r < row.Count; r++)
-                if (row[r] == selectedIndex)
-                    return r;
+            if (rowCount <= 0)
+                return 0f;
 
-            return -1;
+            return rowCount * TabHeight + (rowCount - 1) * TabRowGap;
+        }
+
+        private static void EnsureStyles()
+        {
+            if (_tabLabelStyle != null)
+                return;
+
+            _tabLabelStyle = new GUIStyle(EditorStyles.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                clipping = TextClipping.Clip,
+                fontSize = EditorStyles.label.fontSize,
+                fontStyle = FontStyle.Normal,
+                padding = new RectOffset(6, 6, 0, 1)
+            };
+        }
+
+        private static Rect PixelSnap(Rect rect)
+        {
+            return Rect.MinMaxRect(
+                PixelSnapValue(rect.xMin),
+                PixelSnapValue(rect.yMin),
+                PixelSnapValue(rect.xMax),
+                PixelSnapValue(rect.yMax));
+        }
+
+        private static float PixelSnapValue(float value)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return Mathf.Round(value * pixelsPerPoint) / pixelsPerPoint;
+        }
+
+        private static float Pixels(float pixelCount)
+        {
+            return pixelCount / EditorGUIUtility.pixelsPerPoint;
+        }
+
+        private static Color GetTabBarColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.18f, 0.18f, 0.18f, 1f)
+                : new Color(0.68f, 0.68f, 0.68f, 1f);
+        }
+
+        private static Color GetTabColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.21f, 0.21f, 0.21f, 1f)
+                : new Color(0.74f, 0.74f, 0.74f, 1f);
+        }
+
+        private static Color GetSelectedTabColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.30f, 0.30f, 0.30f, 1f)
+                : new Color(0.82f, 0.82f, 0.82f, 1f);
+        }
+
+        private static Color GetHoverTabColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.36f, 0.36f, 0.36f, 1f)
+                : new Color(0.86f, 0.86f, 0.86f, 1f);
+        }
+
+        private static Color GetSeparatorColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.13f, 0.13f, 0.13f, 1f)
+                : new Color(0.55f, 0.55f, 0.55f, 1f);
+        }
+
+        private static Color GetAccentColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.22f, 0.56f, 0.95f, 1f)
+                : new Color(0.16f, 0.45f, 0.78f, 1f);
+        }
+
+        private static Color GetTextColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.76f, 0.76f, 0.76f, 1f)
+                : new Color(0.18f, 0.18f, 0.18f, 1f);
+        }
+
+        private static Color GetSelectedTextColor()
+        {
+            return EditorGUIUtility.isProSkin
+                ? new Color(0.92f, 0.92f, 0.92f, 1f)
+                : new Color(0.08f, 0.08f, 0.08f, 1f);
         }
     }
 }

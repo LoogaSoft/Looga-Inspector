@@ -526,6 +526,14 @@ These draw common Unity dropdowns:
 
 Use table lists for compact data rows. Complex preview tools, filtering, or deeply nested data should still use a purpose-built editor.
 
+
+`ExpandedListAttribute` customizes Looga Inspector's default modern list drawer. Use it when a list should always show its elements and should not expose a foldout arrow.
+
+```csharp
+[ExpandedList]
+[SerializeField] private List<RewardEntry> _rewards;
+```
+
 ## Assets And Catalogs
 
 ### Scriptable Object Fields
