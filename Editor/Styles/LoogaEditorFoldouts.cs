@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -20,7 +20,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float HeaderArrowSize = 10.5f;
         private const float HeaderArrowLeftNudge = 0f;
         private const float HeaderTextArrowGap = 6f;
-        private const int AccentRailWidth = 4;
+        private const int AccentRailWidth = LoogaEditorStyle.AccentRailWidth;
 
         private static GUIStyle _largeHeader;
         private static GUIStyle _smallHeader;
@@ -682,9 +682,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             Color previousColor = Handles.color;
-            Handles.color = EditorGUIUtility.isProSkin
-                ? new Color(0.68f, 0.68f, 0.68f, 1f)
-                : new Color(0.28f, 0.28f, 0.28f, 1f);
+            Handles.color = LoogaEditorStyle.ArrowColor;
 
             Vector2 center = arrowRect.center;
             float radius = HeaderArrowSize * 0.5f;
@@ -1128,9 +1126,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Color GetFlatHoverColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.275f, 0.275f, 0.275f, 1f)
-                : new Color(0.68f, 0.68f, 0.68f, 1f);
+            return LoogaEditorStyle.HoverColor;
         }
 
         private static GUIStyle GetLargeBoxStyle()
@@ -1234,23 +1230,17 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Color GetAccentRailColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.38f, 0.38f, 0.38f, 1f)
-                : new Color(0.52f, 0.52f, 0.52f, 1f);
+            return LoogaEditorStyle.AccentRailColor;
         }
 
         private static Color GetFlatBoxColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.192f, 0.192f, 0.192f, 1f)
-                : new Color(0.765f, 0.765f, 0.765f, 1f);
+            return LoogaEditorStyle.BoxColor;
         }
 
         private static Color GetAlternateFlatBoxColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.225f, 0.225f, 0.225f, 1f)
-                : new Color(0.815f, 0.815f, 0.815f, 1f);
+            return LoogaEditorStyle.AlternateBoxColor;
         }
 
         private static Rect ShrinkBoxRect(Rect rect)

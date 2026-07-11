@@ -15,7 +15,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ButtonHeight = 24f;
         private const float IconButtonSize = 22f;
         private const float IconButtonGap = 3f;
-        private const float AccentWidth = 4f;
+        private const float AccentWidth = LoogaEditorStyle.AccentRailWidth;
         private const float TreeStep = 12f;
         private const float AddButtonWidth = 72f;
         private const float CancelButtonWidth = 72f;
@@ -24,12 +24,12 @@ namespace LoogaSoft.Inspector.Editor
         private const string ActivePendingNameKey = "LoogaCatalog_ActivePendingNameKey";
         private const string ActiveOwnerKey = "LoogaCatalog_ActiveOwner";
 
-        private static readonly Color CatalogColor = new(0.155f, 0.155f, 0.155f, 1f);
-        private static readonly Color RowColor = new(0.17f, 0.17f, 0.17f, 1f);
-        private static readonly Color RowHoverColor = new(0.20f, 0.20f, 0.20f, 1f);
-        private static readonly Color EmptyColor = new(0.17f, 0.17f, 0.17f, 1f);
-        private static readonly Color AccentColor = new(0.26f, 0.58f, 0.95f, 1f);
-        private static readonly Color TreeLineColor = new(0.37f, 0.37f, 0.37f, 1f);
+        private static Color CatalogColor => LoogaEditorStyle.BoxColor;
+        private static Color RowColor => LoogaEditorStyle.ListRowColor;
+        private static Color RowHoverColor => LoogaEditorStyle.ListHoverColor;
+        private static Color EmptyColor => LoogaEditorStyle.ListRowColor;
+        private static Color AccentColor => LoogaEditorStyle.ActionAccentColor;
+        private static Color TreeLineColor => LoogaEditorStyle.TreeLineColor;
 
         static LoogaCatalogDrawer()
         {

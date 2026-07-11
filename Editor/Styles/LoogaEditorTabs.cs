@@ -135,7 +135,7 @@ namespace LoogaSoft.Inspector.Editor
 
                 EditorGUI.DrawRect(rect, color);
 
-                Rect separatorRect = PixelSnap(new Rect(rect.xMax - Pixels(TabSeparatorWidth), rect.y + Pixels(3f), Pixels(1f), rect.height - Pixels(6f)));
+                Rect separatorRect = PixelSnap(new Rect(rect.xMax - Pixels(TabSeparatorWidth), rect.y, Pixels(TabSeparatorWidth), rect.height));
                 EditorGUI.DrawRect(separatorRect, GetSeparatorColor());
 
                 if (selected)
@@ -241,58 +241,42 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Color GetTabBarColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.18f, 0.18f, 0.18f, 1f)
-                : new Color(0.68f, 0.68f, 0.68f, 1f);
+            return LoogaEditorStyle.TabBarColor;
         }
 
         private static Color GetTabColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.21f, 0.21f, 0.21f, 1f)
-                : new Color(0.74f, 0.74f, 0.74f, 1f);
+            return LoogaEditorStyle.TabColor;
         }
 
         private static Color GetSelectedTabColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.30f, 0.30f, 0.30f, 1f)
-                : new Color(0.82f, 0.82f, 0.82f, 1f);
+            return LoogaEditorStyle.SelectedTabColor;
         }
 
         private static Color GetHoverTabColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.36f, 0.36f, 0.36f, 1f)
-                : new Color(0.86f, 0.86f, 0.86f, 1f);
+            return LoogaEditorStyle.TabHoverColor;
         }
 
         private static Color GetSeparatorColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.13f, 0.13f, 0.13f, 1f)
-                : new Color(0.55f, 0.55f, 0.55f, 1f);
+            return LoogaEditorStyle.SeparatorColor;
         }
 
         private static Color GetAccentColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.22f, 0.56f, 0.95f, 1f)
-                : new Color(0.16f, 0.45f, 0.78f, 1f);
+            return LoogaEditorStyle.ActionAccentColor;
         }
 
         private static Color GetTextColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.76f, 0.76f, 0.76f, 1f)
-                : new Color(0.18f, 0.18f, 0.18f, 1f);
+            return LoogaEditorStyle.TextColor;
         }
 
         private static Color GetSelectedTextColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.92f, 0.92f, 0.92f, 1f)
-                : new Color(0.08f, 0.08f, 0.08f, 1f);
+            return LoogaEditorStyle.TextColor;
         }
     }
 }

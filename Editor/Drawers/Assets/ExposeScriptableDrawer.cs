@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -241,9 +241,7 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawFoldoutArrow(Rect arrowRect, bool expanded)
         {
             Color previousColor = Handles.color;
-            Handles.color = EditorGUIUtility.isProSkin
-                ? new Color(0.68f, 0.68f, 0.68f, 1f)
-                : new Color(0.28f, 0.28f, 0.28f, 1f);
+            Handles.color = LoogaEditorStyle.ArrowColor;
 
             Vector2 center = arrowRect.center;
             float radius = HeaderArrowSize * 0.5f;

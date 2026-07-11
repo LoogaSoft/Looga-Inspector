@@ -1513,9 +1513,7 @@ namespace LoogaSoft.Inspector.Editor
             if (Event.current.type != EventType.Repaint)
                 return;
 
-            Color lineColor = EditorGUIUtility.isProSkin
-                ? new Color(0.48f, 0.48f, 0.48f, 1f)
-                : new Color(0.36f, 0.36f, 0.36f, 1f);
+            Color lineColor = LoogaEditorStyle.DragHandleColor;
             Rect handleRect = PixelSnap(CenterVertically(rect, Pixels(7f)));
             float centerX = PixelSnapValue(handleRect.x + Pixels(5f));
 
@@ -1531,9 +1529,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             Color previousColor = Handles.color;
-            Handles.color = EditorGUIUtility.isProSkin
-                ? new Color(0.68f, 0.68f, 0.68f, 1f)
-                : new Color(0.28f, 0.28f, 0.28f, 1f);
+            Handles.color = LoogaEditorStyle.ArrowColor;
 
             Vector2 center = rect.center;
             float radius = ListHeaderArrowSize * 0.5f;
@@ -1854,23 +1850,17 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Color GetListRowColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.255f, 0.255f, 0.255f, 1f)
-                : new Color(0.76f, 0.76f, 0.76f, 1f);
+            return LoogaEditorStyle.ListRowColor;
         }
 
         private static Color GetListHoverColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.30f, 0.30f, 0.30f, 1f)
-                : new Color(0.82f, 0.82f, 0.82f, 1f);
+            return LoogaEditorStyle.ListHoverColor;
         }
 
         private static Color GetListSelectionColor()
         {
-            return EditorGUIUtility.isProSkin
-                ? new Color(0.18f, 0.42f, 0.72f, 1f)
-                : new Color(0.28f, 0.55f, 0.90f, 1f);
+            return LoogaEditorStyle.SelectionColor;
         }
         private static Rect PixelSnap(Rect rect)
         {
