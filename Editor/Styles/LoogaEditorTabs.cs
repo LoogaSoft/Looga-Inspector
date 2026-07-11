@@ -145,10 +145,14 @@ namespace LoogaSoft.Inspector.Editor
                 }
             }
 
-            Color previousColor = GUI.color;
-            GUI.color = selected ? GetSelectedTextColor() : GetTextColor();
+            Color previousTextColor = _tabLabelStyle.normal.textColor;
+            Color previousHoverTextColor = _tabLabelStyle.hover.textColor;
+            Color textColor = selected ? GetSelectedTextColor() : GetTextColor();
+            _tabLabelStyle.normal.textColor = textColor;
+            _tabLabelStyle.hover.textColor = textColor;
             GUI.Label(rect, label, _tabLabelStyle);
-            GUI.color = previousColor;
+            _tabLabelStyle.normal.textColor = previousTextColor;
+            _tabLabelStyle.hover.textColor = previousHoverTextColor;
         }
 
         private static List<List<int>> BuildRows(string[] tabNames, float availableWidth)

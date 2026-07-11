@@ -68,14 +68,16 @@ namespace LoogaSoft.Inspector.Editor
             new Color(0.74f, 0.74f, 0.74f, 1f));
 
         public static Color SelectedTabColor => SkinColor(
-            new Color(0.225f, 0.225f, 0.225f, 1f),
-            new Color(0.82f, 0.82f, 0.82f, 1f));
+            new Color(0.34f, 0.34f, 0.34f, 1f),
+            new Color(0.88f, 0.88f, 0.88f, 1f));
 
         public static Color TabHoverColor => SkinColor(
             new Color(0.275f, 0.275f, 0.275f, 1f),
             new Color(0.86f, 0.86f, 0.86f, 1f));
 
-        public static Color TextColor => EditorStyles.label.normal.textColor;
+        public static Color TextColor => SkinColor(
+            new Color(0.78f, 0.78f, 0.78f, 1f),
+            new Color(0.10f, 0.10f, 0.10f, 1f));
 
         public static Rect PixelSnap(Rect rect)
         {
