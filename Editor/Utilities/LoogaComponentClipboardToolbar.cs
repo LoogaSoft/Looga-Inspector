@@ -1,4 +1,3 @@
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
@@ -19,42 +18,29 @@ namespace LoogaSoft.Inspector.Editor
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ToolbarName = "Looga Component Clipboard Toolbar";
         private const float ToolbarHeight = 26f;
-        private const float ButtonHeight = 18f;
         private const float HorizontalPadding = 4f;
-        private const float ButtonGap = 4f;
+        private const float ButtonGap = 2f;
         private const float ButtonWidth = 126f;
         private const float CountLabelWidth = 120f;
-        private const float ComponentHeaderButtonSize = 18f;
-        private const float ComponentHeaderButtonGap = 2f;
-        private const float ComponentHeaderBuiltInIconWidth = 66f;
 
-        private static readonly List<CopiedComponent> CopiedComponents = new();
         private static readonly List<InspectorToolbarContainer> Containers = new();
-        private static readonly Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+        private static readonly System.Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
         private static GUIStyle _toolbarStyle;
         private static GUIStyle _buttonStyle;
         private static GUIStyle _labelStyle;
-        private static GUIStyle _componentHeaderButtonStyle;
-        private static GUIContent _copyComponentIcon;
-        private static GUIContent _pasteComponentIcon;
         private static Texture2D _toolbarTexture;
         private static Texture2D _buttonTexture;
         private static Texture2D _buttonHoverTexture;
         private static Texture2D _buttonActiveTexture;
-        private static string _sourceName;
 
         static LoogaComponentClipboardToolbar()
         {
             EditorApplication.delayCall += Initialize;
         }
 
-        private static bool HasClipboard => CopiedComponents.Count > 0;
-
         private static void Initialize()
         {
-            UnityEditor.Editor.finishedDefaultHeaderGUI -= DrawComponentHeaderButtons;
-            UnityEditor.Editor.finishedDefaultHeaderGUI += DrawComponentHeaderButtons;
             EditorApplication.update -= RefreshInspectorWindows;
             EditorApplication.update += RefreshInspectorWindows;
             Selection.selectionChanged -= MarkInspectorsDirty;
@@ -65,7 +51,6 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void Dispose()
         {
-            UnityEditor.Editor.finishedDefaultHeaderGUI -= DrawComponentHeaderButtons;
             EditorApplication.update -= RefreshInspectorWindows;
             Selection.selectionChanged -= MarkInspectorsDirty;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
@@ -122,33 +107,6 @@ namespace LoogaSoft.Inspector.Editor
                 Containers[i].NeedsSelectionRefresh = true;
         }
 
-        private static void DrawComponentHeaderButtons(UnityEditor.Editor editor)
-        {
-            if (editor == null || editor.target is not Component component)
-                return;
-
-            EnsureStyles();
-
-            Rect headerRect = GUILayoutUtility.GetLastRect();
-            if (headerRect.width <= 0f || headerRect.height <= 0f)
-                return;
-
-            float totalWidth = ComponentHeaderButtonSize * 2f + ComponentHeaderButtonGap;
-            float x = headerRect.xMax - ComponentHeaderBuiltInIconWidth - totalWidth;
-            float y = headerRect.y + Mathf.Floor((headerRect.height - ComponentHeaderButtonSize) * 0.5f);
-            Rect copyRect = LoogaEditorStyle.PixelSnap(new Rect(x, y, ComponentHeaderButtonSize, ComponentHeaderButtonSize));
-            Rect pasteRect = LoogaEditorStyle.PixelSnap(new Rect(copyRect.xMax + ComponentHeaderButtonGap, y, ComponentHeaderButtonSize, ComponentHeaderButtonSize));
-
-            if (GUI.Button(copyRect, _copyComponentIcon, _componentHeaderButtonStyle))
-                CopySingleComponent(component);
-
-            bool canPaste = CanPasteValuesInto(editor.targets);
-            using (new EditorGUI.DisabledScope(!canPaste))
-            {
-                if (GUI.Button(pasteRect, _pasteComponentIcon, _componentHeaderButtonStyle))
-                    PasteValuesIntoComponents(editor.targets);
-            }
-        }
         private static void DrawToolbar(GameObject gameObject, Object[] pasteTargets)
         {
             if (gameObject == null)
@@ -157,6 +115,7 @@ namespace LoogaSoft.Inspector.Editor
             EnsureStyles();
 
             Rect rect = LoogaEditorStyle.PixelSnap(GUILayoutUtility.GetRect(0f, ToolbarHeight, GUILayout.ExpandWidth(true)));
+            RequestMouseMoveRepaint(rect);
 
             if (Event.current.type == EventType.Repaint)
                 _toolbarStyle.Draw(rect, GUIContent.none, false, false, false, false);
@@ -166,260 +125,45 @@ namespace LoogaSoft.Inspector.Editor
                 rect.y,
                 rect.width - HorizontalPadding * 2f,
                 rect.height));
-            Rect buttonRect = GetCenteredRect(contentRect, contentRect.x, ButtonWidth, ButtonHeight);
+            Rect buttonRect = LoogaEditorStyle.PixelSnap(new Rect(contentRect.x, contentRect.y, ButtonWidth, contentRect.height));
             if (GUI.Button(buttonRect, "Copy Components", _buttonStyle))
-                CopyComponents(gameObject);
+                LoogaComponentClipboard.CopyComponents(gameObject);
 
             float nextX = buttonRect.xMax + ButtonGap;
-            if (HasClipboard)
+            if (LoogaComponentClipboard.HasClipboard)
             {
-                Rect pasteRect = GetCenteredRect(rect, nextX, ButtonWidth, ButtonHeight);
+                Rect pasteRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
                 if (GUI.Button(pasteRect, "Paste Components", _buttonStyle))
-                    PasteComponents(pasteTargets);
+                    LoogaComponentClipboard.PasteComponents(pasteTargets);
 
                 nextX = pasteRect.xMax + ButtonGap;
-                Rect pasteValuesRect = GetCenteredRect(rect, nextX, ButtonWidth, ButtonHeight);
+                Rect pasteValuesRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
                 if (GUI.Button(pasteValuesRect, "Paste Values", _buttonStyle))
-                    PasteValuesIntoMatchingComponents(pasteTargets);
+                    LoogaComponentClipboard.PasteValuesIntoMatchingComponents(pasteTargets);
 
                 nextX = pasteValuesRect.xMax + ButtonGap;
-                Rect countRect = GetCenteredRect(rect, nextX, CountLabelWidth, ButtonHeight);
-                GUI.Label(countRect, $"{CopiedComponents.Count} copied", _labelStyle);
+                Rect countRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, CountLabelWidth, contentRect.height));
+                GUI.Label(countRect, $"{LoogaComponentClipboard.CopiedCount} copied", _labelStyle);
             }
         }
 
-        private static Rect GetCenteredRect(Rect container, float x, float width, float height)
+        private static void RequestMouseMoveRepaint(Rect rect)
         {
-            float y = container.y + (container.height - height) * 0.5f;
-            return LoogaEditorStyle.PixelSnap(new Rect(x, y, width, height));
-        }
-
-        private static void CopySingleComponent(Component component)
-        {
-            CopiedComponents.Clear();
-            _sourceName = component != null ? component.gameObject.name : string.Empty;
-
-            if (component == null)
+            Event current = Event.current;
+            if (!rect.Contains(current.mousePosition))
                 return;
 
-            Type type = component.GetType();
-            try
+            EditorWindow window = EditorWindow.mouseOverWindow;
+            if (window != null)
+                window.wantsMouseMove = true;
+
+            if (current.type == EventType.MouseMove)
             {
-                string typeName = type.AssemblyQualifiedName ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(typeName))
-                    return;
-
-                CopiedComponents.Add(new CopiedComponent(typeName, EditorJsonUtility.ToJson(component)));
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning($"[Looga Inspector] Could not copy component '{type.Name}' from '{component.gameObject.name}'. {exception.Message}", component);
-            }
-        }
-        private static void CopyComponents(GameObject source)
-        {
-            CopiedComponents.Clear();
-            _sourceName = source != null ? source.name : string.Empty;
-
-            if (source == null)
-                return;
-
-            Component[] components = source.GetComponents<Component>();
-            for (int i = 0; i < components.Length; i++)
-            {
-                Component component = components[i];
-                if (component == null || component is Transform)
-                    continue;
-
-                Type type = component.GetType();
-                try
-                {
-                    string typeName = type.AssemblyQualifiedName ?? string.Empty;
-                    if (string.IsNullOrWhiteSpace(typeName))
-                        continue;
-
-                    CopiedComponents.Add(new CopiedComponent(typeName, EditorJsonUtility.ToJson(component)));
-                }
-                catch (Exception exception)
-                {
-                    Debug.LogWarning($"[Looga Inspector] Could not copy component '{type.Name}' from '{source.name}'. {exception.Message}", source);
-                }
+                window?.Repaint();
+                HandleUtility.Repaint();
             }
         }
 
-        private static void PasteComponents(Object[] targets)
-        {
-            if (!HasClipboard || targets == null)
-                return;
-
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Paste Components");
-
-            int pastedCount = 0;
-            for (int i = 0; i < targets.Length; i++)
-            {
-                GameObject targetGameObject = ResolveGameObject(targets[i]);
-                if (targetGameObject == null)
-                    continue;
-
-                for (int componentIndex = 0; componentIndex < CopiedComponents.Count; componentIndex++)
-                {
-                    CopiedComponent copied = CopiedComponents[componentIndex];
-                    Type type = Type.GetType(copied.typeName);
-                    if (type == null || !typeof(Component).IsAssignableFrom(type) || typeof(Transform).IsAssignableFrom(type))
-                        continue;
-
-                    try
-                    {
-                        Component component = Undo.AddComponent(targetGameObject, type);
-                        Undo.RecordObject(component, "Paste Component Values");
-                        EditorJsonUtility.FromJsonOverwrite(copied.json, component);
-                        EditorUtility.SetDirty(component);
-                        pastedCount++;
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.LogWarning($"[Looga Inspector] Could not paste component '{type.Name}' onto '{targetGameObject.name}'. {exception.Message}", targetGameObject);
-                    }
-                }
-
-                EditorUtility.SetDirty(targetGameObject);
-            }
-
-            Undo.CollapseUndoOperations(undoGroup);
-
-            if (pastedCount > 0)
-            {
-                string label = string.IsNullOrWhiteSpace(_sourceName) ? "copied GameObject" : _sourceName;
-                Debug.Log($"[Looga Inspector] Pasted {pastedCount} copied component(s) from '{label}'.");
-            }
-        }
-
-        private static bool CanPasteValuesInto(Object[] targets)
-        {
-            return HasClipboard && TryGetCopiedComponentForTargets(targets, out _, out _);
-        }
-
-        private static void PasteValuesIntoComponents(Object[] targets)
-        {
-            if (!TryGetCopiedComponentForTargets(targets, out CopiedComponent copied, out Type type))
-                return;
-
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Paste Component Values");
-
-            int pastedCount = 0;
-            for (int i = 0; i < targets.Length; i++)
-            {
-                if (targets[i] is not Component component || component.GetType() != type)
-                    continue;
-
-                try
-                {
-                    Undo.RecordObject(component, "Paste Component Values");
-                    EditorJsonUtility.FromJsonOverwrite(copied.json, component);
-                    EditorUtility.SetDirty(component);
-                    pastedCount++;
-                }
-                catch (Exception exception)
-                {
-                    Debug.LogWarning($"[Looga Inspector] Could not paste values into component '{type.Name}' on '{component.gameObject.name}'. {exception.Message}", component);
-                }
-            }
-
-            Undo.CollapseUndoOperations(undoGroup);
-
-            if (pastedCount > 0)
-                Debug.Log($"[Looga Inspector] Pasted values into {pastedCount} selected component(s).");
-        }
-
-        private static bool TryGetCopiedComponentForTargets(Object[] targets, out CopiedComponent copied, out Type type)
-        {
-            copied = default;
-            type = null;
-
-            if (!HasClipboard || targets == null)
-                return false;
-
-            for (int i = 0; i < targets.Length; i++)
-            {
-                if (targets[i] is not Component component)
-                    continue;
-
-                Type componentType = component.GetType();
-                for (int componentIndex = 0; componentIndex < CopiedComponents.Count; componentIndex++)
-                {
-                    CopiedComponent candidate = CopiedComponents[componentIndex];
-                    Type candidateType = Type.GetType(candidate.typeName);
-                    if (candidateType != componentType)
-                        continue;
-
-                    copied = candidate;
-                    type = candidateType;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-        private static void PasteValuesIntoMatchingComponents(Object[] targets)
-        {
-            if (!HasClipboard || targets == null)
-                return;
-
-            int undoGroup = Undo.GetCurrentGroup();
-            Undo.SetCurrentGroupName("Paste Component Values");
-
-            int pastedCount = 0;
-            for (int i = 0; i < targets.Length; i++)
-            {
-                GameObject targetGameObject = ResolveGameObject(targets[i]);
-                if (targetGameObject == null)
-                    continue;
-
-                Dictionary<Type, int> nextMatchByType = new();
-                for (int componentIndex = 0; componentIndex < CopiedComponents.Count; componentIndex++)
-                {
-                    CopiedComponent copied = CopiedComponents[componentIndex];
-                    Type type = Type.GetType(copied.typeName);
-                    if (type == null || !typeof(Component).IsAssignableFrom(type) || typeof(Transform).IsAssignableFrom(type))
-                        continue;
-
-                    Component[] matchingComponents = targetGameObject.GetComponents(type);
-                    nextMatchByType.TryGetValue(type, out int matchIndex);
-                    nextMatchByType[type] = matchIndex + 1;
-
-                    if (matchIndex >= matchingComponents.Length)
-                        continue;
-
-                    Component component = matchingComponents[matchIndex];
-                    if (component == null)
-                        continue;
-
-                    try
-                    {
-                        Undo.RecordObject(component, "Paste Component Values");
-                        EditorJsonUtility.FromJsonOverwrite(copied.json, component);
-                        EditorUtility.SetDirty(component);
-                        pastedCount++;
-                    }
-                    catch (Exception exception)
-                    {
-                        Debug.LogWarning($"[Looga Inspector] Could not paste values for component '{type.Name}' on '{targetGameObject.name}'. {exception.Message}", targetGameObject);
-                    }
-                }
-
-                EditorUtility.SetDirty(targetGameObject);
-            }
-
-            Undo.CollapseUndoOperations(undoGroup);
-
-            if (pastedCount > 0)
-            {
-                string label = string.IsNullOrWhiteSpace(_sourceName) ? "copied GameObject" : _sourceName;
-                Debug.Log($"[Looga Inspector] Pasted values into {pastedCount} matching component(s) from '{label}'.");
-            }
-        }
         private static GameObject ResolveGameObject(Object target)
         {
             return target switch
@@ -464,18 +208,9 @@ namespace LoogaSoft.Inspector.Editor
                 hover = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
                 active = { background = _buttonActiveTexture, textColor = Color.white },
                 focused = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
-                padding = new RectOffset(8, 8, 0, 0)
-            };
-
-            _componentHeaderButtonStyle ??= new GUIStyle(EditorStyles.iconButton)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                padding = new RectOffset(2, 2, 2, 2),
+                padding = new RectOffset(8, 8, 0, 0),
                 margin = new RectOffset(0, 0, 0, 0)
             };
-
-            _copyComponentIcon ??= GetIcon("TreeEditor.Duplicate", "Copy component");
-            _pasteComponentIcon ??= GetIcon("Clipboard", "Paste values into this component");
 
             _labelStyle ??= new GUIStyle(EditorStyles.label)
             {
@@ -485,15 +220,6 @@ namespace LoogaSoft.Inspector.Editor
             };
         }
 
-        private static GUIContent GetIcon(string iconName, string tooltip)
-        {
-            GUIContent content = EditorGUIUtility.IconContent(iconName);
-            if (content == null || content.image == null)
-                content = new GUIContent(iconName == "Clipboard" ? "P" : "C");
-
-            content.tooltip = tooltip;
-            return content;
-        }
         private static Texture2D CreateTexture(Color color)
         {
             Texture2D texture = new(1, 1)
@@ -607,19 +333,5 @@ namespace LoogaSoft.Inspector.Editor
                     duplicates[i].RemoveFromHierarchy();
             }
         }
-
-        private readonly struct CopiedComponent
-        {
-            public readonly string typeName;
-            public readonly string json;
-
-            public CopiedComponent(string typeName, string json)
-            {
-                this.typeName = typeName;
-                this.json = json;
-            }
-        }
     }
 }
-
-
