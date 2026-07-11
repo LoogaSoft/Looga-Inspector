@@ -1162,7 +1162,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ListBodyPaddingRight = ListBodyPaddingY;
         private const float ListRowPaddingX = 7f;
         private const float ListRowPaddingY = 3f;
-        private const float ListRowGap = 1f;
+        private const float ListRowGapPixels = 1f;
         private const float ListDragHandleWidth = 16f;
         private const float ListRowDeleteWidth = 20f;
         private const float ListRowButtonInset = 3f;
@@ -1338,12 +1338,12 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     float previousY = GetListVisualRowY(property, contentRect, i, _draggingListIndex, previousDropIndex, draggedRowHeight);
                     float targetY = GetListVisualRowY(property, contentRect, i, _draggingListIndex, dropIndex, draggedRowHeight);
-                    rowY = Mathf.Round(Mathf.Lerp(previousY, targetY, animationT));
+                    rowY = PixelSnapValue(Mathf.Lerp(previousY, targetY, animationT));
                 }
                 else
                 {
-                    rowY = Mathf.Round(y);
-                    y += rowHeight + ListRowGap;
+                    rowY = PixelSnapValue(y);
+                    y += rowHeight + GetListRowGap();
                 }
 
                 Rect rowRect = PixelSnap(new Rect(contentRect.x, rowY, contentRect.width, rowHeight));
@@ -1359,7 +1359,7 @@ namespace LoogaSoft.Inspector.Editor
 
             if (draggingThisList && draggedElement != null)
             {
-                float draggedY = Mathf.Round(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
+                float draggedY = PixelSnapValue(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
                 Rect draggedRowRect = PixelSnap(new Rect(contentRect.x, draggedY, contentRect.width, draggedRowHeight));
                 DrawListRowBackground(draggedRowRect, true, false, true);
                 DrawListRow(property, key, draggedRowRect, draggedElement, draggedElementHeight, _draggingListIndex);
@@ -1425,7 +1425,7 @@ namespace LoogaSoft.Inspector.Editor
             if (e.type == EventType.MouseDrag)
             {
                 float draggedRowHeight = GetListRowHeight(property, _draggingListIndex);
-                float draggedY = Mathf.Round(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
+                float draggedY = PixelSnapValue(GetClampedDraggedListRowY(contentRect, draggedRowHeight, e.mousePosition.y));
                 int newDropIndex = GetListDropIndex(property, contentRect, e.mousePosition.y, _draggingListIndex);
                 if (newDropIndex != _draggingListDropIndex)
                 {
@@ -1504,12 +1504,12 @@ namespace LoogaSoft.Inspector.Editor
             Color lineColor = EditorGUIUtility.isProSkin
                 ? new Color(0.48f, 0.48f, 0.48f, 1f)
                 : new Color(0.36f, 0.36f, 0.36f, 1f);
-            Rect handleRect = PixelSnap(CenterVertically(rect, 7f));
-            float centerX = Mathf.Round(handleRect.x + 5f);
+            Rect handleRect = PixelSnap(CenterVertically(rect, Pixels(7f)));
+            float centerX = PixelSnapValue(handleRect.x + Pixels(5f));
 
             for (int i = 0; i < 3; i++)
             {
-                Rect lineRect = PixelSnap(new Rect(centerX - 4f, handleRect.y + i * 3f, 8f, 1f));
+                Rect lineRect = PixelSnap(new Rect(centerX - Pixels(4f), handleRect.y + Pixels(i * 3f), Pixels(8f), Pixels(1f)));
                 EditorGUI.DrawRect(lineRect, lineColor);
             }
         }
@@ -1563,7 +1563,7 @@ namespace LoogaSoft.Inspector.Editor
                 height += GetListRowHeight(element);
 
                 if (i < property.arraySize - 1)
-                    height += ListRowGap;
+                    height += GetListRowGap();
             }
 
             return height;
@@ -1576,7 +1576,11 @@ namespace LoogaSoft.Inspector.Editor
 
         private static float GetListRowHeight(float elementHeight)
         {
-            return Mathf.Ceil(elementHeight + ListRowPaddingY * 2f);
+            return PixelCeil(elementHeight + ListRowPaddingY * 2f);
+        }
+        private static float GetListRowGap()
+        {
+            return Pixels(ListRowGapPixels);
         }
         private static float GetListRowHeight(SerializedProperty property, int index)
         {
@@ -1609,7 +1613,7 @@ namespace LoogaSoft.Inspector.Editor
             for (int i = 0; i < property.arraySize; i++)
             {
                 if (i == clampedDropIndex)
-                    y += draggedRowHeight + ListRowGap;
+                    y += draggedRowHeight + GetListRowGap();
 
                 if (i == sourceIndex)
                     continue;
@@ -1617,7 +1621,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (i == rowIndex)
                     return y;
 
-                y += GetListRowHeight(property, i) + ListRowGap;
+                y += GetListRowHeight(property, i) + GetListRowGap();
             }
 
             return y;
@@ -1656,7 +1660,7 @@ namespace LoogaSoft.Inspector.Editor
             float y = contentRect.y;
             int max = Mathf.Clamp(rowIndex, 0, property.arraySize);
             for (int i = 0; i < max; i++)
-                y += GetListRowHeight(property, i) + ListRowGap;
+                y += GetListRowHeight(property, i) + GetListRowGap();
 
             return y;
         }
@@ -1824,11 +1828,25 @@ namespace LoogaSoft.Inspector.Editor
         }
         private static Rect PixelSnap(Rect rect)
         {
-            float xMin = Mathf.Round(rect.xMin);
-            float yMin = Mathf.Round(rect.yMin);
-            float xMax = Mathf.Round(rect.xMax);
-            float yMax = Mathf.Round(rect.yMax);
-            return Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+            return Rect.MinMaxRect(
+                PixelSnapValue(rect.xMin),
+                PixelSnapValue(rect.yMin),
+                PixelSnapValue(rect.xMax),
+                PixelSnapValue(rect.yMax));
+        }
+        private static float PixelSnapValue(float value)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return Mathf.Round(value * pixelsPerPoint) / pixelsPerPoint;
+        }
+        private static float PixelCeil(float value)
+        {
+            float pixelsPerPoint = EditorGUIUtility.pixelsPerPoint;
+            return Mathf.Ceil(value * pixelsPerPoint) / pixelsPerPoint;
+        }
+        private static float Pixels(float pixelCount)
+        {
+            return pixelCount / EditorGUIUtility.pixelsPerPoint;
         }
         private static Rect CenterVertically(Rect rect, float height)
         {
