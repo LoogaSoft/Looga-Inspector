@@ -1,4 +1,4 @@
-# Looga Inspector
+﻿# Looga Inspector
 
 Looga Inspector is a lightweight, attribute-driven inspector framework for Unity. Add attributes from `LoogaSoft.Inspector.Runtime` to serialized fields, methods, or component classes, and the default Looga editor handles common inspector workflows: layout, foldouts, tabs, validation, dropdowns, inline ScriptableObjects, catalog management, buttons, and Unity-specific selectors.
 
@@ -48,6 +48,37 @@ Editor/
 
 When adding a new attribute, place the runtime attribute in the closest `Runtime/Attributes` feature folder and its drawer in the matching `Editor/Drawers` folder. Prefer adding shared drawing behavior to `Editor/Styles` or `Editor/Core` instead of duplicating GUI math inside individual drawers.
 
+## Editor GUI Utilities
+
+Custom editors and editor windows should use the public utility API instead of calling Looga Inspector's internal style classes directly.
+
+Use `LoogaGUILayout` when Unity owns layout, similar to `EditorGUILayout` or `GUILayout`:
+
+```csharp
+using LoogaSoft.Inspector.Editor;
+
+_selectedTab = LoogaGUILayout.Tabs(_selectedTab, Tabs, "MyEditor_Tabs");
+
+LoogaGUILayout.FoldoutLarge("Audio", "MyEditor_Audio", true, () =>
+{
+    EditorGUILayout.PropertyField(_volume);
+});
+
+LoogaGUILayout.BoxSmall("Runtime", () =>
+{
+    EditorGUILayout.LabelField("Ready");
+});
+```
+
+Use `LoogaGUI` when you own exact rects, similar to `EditorGUI` or `GUI`:
+
+```csharp
+float height = LoogaGUI.GetTabsHeight(Tabs, position.width);
+Rect tabRect = new(position.x, position.y, position.width, height);
+_selectedTab = LoogaGUI.Tabs(tabRect, _selectedTab, Tabs);
+```
+
+Keep low-level classes such as `LoogaEditorTabs` and `LoogaEditorFoldouts` as implementation details unless you are editing Looga Inspector itself.
 ## Layout
 
 ### Tabs

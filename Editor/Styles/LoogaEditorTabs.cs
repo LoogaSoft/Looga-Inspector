@@ -68,6 +68,25 @@ namespace LoogaSoft.Inspector.Editor
             return newSelectedIndex;
         }
 
+        public static int DrawToolbar(Rect position, int selectedIndex, string[] tabNames)
+        {
+            if (tabNames == null || tabNames.Length == 0)
+                return selectedIndex;
+
+            selectedIndex = Mathf.Clamp(selectedIndex, 0, tabNames.Length - 1);
+            List<List<int>> rows = BuildRows(tabNames, Mathf.Max(1f, position.width));
+            return DrawRows(position, rows, tabNames, selectedIndex);
+        }
+
+        public static float GetToolbarHeight(string[] tabNames, float availableWidth)
+        {
+            if (tabNames == null || tabNames.Length == 0)
+                return 0f;
+
+            List<List<int>> rows = BuildRows(tabNames, Mathf.Max(1f, availableWidth));
+            return GetRowsHeight(rows.Count);
+        }
+
         private static int DrawRows(Rect fullRect, List<List<int>> rows, string[] tabNames, int selectedIndex)
         {
             EnsureStyles();

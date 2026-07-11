@@ -288,7 +288,7 @@ namespace LoogaSoft.Inspector.Editor
             int currentTabIndex = SessionState.GetInt(stateKey, 0);
             currentTabIndex = Mathf.Clamp(currentTabIndex, 0, tabNames.Count - 1);
 
-            int newIndex = LoogaEditorTabs.DrawWrappingToolbar(
+            int newIndex = LoogaGUILayout.Tabs(
                 currentTabIndex,
                 tabNames.ToArray(),
                 $"{basePath}_Level{level}_toolbar");
