@@ -1,6 +1,6 @@
 # Third-Party Icon Notice
 
-The component clipboard icons are based on the visual style of Lucide icons.
+The component clipboard icons use Lucide SVGs.
 Lucide is released under the ISC License.
 
 Source: https://lucide.dev/icons/copy

@@ -127,10 +127,10 @@ namespace LoogaSoft.Inspector.Editor
                 if (!ShouldDrawStatusBox(statusBox, out string message))
                     continue;
 
-                Rect statusRect = EditorGUILayout.GetControlRect(false, StatusBoxDrawer.GetStatusBoxHeight(message));
+                Rect statusRect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetStatusBoxHeight(message));
                 bool hasAction = !string.IsNullOrWhiteSpace(statusBox.AssetPath) || !string.IsNullOrWhiteSpace(statusBox.MenuPath);
                 string tooltip = string.IsNullOrWhiteSpace(statusBox.ActionTooltip) ? "Open" : statusBox.ActionTooltip;
-                if (StatusBoxDrawer.DrawStatusBox(statusRect, message, statusBox.Type, hasAction, statusBox.ButtonLabel, tooltip))
+                if (LoogaGUI.StatusBox(statusRect, message, statusBox.Type, hasAction, statusBox.ButtonLabel, tooltip))
                     ExecuteStatusBoxAction(statusBox, !string.IsNullOrWhiteSpace(statusBox.AssetPath));
                 EditorGUILayout.Space(1f);
             }
