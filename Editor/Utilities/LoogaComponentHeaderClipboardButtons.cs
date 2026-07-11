@@ -24,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ButtonSize = 15f;
         private const float IconSize = 11f;
         private const float ButtonGap = 2f;
+        private const double CopySuccessSeconds = 1.0d;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color SuccessIconTintColor = new(0.38f, 0.82f, 0.42f, 1f);
@@ -39,6 +40,8 @@ namespace LoogaSoft.Inspector.Editor
         private static Object _pasteIcon;
         private static Texture2D _generatedPasteIcon;
         private static Texture2D _checkIcon;
+        private static int _copySuccessComponentId;
+        private static double _copySuccessUntil;
 
         static LoogaComponentHeaderClipboardButtons()
         {
@@ -210,8 +213,15 @@ namespace LoogaSoft.Inspector.Editor
             container.style.height = ButtonSize;
             container.style.flexDirection = FlexDirection.Row;
 
-            Button copyButton = CreateHeaderButton(GetCopyIcon(), "Copy component", () => LoogaComponentClipboard.CopyComponent(component), true);
-            Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets));
+            bool showCopySuccess = IsCopySuccessActive(component);
+            Object copyIcon = showCopySuccess ? GetCheckIcon() : GetCopyIcon();
+            Color copyTint = showCopySuccess ? SuccessIconTintColor : IconTintColor;
+            Button copyButton = CreateHeaderButton(copyIcon, "Copy component", () =>
+            {
+                LoogaComponentClipboard.CopyComponent(component);
+                MarkCopySuccess(component);
+            }, copyTint, true, GetCopyIcon());
+            Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets), IconTintColor);
             pasteButton.name = PasteButtonName;
             pasteButton.style.marginLeft = ButtonGap;
 
@@ -221,14 +231,14 @@ namespace LoogaSoft.Inspector.Editor
             UpdatePasteButton(container, targets);
         }
 
-        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked, bool flashSuccess = false)
+        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked, Color iconTint, bool flashSuccess = false, Object restoreIcon = null)
         {
             Image iconImage = null;
             Button button = new(() =>
             {
                 clicked?.Invoke();
                 if (flashSuccess && iconImage != null)
-                    FlashSuccessIcon(iconImage, icon);
+                    FlashSuccessIcon(iconImage, restoreIcon ?? icon);
             })
             {
                 tooltip = tooltip,
@@ -264,7 +274,7 @@ namespace LoogaSoft.Inspector.Editor
                     pickingMode = PickingMode.Ignore,
                     scaleMode = ScaleMode.ScaleToFit
                 };
-                SetIconImage(iconImage, icon, IconTintColor);
+                SetIconImage(iconImage, icon, iconTint);
                 iconImage.style.width = IconSize;
                 iconImage.style.height = IconSize;
                 iconImage.style.flexGrow = 0f;
@@ -288,6 +298,28 @@ namespace LoogaSoft.Inspector.Editor
         {
             SetIconImage(image, GetCheckIcon(), SuccessIconTintColor);
             image.schedule.Execute(() => SetIconImage(image, normalIcon, IconTintColor)).StartingIn(1000);
+        }
+
+        private static void MarkCopySuccess(Component component)
+        {
+            if (component == null)
+                return;
+
+            _copySuccessComponentId = component.GetInstanceID();
+            _copySuccessUntil = EditorApplication.timeSinceStartup + CopySuccessSeconds;
+        }
+
+        private static bool IsCopySuccessActive(Component component)
+        {
+            if (component == null || component.GetInstanceID() != _copySuccessComponentId)
+                return false;
+
+            if (EditorApplication.timeSinceStartup <= _copySuccessUntil)
+                return true;
+
+            _copySuccessComponentId = 0;
+            _copySuccessUntil = 0d;
+            return false;
         }
 
         private static void SetIconImage(Image image, Object icon, Color tint)
