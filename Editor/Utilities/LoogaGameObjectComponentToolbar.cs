@@ -6,15 +6,16 @@ using UnityEngine;
 namespace LoogaSoft.Inspector.Editor
 {
     /// <summary>
-    /// Adds a small Looga-styled component clipboard beneath Unity's built-in GameObject header.
+    /// Adds a Looga-styled component clipboard immediately above the Transform component header.
     /// The clipboard is editor-session only and copies serialized component data, excluding Transform.
     /// </summary>
-    [InitializeOnLoad]
-    internal static class LoogaGameObjectComponentToolbar
+    [CustomEditor(typeof(Transform))]
+    [CanEditMultipleObjects]
+    internal sealed class LoogaGameObjectComponentToolbar : UnityEditor.Editor
     {
-        private const float ToolbarHeight = 28f;
+        private const float ToolbarHeight = 26f;
+        private const float ButtonHeight = 18f;
         private const float HorizontalPadding = 4f;
-        private const float VerticalPadding = 3f;
         private const float ButtonGap = 4f;
         private const float ButtonWidth = 126f;
         private const float CountLabelWidth = 120f;
@@ -29,16 +30,65 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D _buttonActiveTexture;
         private static string _sourceName;
 
-        static LoogaGameObjectComponentToolbar()
-        {
-            UnityEditor.Editor.finishedDefaultHeaderGUI += DrawToolbar;
-        }
+        private UnityEditor.Editor _transformEditor;
 
         private static bool HasClipboard => CopiedComponents.Count > 0;
 
-        private static void DrawToolbar(UnityEditor.Editor editor)
+        private void OnEnable()
         {
-            if (editor == null || editor.target is not GameObject gameObject)
+            CreateTransformEditor();
+        }
+
+        private void OnDisable()
+        {
+            if (_transformEditor != null)
+            {
+                DestroyImmediate(_transformEditor);
+                _transformEditor = null;
+            }
+        }
+
+        protected override void OnHeaderGUI()
+        {
+            DrawComponentToolbar();
+
+            if (_transformEditor != null)
+            {
+                _transformEditor.DrawHeader();
+                return;
+            }
+
+            base.OnHeaderGUI();
+        }
+
+        public override void OnInspectorGUI()
+        {
+            if (_transformEditor != null)
+            {
+                _transformEditor.OnInspectorGUI();
+                return;
+            }
+
+            DrawDefaultInspector();
+        }
+
+        public override bool RequiresConstantRepaint()
+        {
+            return _transformEditor != null && _transformEditor.RequiresConstantRepaint();
+        }
+
+        private void CreateTransformEditor()
+        {
+            Type transformInspectorType = Type.GetType("UnityEditor.TransformInspector, UnityEditor");
+            if (transformInspectorType == null)
+                return;
+
+            _transformEditor = CreateEditor(targets, transformInspectorType);
+        }
+
+        private void DrawComponentToolbar()
+        {
+            if (target is not Transform transform)
                 return;
 
             EnsureStyles();
@@ -53,27 +103,27 @@ namespace LoogaSoft.Inspector.Editor
             if (Event.current.type == EventType.Repaint)
                 _toolbarStyle.Draw(rect, GUIContent.none, false, false, false, false);
 
-            Rect contentRect = LoogaEditorStyle.PixelSnap(new Rect(
-                rect.x + HorizontalPadding,
-                rect.y + VerticalPadding,
-                rect.width - HorizontalPadding * 2f,
-                rect.height - VerticalPadding * 2f));
+            Rect buttonRect = GetCenteredRect(rect, rect.x + HorizontalPadding, ButtonWidth, ButtonHeight);
+            if (GUI.Button(buttonRect, "Copy Components", _buttonStyle))
+                CopyComponents(transform.gameObject);
 
-            Rect copyRect = new(contentRect.x, contentRect.y, ButtonWidth, contentRect.height);
-            if (GUI.Button(copyRect, "Copy Components", _buttonStyle))
-                CopyComponents(gameObject);
-
-            float nextX = copyRect.xMax + ButtonGap;
+            float nextX = buttonRect.xMax + ButtonGap;
             if (HasClipboard)
             {
-                Rect pasteRect = new(nextX, contentRect.y, ButtonWidth, contentRect.height);
+                Rect pasteRect = GetCenteredRect(rect, nextX, ButtonWidth, ButtonHeight);
                 if (GUI.Button(pasteRect, "Paste Components", _buttonStyle))
-                    PasteComponents(editor.targets);
+                    PasteComponents(targets);
 
                 nextX = pasteRect.xMax + ButtonGap;
-                Rect countRect = new(nextX, contentRect.y, CountLabelWidth, contentRect.height);
+                Rect countRect = GetCenteredRect(rect, nextX, CountLabelWidth, ButtonHeight);
                 GUI.Label(countRect, $"{CopiedComponents.Count} copied", _labelStyle);
             }
+        }
+
+        private static Rect GetCenteredRect(Rect container, float x, float width, float height)
+        {
+            float y = container.y + (container.height - height) * 0.5f;
+            return LoogaEditorStyle.PixelSnap(new Rect(x, y, width, height));
         }
 
         private static void CopyComponents(GameObject source)
@@ -107,17 +157,18 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private static void PasteComponents(UnityEngine.Object[] targets)
+        private static void PasteComponents(UnityEngine.Object[] transformTargets)
         {
-            if (!HasClipboard || targets == null)
+            if (!HasClipboard || transformTargets == null)
                 return;
 
             int pastedCount = 0;
-            for (int i = 0; i < targets.Length; i++)
+            for (int i = 0; i < transformTargets.Length; i++)
             {
-                if (targets[i] is not GameObject target)
+                if (transformTargets[i] is not Transform transform)
                     continue;
 
+                GameObject targetGameObject = transform.gameObject;
                 for (int componentIndex = 0; componentIndex < CopiedComponents.Count; componentIndex++)
                 {
                     CopiedComponent copied = CopiedComponents[componentIndex];
@@ -127,17 +178,17 @@ namespace LoogaSoft.Inspector.Editor
 
                     try
                     {
-                        Component component = Undo.AddComponent(target, type);
+                        Component component = Undo.AddComponent(targetGameObject, type);
                         EditorJsonUtility.FromJsonOverwrite(copied.json, component);
                         pastedCount++;
                     }
                     catch (Exception exception)
                     {
-                        Debug.LogWarning($"[Looga Inspector] Could not paste component '{type.Name}' onto '{target.name}'. {exception.Message}", target);
+                        Debug.LogWarning($"[Looga Inspector] Could not paste component '{type.Name}' onto '{targetGameObject.name}'. {exception.Message}", targetGameObject);
                     }
                 }
 
-                EditorUtility.SetDirty(target);
+                EditorUtility.SetDirty(targetGameObject);
             }
 
             if (pastedCount > 0)
