@@ -189,6 +189,9 @@ namespace LoogaSoft.Inspector.Editor
             if (!HasClipboard || targets == null)
                 return;
 
+            int undoGroup = Undo.GetCurrentGroup();
+            Undo.SetCurrentGroupName("Paste Components");
+
             int pastedCount = 0;
             for (int i = 0; i < targets.Length; i++)
             {
@@ -206,7 +209,9 @@ namespace LoogaSoft.Inspector.Editor
                     try
                     {
                         Component component = Undo.AddComponent(targetGameObject, type);
+                        Undo.RecordObject(component, "Paste Component Values");
                         EditorJsonUtility.FromJsonOverwrite(copied.json, component);
+                        EditorUtility.SetDirty(component);
                         pastedCount++;
                     }
                     catch (Exception exception)
@@ -218,13 +223,14 @@ namespace LoogaSoft.Inspector.Editor
                 EditorUtility.SetDirty(targetGameObject);
             }
 
+            Undo.CollapseUndoOperations(undoGroup);
+
             if (pastedCount > 0)
             {
                 string label = string.IsNullOrWhiteSpace(_sourceName) ? "copied GameObject" : _sourceName;
                 Debug.Log($"[Looga Inspector] Pasted {pastedCount} copied component(s) from '{label}'.");
             }
         }
-
         private static GameObject ResolveGameObject(Object target)
         {
             return target switch
@@ -407,4 +413,5 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
