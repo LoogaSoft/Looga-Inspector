@@ -1,8 +1,4 @@
-# Third-Party Icon Notice
+﻿# Icon Notice
 
-The component clipboard icons use Lucide SVGs.
-Lucide is released under the ISC License.
+The component clipboard icons are custom Looga Inspector filled toolbar glyphs. They are authored for this package and do not require third-party attribution.
 
-Source: https://lucide.dev/icons/copy
-Source: https://lucide.dev/icons/clipboard-paste
-License: https://lucide.dev/license

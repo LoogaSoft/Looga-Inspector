@@ -1,4 +1,4 @@
-using LoogaSoft.Inspector.Runtime;
+﻿using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,6 +12,18 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const float StatusBoxPadding = 7f;
         private const float StatusActionSize = 18f;
+
+        private static Color StatusActionColor => EditorGUIUtility.isProSkin
+            ? new Color(0.56f, 0.56f, 0.56f, 1f)
+            : new Color(0.72f, 0.72f, 0.72f, 1f);
+
+        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
+            ? new Color(0.66f, 0.66f, 0.66f, 1f)
+            : new Color(0.80f, 0.80f, 0.80f, 1f);
+
+        private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
+            ? new Color(0.48f, 0.48f, 0.48f, 1f)
+            : new Color(0.62f, 0.62f, 0.62f, 1f);
 
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
@@ -92,7 +104,7 @@ namespace LoogaSoft.Inspector.Editor
             Event current = Event.current;
             bool hovered = rect.Contains(current.mousePosition);
             Color color = GUI.enabled
-                ? hovered ? Brighten(LoogaEditorStyle.ActionAccentColor, 1.25f) : LoogaEditorStyle.ActionAccentColor
+                ? hovered ? StatusActionHoverColor : StatusActionColor
                 : new Color(LoogaEditorStyle.BoxColor.r, LoogaEditorStyle.BoxColor.g, LoogaEditorStyle.BoxColor.b, 0.55f);
 
             if (current.type == EventType.Repaint)
@@ -115,10 +127,10 @@ namespace LoogaSoft.Inspector.Editor
             if (current.type == EventType.Repaint)
             {
                 Color color = pressed
-                    ? Brighten(LoogaEditorStyle.SelectionColor, 1.08f)
+                    ? StatusActionPressedColor
                     : hovered
-                        ? Brighten(LoogaEditorStyle.ActionAccentColor, 1.25f)
-                        : LoogaEditorStyle.ActionAccentColor;
+                        ? StatusActionHoverColor
+                        : StatusActionColor;
                 Rect background = LoogaEditorStyle.PixelSnap(rect);
                 EditorGUI.DrawRect(background, color);
                 DrawOpenGlyph(background, hovered || pressed);
