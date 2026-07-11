@@ -3,7 +3,6 @@ using UnityEngine;
 
 namespace LoogaSoft.Inspector.Editor
 {
-    [InitializeOnLoad]
     internal static class LoogaComponentHeaderClipboardButtons
     {
         private const float ButtonSize = 18f;
@@ -14,7 +13,9 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIContent _copyIcon;
         private static GUIContent _pasteIcon;
 
-        static LoogaComponentHeaderClipboardButtons()
+        // Unity does not expose a reliable public insertion point for the built-in component header icon cluster.
+        // Keep this utility dormant until we commit to an internal UIElements header injection path.
+        private static void InitializeDisabled()
         {
             UnityEditor.Editor.finishedDefaultHeaderGUI -= DrawButtons;
             UnityEditor.Editor.finishedDefaultHeaderGUI += DrawButtons;

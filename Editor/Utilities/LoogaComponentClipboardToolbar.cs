@@ -203,7 +203,7 @@ namespace LoogaSoft.Inspector.Editor
             _buttonStyle ??= new GUIStyle(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                fontSize = 13,
+                fontSize = 12,
                 normal = { background = _buttonTexture, textColor = LoogaEditorStyle.TextColor },
                 hover = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
                 active = { background = _buttonActiveTexture, textColor = Color.white },
@@ -215,7 +215,7 @@ namespace LoogaSoft.Inspector.Editor
             _labelStyle ??= new GUIStyle(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleLeft,
-                fontSize = 13,
+                fontSize = 12,
                 normal = { textColor = LoogaEditorStyle.TextColor }
             };
         }
