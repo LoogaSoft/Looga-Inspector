@@ -21,6 +21,8 @@ namespace LoogaSoft.Inspector.Editor
         private int _draggingListPreviousDropIndex = -1;
         private float _draggingListMouseOffsetY;
         private double _listDropAnimationStartTime;
+        private string _hoveredListKey = string.Empty;
+        private int _hoveredListIndex = -1;
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
         private static readonly Dictionary<Type, StatusBoxAttribute[]> _statusBoxCache = new();
@@ -37,6 +39,8 @@ namespace LoogaSoft.Inspector.Editor
             _draggingListPreviousDropIndex = -1;
             _draggingListMouseOffsetY = 0f;
             _listDropAnimationStartTime = 0d;
+            _hoveredListKey = string.Empty;
+            _hoveredListIndex = -1;
         }
 
         public override void OnInspectorGUI()
@@ -1294,7 +1298,7 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUIUtility.AddCursorRect(listBoxRect, MouseCursor.Arrow);
 
             if (e.type == EventType.MouseMove && listBoxRect.Contains(e.mousePosition))
-                Repaint();
+                RepaintListHover();
 
             Rect contentRect = PixelSnap(new Rect(
                 listBoxRect.x + ListHeaderAccentWidth + ListBodyPaddingX,
@@ -1310,6 +1314,8 @@ namespace LoogaSoft.Inspector.Editor
             SerializedProperty draggedElement = null;
             float draggedElementHeight = 0f;
             float draggedRowHeight = draggingThisList ? GetListRowHeight(property, _draggingListIndex) : 0f;
+            int hoveredIndex = GetListHoveredIndex(property, contentRect, e.mousePosition);
+            UpdateListHoverState(key, hoveredIndex);
             float y = contentRect.y;
 
             if (property.arraySize == 0)
@@ -1352,7 +1358,7 @@ namespace LoogaSoft.Inspector.Editor
                     return;
 
                 bool selected = IsListRowSelected(key, i);
-                bool hovered = rowRect.Contains(e.mousePosition);
+                bool hovered = IsListRowHovered(key, i);
                 DrawListRowBackground(rowRect, selected, hovered, false);
                 DrawListRow(property, key, rowRect, element, elementHeight, i);
             }
@@ -1604,6 +1610,38 @@ namespace LoogaSoft.Inspector.Editor
         {
             return Mathf.Clamp(mouseY - _draggingListMouseOffsetY, contentRect.y, Mathf.Max(contentRect.y, contentRect.yMax - draggedRowHeight));
         }
+        private int GetListHoveredIndex(SerializedProperty property, Rect contentRect, Vector2 mousePosition)
+        {
+            if (!contentRect.Contains(mousePosition) || property.arraySize == 0)
+                return -1;
+            float y = contentRect.y;
+            for (int i = 0; i < property.arraySize; i++)
+            {
+                float rowHeight = GetListRowHeight(property, i);
+                Rect rowRect = new(contentRect.x, y, contentRect.width, rowHeight);
+                if (rowRect.Contains(mousePosition))
+                    return i;
+                y += rowHeight + GetListRowGap();
+            }
+            return -1;
+        }
+        private void UpdateListHoverState(string key, int hoveredIndex)
+        {
+            if (_hoveredListKey == key && _hoveredListIndex == hoveredIndex)
+                return;
+            _hoveredListKey = hoveredIndex >= 0 ? key : string.Empty;
+            _hoveredListIndex = hoveredIndex;
+            RepaintListHover();
+        }
+        private bool IsListRowHovered(string key, int index)
+        {
+            return _hoveredListKey == key && _hoveredListIndex == index;
+        }
+        private void RepaintListHover()
+        {
+            Repaint();
+            HandleUtility.Repaint();
+        }
 
         private static float GetListVisualRowY(SerializedProperty property, Rect contentRect, int rowIndex, int sourceIndex, int dropIndex, float draggedRowHeight)
         {
@@ -1804,6 +1842,8 @@ namespace LoogaSoft.Inspector.Editor
             _draggingListPreviousDropIndex = -1;
             _draggingListMouseOffsetY = 0f;
             _listDropAnimationStartTime = 0d;
+            _hoveredListKey = string.Empty;
+            _hoveredListIndex = -1;
         }
 
         private static Color GetListRowColor()
