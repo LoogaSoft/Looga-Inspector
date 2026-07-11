@@ -18,14 +18,16 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ButtonContainerName = "looga-component-header-clipboard-buttons";
-        private const float ButtonSize = 18f;
+        private const string PasteButtonName = "looga-component-header-paste-button";
+        private const float ButtonSize = 15f;
         private const float ButtonGap = 2f;
         private const float RightOffset = 68f;
-        private const float TopOffset = 3f;
+        private const float TopOffset = 4f;
 
         private static readonly Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
         private static readonly List<VisualElement> ScratchElements = new();
+        private static readonly Dictionary<int, HeaderCandidate> CandidateByComponent = new();
         private static Texture2D _copyIcon;
         private static Texture2D _pasteIcon;
 
@@ -66,7 +68,10 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void InjectIntoEditorTree(VisualElement root)
         {
+            RemoveInjectedContainers(root);
+
             ScratchElements.Clear();
+            CandidateByComponent.Clear();
             CollectElements(root, ScratchElements);
 
             for (int i = 0; i < ScratchElements.Count; i++)
@@ -78,8 +83,36 @@ namespace LoogaSoft.Inspector.Editor
                 if (editor.target is not Component component)
                     continue;
 
-                EnsureButtonContainer(element, component, editor.targets);
+                int instanceId = component.GetInstanceID();
+                HeaderCandidate candidate = new(element, component, editor.targets, HeaderY(element), IsPreferredEditorElement(element));
+                if (!CandidateByComponent.TryGetValue(instanceId, out HeaderCandidate current) || IsBetterCandidate(candidate, current))
+                    CandidateByComponent[instanceId] = candidate;
             }
+
+            foreach (HeaderCandidate candidate in CandidateByComponent.Values)
+                EnsureButtonContainer(candidate.Element, candidate.Component, candidate.Targets);
+        }
+
+        private static void RemoveInjectedContainers(VisualElement root)
+        {
+            ScratchElements.Clear();
+            root.Query<VisualElement>(name: ButtonContainerName).ForEach(element => ScratchElements.Add(element));
+            for (int i = 0; i < ScratchElements.Count; i++)
+                ScratchElements[i].RemoveFromHierarchy();
+        }
+
+        private static bool IsBetterCandidate(HeaderCandidate candidate, HeaderCandidate current)
+        {
+            if (candidate.Preferred != current.Preferred)
+                return candidate.Preferred;
+
+            return candidate.Y < current.Y;
+        }
+
+        private static float HeaderY(VisualElement element)
+        {
+            Rect worldBound = element.worldBound;
+            return float.IsNaN(worldBound.y) ? float.MaxValue : worldBound.y;
         }
 
         private static void CollectElements(VisualElement element, List<VisualElement> elements)
@@ -103,6 +136,11 @@ namespace LoogaSoft.Inspector.Editor
                 return true;
 
             return element.ClassListContains("unity-inspector-element");
+        }
+
+        private static bool IsPreferredEditorElement(VisualElement element)
+        {
+            return element.GetType().Name.IndexOf("EditorElement", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static bool TryGetEditor(VisualElement element, out UnityEditor.Editor editor)
@@ -151,13 +189,6 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void EnsureButtonContainer(VisualElement editorElement, Component component, Object[] targets)
         {
-            VisualElement existing = editorElement.Q<VisualElement>(ButtonContainerName);
-            if (existing != null)
-            {
-                UpdatePasteButton(existing, targets);
-                return;
-            }
-
             VisualElement container = new()
             {
                 name = ButtonContainerName,
@@ -172,7 +203,7 @@ namespace LoogaSoft.Inspector.Editor
 
             Button copyButton = CreateHeaderButton(GetCopyIcon(), "Copy component", () => LoogaComponentClipboard.CopyComponent(component));
             Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets));
-            pasteButton.name = "looga-component-header-paste-button";
+            pasteButton.name = PasteButtonName;
             pasteButton.style.marginLeft = ButtonGap;
 
             container.Add(copyButton);
@@ -199,6 +230,15 @@ namespace LoogaSoft.Inspector.Editor
             button.style.marginTop = 0f;
             button.style.marginBottom = 0f;
             button.style.unityTextAlign = TextAnchor.MiddleCenter;
+            button.style.backgroundColor = LoogaEditorStyle.ListRowColor;
+            button.style.borderTopWidth = 0f;
+            button.style.borderRightWidth = 0f;
+            button.style.borderBottomWidth = 0f;
+            button.style.borderLeftWidth = 0f;
+            button.style.borderTopLeftRadius = 2f;
+            button.style.borderTopRightRadius = 2f;
+            button.style.borderBottomLeftRadius = 2f;
+            button.style.borderBottomRightRadius = 2f;
 
             if (icon != null)
             {
@@ -206,12 +246,16 @@ namespace LoogaSoft.Inspector.Editor
                 button.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
             }
 
+            button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListHoverColor);
+            button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListRowColor);
+            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.SelectionColor);
+            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListHoverColor);
             return button;
         }
 
         private static void UpdatePasteButton(VisualElement container, Object[] targets)
         {
-            Button pasteButton = container.Q<Button>("looga-component-header-paste-button");
+            Button pasteButton = container.Q<Button>(name: PasteButtonName);
             if (pasteButton == null)
                 return;
 
@@ -226,6 +270,24 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D GetPasteIcon()
         {
             return _pasteIcon ??= EditorGUIUtility.IconContent("Clipboard").image as Texture2D;
+        }
+
+        private readonly struct HeaderCandidate
+        {
+            public readonly VisualElement Element;
+            public readonly Component Component;
+            public readonly Object[] Targets;
+            public readonly float Y;
+            public readonly bool Preferred;
+
+            public HeaderCandidate(VisualElement element, Component component, Object[] targets, float y, bool preferred)
+            {
+                Element = element;
+                Component = component;
+                Targets = targets;
+                Y = y;
+                Preferred = preferred;
+            }
         }
     }
 }
