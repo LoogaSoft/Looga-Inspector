@@ -19,8 +19,8 @@ namespace LoogaSoft.Inspector.Editor
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ButtonContainerName = "looga-component-header-clipboard-buttons";
         private const string PasteButtonName = "looga-component-header-paste-button";
-        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Lucide/copy.png";
-        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Lucide/clipboard-paste.png";
+        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
+        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const float ButtonSize = 15f;
         private const float ButtonGap = 2f;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
@@ -33,8 +33,8 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
         private static readonly List<VisualElement> ScratchElements = new();
         private static readonly Dictionary<int, HeaderCandidate> CandidateByComponent = new();
-        private static Texture2D _copyIcon;
-        private static Texture2D _pasteIcon;
+        private static Object _copyIcon;
+        private static Object _pasteIcon;
         private static Texture2D _generatedPasteIcon;
 
         static LoogaComponentHeaderClipboardButtons()
@@ -218,7 +218,7 @@ namespace LoogaSoft.Inspector.Editor
             UpdatePasteButton(container, targets);
         }
 
-        private static Button CreateHeaderButton(Texture2D icon, string tooltip, Action clicked)
+        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked)
         {
             Button button = new(clicked)
             {
@@ -248,7 +248,10 @@ namespace LoogaSoft.Inspector.Editor
 
             if (icon != null)
             {
-                button.style.backgroundImage = new StyleBackground(icon);
+                if (icon is Texture2D textureIcon)
+                    button.style.backgroundImage = new StyleBackground(textureIcon);
+                else if (icon is VectorImage vectorIcon)
+                    button.style.backgroundImage = new StyleBackground(vectorIcon);
                 button.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
             }
 
@@ -268,20 +271,24 @@ namespace LoogaSoft.Inspector.Editor
             pasteButton.SetEnabled(LoogaComponentClipboard.CanPasteValuesIntoComponents(targets));
         }
 
-        private static Texture2D GetCopyIcon()
+        private static Object GetCopyIcon()
         {
             _copyIcon ??= LoadPackageIcon(CopyIconPath);
             return _copyIcon != null ? _copyIcon : EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_TreeEditor.Duplicate" : "TreeEditor.Duplicate").image as Texture2D;
         }
 
-        private static Texture2D GetPasteIcon()
+        private static Object GetPasteIcon()
         {
             _pasteIcon ??= LoadPackageIcon(PasteIconPath);
             return _pasteIcon != null ? _pasteIcon : GetGeneratedPasteIcon();
         }
 
-        private static Texture2D LoadPackageIcon(string assetPath)
+        private static Object LoadPackageIcon(string assetPath)
         {
+            Object icon = AssetDatabase.LoadAssetAtPath<VectorImage>(assetPath);
+            if (icon != null)
+                return icon;
+
             return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
         }
 
@@ -362,4 +369,6 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
