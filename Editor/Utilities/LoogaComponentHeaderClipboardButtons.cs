@@ -21,6 +21,9 @@ namespace LoogaSoft.Inspector.Editor
         private const string PasteButtonName = "looga-component-header-paste-button";
         private const float ButtonSize = 15f;
         private const float ButtonGap = 2f;
+        private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
+        private static readonly Color ButtonHoverColor = new(0.42f, 0.42f, 0.42f, 0.72f);
+        private static readonly Color ButtonPressedColor = new(0.30f, 0.30f, 0.30f, 0.9f);
         private const float RightOffset = 68f;
         private const float TopOffset = 4f;
 
@@ -230,7 +233,7 @@ namespace LoogaSoft.Inspector.Editor
             button.style.marginTop = 0f;
             button.style.marginBottom = 0f;
             button.style.unityTextAlign = TextAnchor.MiddleCenter;
-            button.style.backgroundColor = LoogaEditorStyle.ListRowColor;
+            button.style.backgroundColor = ButtonIdleColor;
             button.style.borderTopWidth = 0f;
             button.style.borderRightWidth = 0f;
             button.style.borderBottomWidth = 0f;
@@ -246,10 +249,10 @@ namespace LoogaSoft.Inspector.Editor
                 button.style.backgroundSize = new BackgroundSize(BackgroundSizeType.Contain);
             }
 
-            button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListHoverColor);
-            button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListRowColor);
-            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.SelectionColor);
-            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = LoogaEditorStyle.ListHoverColor);
+            button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
+            button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
+            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = ButtonPressedColor);
+            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
             return button;
         }
 
@@ -264,12 +267,12 @@ namespace LoogaSoft.Inspector.Editor
 
         private static Texture2D GetCopyIcon()
         {
-            return _copyIcon ??= EditorGUIUtility.IconContent("TreeEditor.Duplicate").image as Texture2D;
+            return _copyIcon ??= EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_TreeEditor.Duplicate" : "TreeEditor.Duplicate").image as Texture2D;
         }
 
         private static Texture2D GetPasteIcon()
         {
-            return _pasteIcon ??= EditorGUIUtility.IconContent("Clipboard").image as Texture2D;
+            return _pasteIcon ??= EditorGUIUtility.IconContent(EditorGUIUtility.isProSkin ? "d_Clipboard" : "Clipboard").image as Texture2D;
         }
 
         private readonly struct HeaderCandidate

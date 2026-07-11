@@ -75,7 +75,12 @@ namespace LoogaSoft.Inspector.Editor
                 return 0f;
 
             string message = ResolveMessage(target, statusAttribute);
-            return string.IsNullOrWhiteSpace(message) ? 0f : EditorGUIUtility.singleLineHeight * 2.1f;
+            return string.IsNullOrWhiteSpace(message) ? 0f : GetStatusBoxHeight(message);
+        }
+
+        internal static float GetStatusBoxHeight(string message)
+        {
+            return EditorGUIUtility.singleLineHeight * 2.1f;
         }
     }
 }

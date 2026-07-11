@@ -22,6 +22,7 @@ namespace LoogaSoft.Inspector.Runtime
         public string ButtonLabel { get; set; } = string.Empty;
         public string AssetPath { get; set; } = string.Empty;
         public string MenuPath { get; set; } = string.Empty;
+        public string ActionTooltip { get; set; } = string.Empty;
 
         public StatusBoxAttribute(string message, LoogaStatusBoxType type = LoogaStatusBoxType.Info)
         {

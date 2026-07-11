@@ -127,15 +127,16 @@ namespace LoogaSoft.Inspector.Editor
                 if (!ShouldDrawStatusBox(statusBox, out string message))
                     continue;
 
-                EditorGUILayout.HelpBox(message, StatusBoxDrawer.ToMessageType(statusBox.Type));
-                DrawStatusBoxAction(statusBox);
+                Rect statusRect = EditorGUILayout.GetControlRect(false, StatusBoxDrawer.GetStatusBoxHeight(message));
+                EditorGUI.HelpBox(statusRect, message, StatusBoxDrawer.ToMessageType(statusBox.Type));
+                DrawStatusBoxAction(statusBox, statusRect);
                 EditorGUILayout.Space(1f);
             }
         }
 
-        private static void DrawStatusBoxAction(StatusBoxAttribute statusBox)
+        private static void DrawStatusBoxAction(StatusBoxAttribute statusBox, Rect statusRect)
         {
-            if (statusBox == null || string.IsNullOrWhiteSpace(statusBox.ButtonLabel))
+            if (statusBox == null)
                 return;
 
             bool hasAssetPath = !string.IsNullOrWhiteSpace(statusBox.AssetPath);
@@ -143,9 +144,23 @@ namespace LoogaSoft.Inspector.Editor
             if (!hasAssetPath && !hasMenuPath)
                 return;
 
-            if (!GUILayout.Button(statusBox.ButtonLabel))
-                return;
+            if (!string.IsNullOrWhiteSpace(statusBox.ButtonLabel))
+            {
+                if (GUILayout.Button(statusBox.ButtonLabel))
+                    ExecuteStatusBoxAction(statusBox, hasAssetPath);
 
+                return;
+            }
+
+            Rect iconRect = new(statusRect.x + 6f, statusRect.y + 5f, 34f, statusRect.height - 10f);
+            string tooltip = string.IsNullOrWhiteSpace(statusBox.ActionTooltip) ? "Open" : statusBox.ActionTooltip;
+            EditorGUIUtility.AddCursorRect(iconRect, MouseCursor.Link);
+            if (GUI.Button(iconRect, new GUIContent(string.Empty, tooltip), GUIStyle.none))
+                ExecuteStatusBoxAction(statusBox, hasAssetPath);
+        }
+
+        private static void ExecuteStatusBoxAction(StatusBoxAttribute statusBox, bool hasAssetPath)
+        {
             if (hasAssetPath)
             {
                 SelectAssetAtPath(statusBox.AssetPath);
