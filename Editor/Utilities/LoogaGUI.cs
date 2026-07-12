@@ -1,4 +1,4 @@
-﻿using LoogaSoft.Inspector.Runtime;
+using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
@@ -139,26 +139,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static bool DrawTextActionButton(Rect rect, string label, string tooltip)
         {
-            Event current = Event.current;
-            bool hovered = rect.Contains(current.mousePosition);
-            Color color = GUI.enabled
-                ? hovered ? StatusActionHoverColor : StatusActionColor
-                : new Color(StatusBackgroundColor.r, StatusBackgroundColor.g, StatusBackgroundColor.b, 0.55f);
-
-            if (current.type == EventType.Repaint)
-            {
-                Rect background = LoogaEditorStyle.PixelSnap(rect);
-                EditorGUI.DrawRect(background, color);
-                DrawStatusActionOutline(background);
-            }
-
-            EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
-            return GUI.Button(rect, new GUIContent(label, tooltip), GetStatusActionButtonStyle());
-        }
-
-        private static bool DrawOpenActionButton(Rect rect, string tooltip)
-        {
-            int controlId = GUIUtility.GetControlID("LoogaStatusBoxOpen".GetHashCode(), FocusType.Passive, rect);
+            int controlId = GUIUtility.GetControlID("LoogaStatusBoxTextAction".GetHashCode(), FocusType.Passive, rect);
             Event current = Event.current;
             bool hovered = rect.Contains(current.mousePosition);
             bool pressed = GUIUtility.hotControl == controlId;
@@ -168,18 +149,22 @@ namespace LoogaSoft.Inspector.Editor
 
             if (current.type == EventType.Repaint)
             {
-                Color color = pressed
-                    ? StatusActionPressedColor
-                    : hovered
-                        ? StatusActionHoverColor
-                        : StatusActionColor;
+                Color color = !GUI.enabled
+                    ? new Color(StatusBackgroundColor.r, StatusBackgroundColor.g, StatusBackgroundColor.b, 0.55f)
+                    : pressed
+                        ? StatusActionPressedColor
+                        : hovered
+                            ? StatusActionHoverColor
+                            : StatusActionColor;
+
                 Rect background = LoogaEditorStyle.PixelSnap(rect);
                 EditorGUI.DrawRect(background, color);
                 DrawStatusActionOutline(background);
-                DrawOpenGlyph(background, hovered || pressed);
+                GUI.Label(background, new GUIContent(label, tooltip), GetStatusActionLabelStyle());
             }
 
-            GUI.Label(rect, new GUIContent(string.Empty, tooltip), GUIStyle.none);
+            if (!GUI.enabled)
+                return false;
 
             if (current.type == EventType.MouseDown && current.button == 0 && hovered)
             {
@@ -198,37 +183,6 @@ namespace LoogaSoft.Inspector.Editor
             return false;
         }
 
-        private static void DrawOpenGlyph(Rect rect, bool highlighted)
-        {
-            Color lineColor = highlighted ? Color.white : new Color(0.93f, 0.93f, 0.93f, 1f);
-            Rect glyph = new(
-                Mathf.Round(rect.x + 5f),
-                Mathf.Round(rect.y + 5f),
-                Mathf.Round(rect.width - 10f),
-                Mathf.Round(rect.height - 10f));
-
-            Handles.BeginGUI();
-            Color previous = Handles.color;
-            Handles.color = lineColor;
-
-            Vector3 bottomLeft = new(glyph.xMin, glyph.yMax - 1f, 0f);
-            Vector3 topLeft = new(glyph.xMin, glyph.yMin + 4f, 0f);
-            Vector3 bottomRight = new(glyph.xMax - 4f, glyph.yMax - 1f, 0f);
-            Vector3 topRight = new(glyph.xMax, glyph.yMin, 0f);
-            Vector3 arrowStart = new(glyph.xMin + 4f, glyph.yMax - 5f, 0f);
-            Vector3 arrowEnd = new(glyph.xMax, glyph.yMin, 0f);
-
-            Handles.DrawAAPolyLine(1.5f, bottomLeft, topLeft, bottomLeft, bottomRight);
-            Handles.DrawAAPolyLine(1.5f, arrowStart, arrowEnd);
-            Handles.DrawAAPolyLine(1.5f,
-                new Vector3(topRight.x - 4f, topRight.y, 0f),
-                topRight,
-                new Vector3(topRight.x, topRight.y + 4f, 0f));
-
-            Handles.color = previous;
-            Handles.EndGUI();
-        }
-
         private static GUIStyle GetStatusMessageStyle()
         {
             GUIStyle style = new(EditorStyles.label)
@@ -242,12 +196,12 @@ namespace LoogaSoft.Inspector.Editor
             return style;
         }
 
-        private static GUIStyle GetStatusActionButtonStyle()
+        private static GUIStyle GetStatusActionLabelStyle()
         {
-            GUIStyle style = new(EditorStyles.miniButton)
+            GUIStyle style = new(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleCenter,
-                padding = new RectOffset(6, 6, 0, 1),
+                padding = new RectOffset(4, 4, 0, 1),
                 fontSize = Mathf.Max(1, EditorStyles.label.fontSize - 1)
             };
             style.normal.background = null;
@@ -270,14 +224,6 @@ namespace LoogaSoft.Inspector.Editor
             };
         }
 
-        private static Color Brighten(Color color, float multiplier)
-        {
-            return new Color(
-                Mathf.Clamp01(color.r * multiplier),
-                Mathf.Clamp01(color.g * multiplier),
-                Mathf.Clamp01(color.b * multiplier),
-                color.a);
-        }
     }
 }
 
