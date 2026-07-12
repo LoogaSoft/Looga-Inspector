@@ -12,6 +12,7 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const float StatusBoxPadding = 2f;
         private const float StatusActionSize = 16f;
+        private const string DefaultStatusActionLabel = "Open";
         private const float StatusIndicatorSize = 5f;
 
         private static Color StatusBackgroundColor => EditorGUIUtility.isProSkin
@@ -73,13 +74,12 @@ namespace LoogaSoft.Inspector.Editor
                 StatusIndicatorSize);
             DrawStatusIndicator(indicatorRect, GetStatusAccentColor(type));
 
+            if (hasAction && string.IsNullOrWhiteSpace(actionLabel))
+                actionLabel = DefaultStatusActionLabel;
+
             float actionWidth = 0f;
             if (hasAction)
-            {
-                actionWidth = string.IsNullOrWhiteSpace(actionLabel)
-                    ? StatusActionSize
-                    : Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 14f);
-            }
+                actionWidth = Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 14f);
 
             float labelX = indicatorRect.xMax + StatusBoxPadding + 3f;
             Rect labelRect = new(
@@ -99,9 +99,7 @@ namespace LoogaSoft.Inspector.Editor
                 actionWidth,
                 StatusActionSize);
 
-            return string.IsNullOrWhiteSpace(actionLabel)
-                ? DrawOpenActionButton(actionRect, actionTooltip)
-                : DrawTextActionButton(actionRect, actionLabel, actionTooltip);
+            return DrawTextActionButton(actionRect, actionLabel, actionTooltip);
         }
 
         public static float GetStatusBoxHeight(string message)
@@ -128,8 +126,8 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawStatusActionOutline(Rect rect)
         {
             Color outline = EditorGUIUtility.isProSkin
-                ? new Color(0.10f, 0.10f, 0.10f, 1f)
-                : new Color(0.42f, 0.42f, 0.42f, 1f);
+                ? new Color(0.20f, 0.20f, 0.20f, 1f)
+                : new Color(0.58f, 0.58f, 0.58f, 1f);
             Rect snapped = LoogaEditorStyle.PixelSnap(rect);
             float line = LoogaEditorStyle.Pixels(1f);
 
@@ -281,6 +279,8 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
 
 
