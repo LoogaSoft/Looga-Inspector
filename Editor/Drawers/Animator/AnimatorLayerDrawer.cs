@@ -45,7 +45,7 @@ namespace LoogaSoft.Inspector.Editor
             if (currentIndex < 0 || currentIndex >= layerNames.Count) 
                 currentIndex = 0;
             
-            var newIndex = EditorGUI.Popup(position, label.text, currentIndex, layerNames.ToArray());
+            var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, layerNames.ToArray());
             
             if (newIndex != currentIndex) 
             {

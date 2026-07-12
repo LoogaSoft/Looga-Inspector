@@ -19,12 +19,12 @@ namespace LoogaSoft.Inspector.Editor
 
             if (property.propertyType == SerializedPropertyType.Integer)
             {
-                property.intValue = EditorGUI.Popup(position, label.text, property.intValue, scenesArray);
+                property.intValue = LoogaGUI.Popup(position, label.text, property.intValue, scenesArray);
             }
             else if (property.propertyType == SerializedPropertyType.String)
             {
                 var currentIndex = Mathf.Max(0, Array.IndexOf(scenesArray, property.stringValue));
-                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, scenesArray);
+                var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, scenesArray);
                 property.stringValue = scenesArray[newIndex];
             }
             else

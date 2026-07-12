@@ -19,13 +19,13 @@ namespace LoogaSoft.Inspector.Editor
             else if (property.propertyType == SerializedPropertyType.Integer)
             {
                 int currentIndex = FindAreaNameIndex(areaNames, property.intValue);
-                int nextIndex = EditorGUI.Popup(position, label.text, currentIndex, areaNames);
+                int nextIndex = LoogaGUI.Popup(position, label.text, currentIndex, areaNames);
                 property.intValue = GameObjectUtility.GetNavMeshAreaFromName(areaNames[nextIndex]);
             }
             else if (property.propertyType == SerializedPropertyType.String)
             {
                 int currentIndex = Mathf.Max(0, System.Array.IndexOf(areaNames, property.stringValue));
-                int nextIndex = EditorGUI.Popup(position, label.text, currentIndex, areaNames);
+                int nextIndex = LoogaGUI.Popup(position, label.text, currentIndex, areaNames);
                 property.stringValue = areaNames[nextIndex];
             }
             else

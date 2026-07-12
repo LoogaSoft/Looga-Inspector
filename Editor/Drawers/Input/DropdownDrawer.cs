@@ -41,7 +41,7 @@ namespace LoogaSoft.Inspector.Editor
                 }
             }
             
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, labels);
+            int newIndex = LoogaGUI.Popup(position, label.text, currentIndex, labels);
             
             if (newIndex != currentIndex)
                 property.boxedValue = GetOptionValue(options[newIndex], dropdownAttribute);

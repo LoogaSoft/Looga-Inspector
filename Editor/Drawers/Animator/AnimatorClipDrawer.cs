@@ -34,7 +34,7 @@ namespace LoogaSoft.Inspector.Editor
             var currentIndex = Mathf.Max(0, clipNames.IndexOf(property.stringValue));
             if (currentIndex < 0) currentIndex = 0;
             
-            var newIndex = EditorGUI.Popup(position, label.text, currentIndex, clipNames.ToArray());
+            var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, clipNames.ToArray());
             
             if (newIndex != currentIndex) 
                 property.stringValue = clipNames[newIndex];

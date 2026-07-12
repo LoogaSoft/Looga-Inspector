@@ -60,7 +60,7 @@ namespace LoogaSoft.Inspector.Editor
             
             if (currentIndex < 0) currentIndex = 0;
             
-            var newIndex = EditorGUI.Popup(position, label.text, currentIndex, paramNames.ToArray());
+            var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, paramNames.ToArray());
 
             if (newIndex >= 0 && newIndex != currentIndex)
             {

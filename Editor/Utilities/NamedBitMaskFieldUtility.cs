@@ -8,7 +8,7 @@ namespace LoogaSoft.Inspector.Editor
         public static int DrawMaskField(Rect position, GUIContent label, int actualMask, string[] names, int[] bitIndices)
         {
             int displayedMask = ToDisplayedMask(actualMask, bitIndices);
-            int nextDisplayedMask = EditorGUI.MaskField(position, label, displayedMask, names);
+            int nextDisplayedMask = LoogaGUI.MaskField(position, label, displayedMask, names);
             return ToActualMask(nextDisplayedMask, bitIndices);
         }
 

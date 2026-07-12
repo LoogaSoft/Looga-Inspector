@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using LoogaSoft.Inspector.Runtime;
@@ -69,14 +69,14 @@ namespace LoogaSoft.Inspector.Editor
         {
             if (options.Count == 0)
             {
-                EditorGUI.Popup(rect, label.text, 0, new[] { $"No {ObjectNames.NicifyVariableName(valueType.Name)} Overrides" });
+                LoogaGUI.Popup(rect, label.text, 0, new[] { $"No {ObjectNames.NicifyVariableName(valueType.Name)} Overrides" });
                 componentTypeProperty.stringValue = string.Empty;
                 parameterNameProperty.stringValue = string.Empty;
                 return;
             }
 
             int currentIndex = FindComponentIndex(options, componentTypeProperty.stringValue);
-            int newIndex = EditorGUI.Popup(rect, label.text, currentIndex, ToLabels(options));
+            int newIndex = LoogaGUI.Popup(rect, label.text, currentIndex, ToLabels(options));
             newIndex = Mathf.Clamp(newIndex, 0, options.Count - 1);
 
             if (newIndex != currentIndex)
@@ -97,13 +97,13 @@ namespace LoogaSoft.Inspector.Editor
         {
             if (options.Count == 0)
             {
-                EditorGUI.Popup(rect, "Value", 0, new[] { "No Compatible Values" });
+                LoogaGUI.Popup(rect, "Value", 0, new[] { "No Compatible Values" });
                 parameterNameProperty.stringValue = string.Empty;
                 return;
             }
 
             int currentIndex = FindParameterIndex(options, parameterNameProperty.stringValue);
-            int newIndex = EditorGUI.Popup(rect, "Value", currentIndex, ToLabels(options));
+            int newIndex = LoogaGUI.Popup(rect, "Value", currentIndex, ToLabels(options));
             parameterNameProperty.stringValue = options[Mathf.Clamp(newIndex, 0, options.Count - 1)].Name;
         }
 

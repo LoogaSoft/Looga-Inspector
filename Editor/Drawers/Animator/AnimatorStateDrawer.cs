@@ -54,7 +54,7 @@ namespace LoogaSoft.Inspector.Editor
                 }
             }
             
-            var newIndex = EditorGUI.Popup(position, label.text, currentIndex, stateNames.ToArray());
+            var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, stateNames.ToArray());
 
             if (newIndex != currentIndex)
             {

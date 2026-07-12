@@ -9,7 +9,7 @@ namespace LoogaSoft.Inspector.Editor
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            property.intValue = EditorGUI.Popup(position, label.text, property.intValue, property.enumDisplayNames);
+            property.intValue = LoogaGUI.Popup(position, label.text, property.intValue, property.enumDisplayNames);
         }
     }
 }

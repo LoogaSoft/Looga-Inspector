@@ -31,6 +31,11 @@ namespace LoogaSoft.Inspector.Editor
             ? new Color(0.115f, 0.115f, 0.115f, 1f)
             : new Color(0.62f, 0.62f, 0.62f, 1f);
 
+        private static GUIStyle _dropdownStyle;
+        private static Texture2D _dropdownNormalTexture;
+        private static Texture2D _dropdownHoverTexture;
+        private static Texture2D _dropdownActiveTexture;
+
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
             return LoogaEditorTabs.DrawToolbar(position, selectedIndex, tabNames);
@@ -55,6 +60,34 @@ namespace LoogaSoft.Inspector.Editor
         {
             return LoogaEditorFoldouts.LoogaFoldoutSmallHeader(headerRect, label, expanded, property);
         }
+
+        public static int Popup(Rect position, string label, int selectedIndex, string[] displayedOptions)
+        {
+            return Popup(position, new GUIContent(label), selectedIndex, displayedOptions);
+        }
+
+        public static int Popup(Rect position, GUIContent label, int selectedIndex, string[] displayedOptions)
+        {
+            GUIContent[] options = ToDropdownContent(displayedOptions);
+            return Popup(position, label, selectedIndex, options);
+        }
+
+        public static int Popup(Rect position, GUIContent label, int selectedIndex, GUIContent[] displayedOptions)
+        {
+            Rect fieldRect = GetLabeledFieldRect(position, label);
+            int result = EditorGUI.Popup(fieldRect, GUIContent.none, selectedIndex, displayedOptions, GetDropdownStyle());
+            DrawDropdownArrow(fieldRect);
+            return result;
+        }
+
+        public static int MaskField(Rect position, GUIContent label, int mask, string[] displayedOptions)
+        {
+            Rect fieldRect = GetLabeledFieldRect(position, label);
+            int result = EditorGUI.MaskField(fieldRect, GUIContent.none, mask, displayedOptions, GetDropdownStyle());
+            DrawDropdownArrow(fieldRect);
+            return result;
+        }
+
 
         public static bool StatusBox(
             Rect position,
@@ -109,6 +142,88 @@ namespace LoogaSoft.Inspector.Editor
                 : Mathf.Ceil(EditorGUIUtility.singleLineHeight + StatusBoxPadding * 2f);
         }
 
+        private static Rect GetLabeledFieldRect(Rect position, GUIContent label)
+        {
+            return label == null || label == GUIContent.none || string.IsNullOrEmpty(label.text)
+                ? position
+                : EditorGUI.PrefixLabel(position, label);
+        }
+
+        private static GUIContent[] ToDropdownContent(string[] options)
+        {
+            if (options == null || options.Length == 0)
+                return new[] { GUIContent.none };
+
+            GUIContent[] content = new GUIContent[options.Length];
+            for (int i = 0; i < options.Length; i++)
+                content[i] = new GUIContent(options[i]);
+
+            return content;
+        }
+
+        private static GUIStyle GetDropdownStyle()
+        {
+            if (_dropdownStyle == null)
+            {
+                _dropdownStyle = new GUIStyle(EditorStyles.popup)
+                {
+                    alignment = TextAnchor.MiddleLeft,
+                    clipping = TextClipping.Clip,
+                    padding = new RectOffset(6, 18, 0, 0),
+                    border = new RectOffset(0, 0, 0, 0),
+                    margin = new RectOffset(0, 0, 0, 0),
+                    overflow = new RectOffset(0, 0, 0, 0)
+                };
+            }
+
+            _dropdownStyle.normal.background = GetDropdownTexture(ref _dropdownNormalTexture, LoogaEditorStyle.BoxColor);
+            _dropdownStyle.hover.background = GetDropdownTexture(ref _dropdownHoverTexture, LoogaEditorStyle.HoverColor);
+            _dropdownStyle.active.background = GetDropdownTexture(ref _dropdownActiveTexture, LoogaEditorStyle.TabBarColor);
+            _dropdownStyle.focused.background = _dropdownStyle.normal.background;
+            _dropdownStyle.normal.textColor = LoogaEditorStyle.TextColor;
+            _dropdownStyle.hover.textColor = LoogaEditorStyle.TextColor;
+            _dropdownStyle.active.textColor = Color.white;
+            _dropdownStyle.focused.textColor = LoogaEditorStyle.TextColor;
+            return _dropdownStyle;
+        }
+
+        private static Texture2D GetDropdownTexture(ref Texture2D texture, Color color)
+        {
+            if (texture != null)
+                return texture;
+
+            texture = new Texture2D(1, 1)
+            {
+                hideFlags = HideFlags.HideAndDontSave,
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.SetPixel(0, 0, color);
+            texture.Apply();
+            return texture;
+        }
+
+        private static void DrawDropdownArrow(Rect rect)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+
+            Rect snapped = LoogaEditorStyle.PixelSnap(rect);
+            float size = LoogaEditorStyle.Pixels(7f);
+            float centerX = LoogaEditorStyle.PixelSnapValue(snapped.xMax - LoogaEditorStyle.Pixels(10f));
+            float centerY = LoogaEditorStyle.PixelSnapValue(snapped.center.y + LoogaEditorStyle.Pixels(1f));
+
+            Vector3 left = new(centerX - size * 0.5f, centerY - size * 0.25f, 0f);
+            Vector3 right = new(centerX + size * 0.5f, centerY - size * 0.25f, 0f);
+            Vector3 bottom = new(centerX, centerY + size * 0.35f, 0f);
+
+            Handles.BeginGUI();
+            Color previous = Handles.color;
+            Handles.color = LoogaEditorStyle.ArrowColor;
+            Handles.DrawAAConvexPolygon(left, right, bottom);
+            Handles.color = previous;
+            Handles.EndGUI();
+        }
         private static void DrawStatusIndicator(Rect rect, Color color)
         {
             Rect snapped = LoogaEditorStyle.PixelSnap(rect);

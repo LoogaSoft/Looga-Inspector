@@ -20,7 +20,7 @@ namespace LoogaSoft.Inspector.Editor
             if (property.propertyType == SerializedPropertyType.String)
             {
                 var currentIndex = Mathf.Max(0, tagsList.IndexOf(property.stringValue));
-                var newIndex = EditorGUI.Popup(position, label.text, currentIndex, tagsArray);
+                var newIndex = LoogaGUI.Popup(position, label.text, currentIndex, tagsArray);
                 property.stringValue = tagsList[newIndex];
             }
             else

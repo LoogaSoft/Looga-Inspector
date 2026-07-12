@@ -44,7 +44,7 @@ namespace LoogaSoft.Inspector.Editor
                     selectedIndex = i;
             }
 
-            int newIndex = EditorGUI.Popup(position, label, selectedIndex, labels.ToArray());
+            int newIndex = LoogaGUI.Popup(position, label, selectedIndex, labels.ToArray());
             int newValue = values[Mathf.Clamp(newIndex, 0, values.Count - 1)];
 
             for (int i = 0; i < rawValues.Length; i++)

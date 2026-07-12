@@ -36,7 +36,7 @@ namespace LoogaSoft.Inspector.Editor
                 keywords.Insert(0, property.stringValue);
 
             int currentIndex = Mathf.Max(0, keywords.IndexOf(property.stringValue));
-            int newIndex = EditorGUI.Popup(position, label.text, currentIndex, keywords.ToArray());
+            int newIndex = LoogaGUI.Popup(position, label.text, currentIndex, keywords.ToArray());
             property.stringValue = keywords[Mathf.Clamp(newIndex, 0, keywords.Count - 1)];
         }
 
