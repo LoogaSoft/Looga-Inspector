@@ -28,7 +28,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ComponentButtonHeight = 23f;
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
-        private const float ComponentRowsTopPadding = 2f;
+        private const float ComponentRowsTopPadding = 0f;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -345,7 +345,7 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.marginBottom = 0f;
                 _toolbar.style.paddingLeft = ToolbarPadding;
                 _toolbar.style.paddingRight = ToolbarPadding;
-                _toolbar.style.paddingTop = ToolbarPadding;
+                _toolbar.style.paddingTop = 0f;
                 _toolbar.style.paddingBottom = ToolbarPadding;
 
                 VisualElement topDivider = new()
@@ -357,7 +357,7 @@ namespace LoogaSoft.Inspector.Editor
                 topDivider.style.flexShrink = 0f;
                 topDivider.style.marginLeft = -ToolbarPadding;
                 topDivider.style.marginRight = -ToolbarPadding;
-                topDivider.style.marginTop = -ToolbarPadding;
+                topDivider.style.marginTop = 0f;
                 topDivider.style.marginBottom = ToolbarPadding;
                 topDivider.style.backgroundColor = DividerColor;
 
