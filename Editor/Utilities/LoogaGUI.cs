@@ -19,11 +19,17 @@ namespace LoogaSoft.Inspector.Editor
             ? new Color(0.225f, 0.225f, 0.225f, 1f)
             : new Color(0.79f, 0.79f, 0.79f, 1f);
 
-        private static Color StatusActionColor => LoogaEditorStyle.BoxColor;
+        private static Color StatusActionColor => EditorGUIUtility.isProSkin
+            ? new Color(0.155f, 0.155f, 0.155f, 1f)
+            : new Color(0.70f, 0.70f, 0.70f, 1f);
 
-        private static Color StatusActionHoverColor => LoogaEditorStyle.HoverColor;
+        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
+            ? new Color(0.245f, 0.245f, 0.245f, 1f)
+            : new Color(0.78f, 0.78f, 0.78f, 1f);
 
-        private static Color StatusActionPressedColor => LoogaEditorStyle.TabBarColor;
+        private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
+            ? new Color(0.115f, 0.115f, 0.115f, 1f)
+            : new Color(0.62f, 0.62f, 0.62f, 1f);
 
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
@@ -153,7 +159,6 @@ namespace LoogaSoft.Inspector.Editor
 
                 Rect background = LoogaEditorStyle.PixelSnap(rect);
                 EditorGUI.DrawRect(background, color);
-                DrawStatusActionOutline(background);
                 GUI.Label(background, new GUIContent(label, tooltip), GetStatusActionLabelStyle());
             }
 
