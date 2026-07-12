@@ -18,19 +18,6 @@ namespace LoogaSoft.Inspector.Editor
         private static Color StatusBackgroundColor => EditorGUIUtility.isProSkin
             ? new Color(0.225f, 0.225f, 0.225f, 1f)
             : new Color(0.79f, 0.79f, 0.79f, 1f);
-
-        private static Color StatusActionColor => EditorGUIUtility.isProSkin
-            ? new Color(0.155f, 0.155f, 0.155f, 1f)
-            : new Color(0.70f, 0.70f, 0.70f, 1f);
-
-        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
-            ? new Color(0.245f, 0.245f, 0.245f, 1f)
-            : new Color(0.78f, 0.78f, 0.78f, 1f);
-
-        private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
-            ? new Color(0.115f, 0.115f, 0.115f, 1f)
-            : new Color(0.62f, 0.62f, 0.62f, 1f);
-
         private static GUIStyle _dropdownStyle;
         private static Texture2D _dropdownNormalTexture;
         private static Texture2D _dropdownHoverTexture;
@@ -132,7 +119,7 @@ namespace LoogaSoft.Inspector.Editor
                 actionWidth,
                 StatusActionSize);
 
-            return DrawTextActionButton(actionRect, actionLabel, actionTooltip);
+            return GUI.Button(actionRect, new GUIContent(actionLabel, actionTooltip), EditorStyles.miniButton);
         }
 
         public static float GetStatusBoxHeight(string message)
@@ -238,64 +225,7 @@ namespace LoogaSoft.Inspector.Editor
             Handles.EndGUI();
         }
 
-        private static void DrawStatusActionOutline(Rect rect)
-        {
-            Color outline = EditorGUIUtility.isProSkin
-                ? new Color(0.30f, 0.30f, 0.30f, 1f)
-                : new Color(0.72f, 0.72f, 0.72f, 1f);
-            Rect snapped = LoogaEditorStyle.PixelSnap(rect);
-            float line = LoogaEditorStyle.Pixels(1f);
 
-            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMin, snapped.width, line), outline);
-            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMax - line, snapped.width, line), outline);
-            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMin, line, snapped.height), outline);
-            EditorGUI.DrawRect(new Rect(snapped.xMax - line, snapped.yMin, line, snapped.height), outline);
-        }
-
-        private static bool DrawTextActionButton(Rect rect, string label, string tooltip)
-        {
-            int controlId = GUIUtility.GetControlID("LoogaStatusBoxTextAction".GetHashCode(), FocusType.Passive, rect);
-            Event current = Event.current;
-            bool hovered = rect.Contains(current.mousePosition);
-            bool pressed = GUIUtility.hotControl == controlId;
-
-            if (hovered)
-                EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
-
-            if (current.type == EventType.Repaint)
-            {
-                Color color = !GUI.enabled
-                    ? new Color(StatusBackgroundColor.r, StatusBackgroundColor.g, StatusBackgroundColor.b, 0.55f)
-                    : pressed
-                        ? StatusActionPressedColor
-                        : hovered
-                            ? StatusActionHoverColor
-                            : StatusActionColor;
-
-                Rect background = LoogaEditorStyle.PixelSnap(rect);
-                EditorGUI.DrawRect(background, color);
-                GUI.Label(background, new GUIContent(label, tooltip), GetStatusActionLabelStyle());
-            }
-
-            if (!GUI.enabled)
-                return false;
-
-            if (current.type == EventType.MouseDown && current.button == 0 && hovered)
-            {
-                GUIUtility.hotControl = controlId;
-                current.Use();
-                return false;
-            }
-
-            if (current.type == EventType.MouseUp && GUIUtility.hotControl == controlId)
-            {
-                GUIUtility.hotControl = 0;
-                current.Use();
-                return hovered;
-            }
-
-            return false;
-        }
 
         private static GUIStyle GetStatusMessageStyle()
         {
@@ -307,24 +237,6 @@ namespace LoogaSoft.Inspector.Editor
                 fontSize = Mathf.Max(1, EditorStyles.label.fontSize - 1)
             };
             style.normal.textColor = LoogaEditorStyle.TextColor;
-            return style;
-        }
-
-        private static GUIStyle GetStatusActionLabelStyle()
-        {
-            GUIStyle style = new(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                padding = new RectOffset(4, 4, 0, 1),
-                fontSize = Mathf.Max(1, EditorStyles.label.fontSize - 1)
-            };
-            style.normal.background = null;
-            style.hover.background = null;
-            style.active.background = null;
-            style.focused.background = null;
-            style.normal.textColor = Color.white;
-            style.hover.textColor = Color.white;
-            style.active.textColor = Color.white;
             return style;
         }
 
