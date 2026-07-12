@@ -21,6 +21,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ToolbarHeight = 26f;
         private const float HorizontalPadding = 0f;
         private const float ButtonGap = 2f;
+        private const float ToolbarLeftPadding = 2f;
         private const float ButtonWidth = 28f;
         private const float ButtonVerticalInset = 2f;
         private const float IconSize = 13f;
@@ -191,7 +192,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static string ComponentName(Component component)
         {
-            return component == null ? "Missing Script" : ObjectNames.NicifyVariableName(component.GetType().Name);
+            return component == null ? "MissingScript" : component.GetType().Name;
         }
 
         private static void EnsureIcons()
@@ -297,7 +298,7 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.minHeight = ToolbarHeight;
                 _toolbar.style.marginLeft = 0f;
                 _toolbar.style.marginRight = 0f;
-                _toolbar.style.paddingLeft = 0f;
+                _toolbar.style.paddingLeft = ToolbarLeftPadding;
                 _toolbar.style.paddingRight = 0f;
                 _toolbar.style.paddingTop = 0f;
                 _toolbar.style.paddingBottom = 0f;
@@ -351,7 +352,7 @@ namespace LoogaSoft.Inspector.Editor
                 _componentButtonGrid.style.flexDirection = FlexDirection.Row;
                 _componentButtonGrid.style.flexWrap = Wrap.Wrap;
                 _componentButtonGrid.style.paddingTop = ComponentRowTopPadding;
-                _componentButtonGrid.style.paddingBottom = ComponentButtonGap;
+                _componentButtonGrid.style.paddingBottom = 0f;
                 _componentButtonGrid.style.paddingLeft = 0f;
                 _componentButtonGrid.style.paddingRight = 0f;
 
@@ -419,7 +420,7 @@ namespace LoogaSoft.Inspector.Editor
                 int componentId = component != null ? component.GetInstanceID() : 0;
                 string label = ComponentName(component);
                 GUIContent content = component != null ? EditorGUIUtility.ObjectContent(component, component.GetType()) : GUIContent.none;
-                float minWidth = EditorStyles.label.CalcSize(new GUIContent(label)).x + ComponentIconSize + ComponentButtonHorizontalPadding * 2f + ButtonGap;
+                float minWidth = EditorStyles.boldLabel.CalcSize(new GUIContent(label)).x + ComponentIconSize + ComponentButtonHorizontalPadding * 2f + ButtonGap;
 
                 Button button = new(() =>
                 {
@@ -479,6 +480,7 @@ namespace LoogaSoft.Inspector.Editor
                 };
                 name.style.color = LoogaEditorStyle.TextColor;
                 name.style.fontSize = 12;
+                name.style.unityFontStyleAndWeight = FontStyle.Bold;
                 name.style.unityTextAlign = TextAnchor.MiddleCenter;
                 name.style.flexShrink = 0f;
 
