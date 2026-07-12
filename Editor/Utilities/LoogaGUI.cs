@@ -10,20 +10,25 @@ namespace LoogaSoft.Inspector.Editor
     /// </summary>
     public static class LoogaGUI
     {
-        private const float StatusBoxPadding = 3f;
-        private const float StatusActionSize = 18f;
+        private const float StatusBoxPadding = 2f;
+        private const float StatusActionSize = 16f;
+        private const float StatusIndicatorSize = 5f;
 
-        private static Color StatusActionColor => EditorGUIUtility.isProSkin
-            ? new Color(0.376f, 0.376f, 0.376f, 1f)
-            : new Color(0.742f, 0.742f, 0.742f, 1f);
-
-        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
-            ? new Color(0.46f, 0.46f, 0.46f, 1f)
+        private static Color StatusBackgroundColor => EditorGUIUtility.isProSkin
+            ? new Color(0.225f, 0.225f, 0.225f, 1f)
             : new Color(0.79f, 0.79f, 0.79f, 1f);
 
+        private static Color StatusActionColor => EditorGUIUtility.isProSkin
+            ? new Color(0.30f, 0.30f, 0.30f, 1f)
+            : new Color(0.72f, 0.72f, 0.72f, 1f);
+
+        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
+            ? new Color(0.38f, 0.38f, 0.38f, 1f)
+            : new Color(0.66f, 0.66f, 0.66f, 1f);
+
         private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
-            ? new Color(0.32f, 0.32f, 0.32f, 1f)
-            : new Color(0.68f, 0.68f, 0.68f, 1f);
+            ? new Color(0.255f, 0.255f, 0.255f, 1f)
+            : new Color(0.60f, 0.60f, 0.60f, 1f);
 
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
@@ -59,22 +64,29 @@ namespace LoogaSoft.Inspector.Editor
             string actionTooltip = "Open")
         {
             Rect rect = LoogaEditorStyle.PixelSnap(position);
-            EditorGUI.DrawRect(rect, LoogaEditorStyle.BoxColor);
-            EditorGUI.DrawRect(new Rect(rect.x, rect.y, LoogaEditorStyle.AccentRailWidth, rect.height), GetStatusAccentColor(type));
+            EditorGUI.DrawRect(rect, StatusBackgroundColor);
+
+            Rect indicatorRect = new(
+                rect.x + StatusBoxPadding + 1f,
+                rect.y + Mathf.Round((rect.height - StatusIndicatorSize) * 0.5f),
+                StatusIndicatorSize,
+                StatusIndicatorSize);
+            EditorGUI.DrawRect(LoogaEditorStyle.PixelSnap(indicatorRect), GetStatusAccentColor(type));
 
             float actionWidth = 0f;
             if (hasAction)
             {
                 actionWidth = string.IsNullOrWhiteSpace(actionLabel)
                     ? StatusActionSize
-                    : Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 16f);
+                    : Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 14f);
             }
 
+            float labelX = indicatorRect.xMax + StatusBoxPadding + 3f;
             Rect labelRect = new(
-                rect.x + LoogaEditorStyle.AccentRailWidth + StatusBoxPadding,
-                rect.y + 1f,
-                Mathf.Max(0f, rect.width - LoogaEditorStyle.AccentRailWidth - StatusBoxPadding * 2f - actionWidth - (hasAction ? StatusBoxPadding : 0f)),
-                Mathf.Max(0f, rect.height - 2f));
+                labelX,
+                rect.y,
+                Mathf.Max(0f, rect.xMax - labelX - StatusBoxPadding - actionWidth - (hasAction ? StatusBoxPadding : 0f)),
+                rect.height);
 
             GUI.Label(labelRect, new GUIContent(message), GetStatusMessageStyle());
 
@@ -105,7 +117,7 @@ namespace LoogaSoft.Inspector.Editor
             bool hovered = rect.Contains(current.mousePosition);
             Color color = GUI.enabled
                 ? hovered ? StatusActionHoverColor : StatusActionColor
-                : new Color(LoogaEditorStyle.BoxColor.r, LoogaEditorStyle.BoxColor.g, LoogaEditorStyle.BoxColor.b, 0.55f);
+                : new Color(StatusBackgroundColor.r, StatusBackgroundColor.g, StatusBackgroundColor.b, 0.55f);
 
             if (current.type == EventType.Repaint)
                 EditorGUI.DrawRect(LoogaEditorStyle.PixelSnap(rect), color);
@@ -236,4 +248,6 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
 
