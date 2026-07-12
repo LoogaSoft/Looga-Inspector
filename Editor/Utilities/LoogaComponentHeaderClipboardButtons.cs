@@ -424,7 +424,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (x < 0 || x >= 16 || y < 0 || y >= 16)
                     return;
 
-                pixels[y * 16 + x] = ink;
+                pixels[(15 - y) * 16 + x] = ink;
             }
 
             Pixel(3, 8);

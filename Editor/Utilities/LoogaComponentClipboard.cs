@@ -32,13 +32,6 @@ namespace LoogaSoft.Inspector.Editor
             CopiedComponents.Clear();
             _sourceName = component != null ? component.gameObject.name : string.Empty;
             CopyComponentIntoClipboard(component, _sourceName, true);
-
-            if (component == null)
-                Debug.Log("[Looga Inspector] Copy component requested, but no component was supplied.");
-            else if (HasClipboard)
-                Debug.Log($"[Looga Inspector] Copied component '{component.GetType().Name}' from '{_sourceName}'.", component);
-            else
-                Debug.Log($"[Looga Inspector] Copy component requested for '{component.GetType().Name}', but no pasteable data was copied.", component);
         }
 
         public static void PasteComponents(Object[] targets)
