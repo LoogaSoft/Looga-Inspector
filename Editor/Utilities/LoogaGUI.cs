@@ -128,23 +128,6 @@ namespace LoogaSoft.Inspector.Editor
                 ? 0f
                 : Mathf.Ceil(EditorGUIUtility.singleLineHeight + NoticePadding * 2f);
         }
-        [System.Obsolete("Use Notice instead.")]
-        public static bool StatusBox(
-            Rect position,
-            string message,
-            LoogaStatusBoxType type = LoogaStatusBoxType.Info,
-            bool hasAction = false,
-            string actionLabel = "",
-            string actionTooltip = "Open")
-        {
-            return Notice(position, message, (LoogaNoticeType)(int)type, hasAction, actionLabel, actionTooltip);
-        }
-
-        [System.Obsolete("Use GetNoticeHeight instead.")]
-        public static float GetStatusBoxHeight(string message)
-        {
-            return GetNoticeHeight(message);
-        }
 
         private static Rect GetLabeledFieldRect(Rect position, GUIContent label)
         {

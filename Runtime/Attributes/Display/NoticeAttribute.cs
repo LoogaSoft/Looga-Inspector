@@ -11,7 +11,7 @@ namespace LoogaSoft.Inspector.Runtime
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field, AllowMultiple = true)]
-    public class NoticeAttribute : PropertyAttribute, ILoogaAttribute
+    public sealed class NoticeAttribute : PropertyAttribute, ILoogaAttribute
     {
         public readonly string Message;
         public readonly LoogaNoticeType Type;
@@ -28,24 +28,6 @@ namespace LoogaSoft.Inspector.Runtime
         {
             Message = message;
             Type = type;
-        }
-    }
-
-    [Obsolete("Use LoogaNoticeType instead.")]
-    public enum LoogaStatusBoxType
-    {
-        Info,
-        Warning,
-        Error
-    }
-
-    [Obsolete("Use NoticeAttribute instead.")]
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field, AllowMultiple = true)]
-    public sealed class StatusBoxAttribute : NoticeAttribute
-    {
-        public StatusBoxAttribute(string message, LoogaStatusBoxType type = LoogaStatusBoxType.Info)
-            : base(message, (LoogaNoticeType)(int)type)
-        {
         }
     }
 }

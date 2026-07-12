@@ -1,4 +1,3 @@
-using System;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
@@ -6,7 +5,7 @@ using UnityEngine;
 namespace LoogaSoft.Inspector.Editor
 {
     [CustomPropertyDrawer(typeof(NoticeAttribute))]
-    public class NoticeDrawer : PropertyDrawerBase
+    public sealed class NoticeDrawer : PropertyDrawerBase
     {
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
@@ -78,11 +77,5 @@ namespace LoogaSoft.Inspector.Editor
             string message = ResolveMessage(target, noticeAttribute);
             return string.IsNullOrWhiteSpace(message) ? 0f : LoogaGUI.GetNoticeHeight(message);
         }
-    }
-
-    [Obsolete("Use NoticeDrawer instead.")]
-    [CustomPropertyDrawer(typeof(StatusBoxAttribute))]
-    public sealed class StatusBoxDrawer : NoticeDrawer
-    {
     }
 }

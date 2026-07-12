@@ -73,16 +73,5 @@ namespace LoogaSoft.Inspector.Editor
             Rect rect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetNoticeHeight(message));
             return LoogaGUI.Notice(rect, message, type, hasAction, actionLabel, actionTooltip);
         }
-
-        [Obsolete("Use Notice instead.")]
-        public static bool StatusBox(
-            string message,
-            LoogaStatusBoxType type = LoogaStatusBoxType.Info,
-            bool hasAction = false,
-            string actionLabel = "",
-            string actionTooltip = "Open")
-        {
-            return Notice(message, (LoogaNoticeType)(int)type, hasAction, actionLabel, actionTooltip);
-        }
     }
 }
