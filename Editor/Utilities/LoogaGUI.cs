@@ -71,7 +71,7 @@ namespace LoogaSoft.Inspector.Editor
                 rect.y + Mathf.Round((rect.height - StatusIndicatorSize) * 0.5f),
                 StatusIndicatorSize,
                 StatusIndicatorSize);
-            EditorGUI.DrawRect(LoogaEditorStyle.PixelSnap(indicatorRect), GetStatusAccentColor(type));
+            DrawStatusIndicator(indicatorRect, GetStatusAccentColor(type));
 
             float actionWidth = 0f;
             if (hasAction)
@@ -111,6 +111,34 @@ namespace LoogaSoft.Inspector.Editor
                 : Mathf.Ceil(EditorGUIUtility.singleLineHeight + StatusBoxPadding * 2f);
         }
 
+        private static void DrawStatusIndicator(Rect rect, Color color)
+        {
+            Rect snapped = LoogaEditorStyle.PixelSnap(rect);
+            Vector3 center = new(snapped.center.x, snapped.center.y, 0f);
+            float radius = Mathf.Min(snapped.width, snapped.height) * 0.5f;
+
+            Handles.BeginGUI();
+            Color previous = Handles.color;
+            Handles.color = color;
+            Handles.DrawSolidDisc(center, Vector3.forward, radius);
+            Handles.color = previous;
+            Handles.EndGUI();
+        }
+
+        private static void DrawStatusActionOutline(Rect rect)
+        {
+            Color outline = EditorGUIUtility.isProSkin
+                ? new Color(0.16f, 0.16f, 0.16f, 1f)
+                : new Color(0.52f, 0.52f, 0.52f, 1f);
+            Rect snapped = LoogaEditorStyle.PixelSnap(rect);
+            float line = LoogaEditorStyle.Pixels(1f);
+
+            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMin, snapped.width, line), outline);
+            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMax - line, snapped.width, line), outline);
+            EditorGUI.DrawRect(new Rect(snapped.xMin, snapped.yMin, line, snapped.height), outline);
+            EditorGUI.DrawRect(new Rect(snapped.xMax - line, snapped.yMin, line, snapped.height), outline);
+        }
+
         private static bool DrawTextActionButton(Rect rect, string label, string tooltip)
         {
             Event current = Event.current;
@@ -120,7 +148,11 @@ namespace LoogaSoft.Inspector.Editor
                 : new Color(StatusBackgroundColor.r, StatusBackgroundColor.g, StatusBackgroundColor.b, 0.55f);
 
             if (current.type == EventType.Repaint)
-                EditorGUI.DrawRect(LoogaEditorStyle.PixelSnap(rect), color);
+            {
+                Rect background = LoogaEditorStyle.PixelSnap(rect);
+                EditorGUI.DrawRect(background, color);
+                DrawStatusActionOutline(background);
+            }
 
             EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
             return GUI.Button(rect, new GUIContent(label, tooltip), GetStatusActionButtonStyle());
@@ -248,6 +280,9 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
+
 
 
 

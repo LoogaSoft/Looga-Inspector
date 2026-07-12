@@ -1,7 +1,8 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -249,7 +250,7 @@ namespace LoogaSoft.Inspector.Editor
             private VisualElement _componentRows;
             private Button _pasteButton;
             private Button _pasteValuesButton;
-            private TextField _searchField;
+            private ToolbarSearchField _searchField;
             private Object _inspectingObject;
             private string _componentSignature;
             private string _searchText = string.Empty;
@@ -376,7 +377,7 @@ namespace LoogaSoft.Inspector.Editor
                     RefreshActionButtons();
                 });
 
-                _searchField = new TextField
+                _searchField = new ToolbarSearchField
                 {
                     value = _searchText
                 };
@@ -690,3 +691,5 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
+
