@@ -247,7 +247,8 @@ namespace LoogaSoft.Inspector.Editor
             GUIStyle style = new(EditorStyles.miniButton)
             {
                 alignment = TextAnchor.MiddleCenter,
-                padding = new RectOffset(6, 6, 0, 1)
+                padding = new RectOffset(6, 6, 0, 1),
+                fontSize = Mathf.Max(1, EditorStyles.label.fontSize - 1)
             };
             style.normal.background = null;
             style.hover.background = null;
@@ -279,6 +280,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
