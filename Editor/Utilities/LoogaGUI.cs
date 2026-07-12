@@ -19,17 +19,11 @@ namespace LoogaSoft.Inspector.Editor
             ? new Color(0.225f, 0.225f, 0.225f, 1f)
             : new Color(0.79f, 0.79f, 0.79f, 1f);
 
-        private static Color StatusActionColor => EditorGUIUtility.isProSkin
-            ? new Color(0.17f, 0.17f, 0.17f, 1f)
-            : new Color(0.66f, 0.66f, 0.66f, 1f);
+        private static Color StatusActionColor => LoogaEditorStyle.BoxColor;
 
-        private static Color StatusActionHoverColor => EditorGUIUtility.isProSkin
-            ? new Color(0.235f, 0.235f, 0.235f, 1f)
-            : new Color(0.60f, 0.60f, 0.60f, 1f);
+        private static Color StatusActionHoverColor => LoogaEditorStyle.HoverColor;
 
-        private static Color StatusActionPressedColor => EditorGUIUtility.isProSkin
-            ? new Color(0.13f, 0.13f, 0.13f, 1f)
-            : new Color(0.54f, 0.54f, 0.54f, 1f);
+        private static Color StatusActionPressedColor => LoogaEditorStyle.TabBarColor;
 
         public static int Tabs(Rect position, int selectedIndex, string[] tabNames)
         {
