@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Unity.VectorGraphics;
@@ -26,12 +27,12 @@ namespace LoogaSoft.Inspector.Editor
         private const float ButtonWidth = 28f;
         private const float ButtonVerticalInset = 1f;
         private const float IconSize = 13f;
-        private const float CountLabelInset = 1f;
+        private const float SearchFieldHeight = 22f;
         private const float ComponentButtonHeight = 23f;
         private const float ComponentButtonGap = 2f;
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
-        private const float ComponentRowTopPadding = ButtonGap;
+        private const float ComponentRowTopPadding = 1f;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -213,9 +214,10 @@ namespace LoogaSoft.Inspector.Editor
             private VisualElement _componentButtonGrid;
             private Button _pasteButton;
             private Button _pasteValuesButton;
-            private Label _countLabel;
+            private ToolbarSearchField _searchField;
             private Object _inspectingObject;
             private string _componentSignature;
+            private string _searchText = string.Empty;
             private bool _wasLocked;
 
             public InspectorToolbarContainer(EditorWindow window)
@@ -301,7 +303,7 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.marginRight = 0f;
                 _toolbar.style.paddingLeft = ToolbarLeftPadding;
                 _toolbar.style.paddingRight = 0f;
-                _toolbar.style.paddingTop = 0f;
+                _toolbar.style.paddingTop = 1f;
                 _toolbar.style.paddingBottom = 0f;
                 _toolbar.style.flexShrink = 0f;
                 _toolbar.style.marginTop = 0f;
@@ -327,16 +329,7 @@ namespace LoogaSoft.Inspector.Editor
                     LoogaComponentClipboard.PasteValuesIntoMatchingComponents(new[] { _inspectingObject });
                     UpdateToolbarState();
                 });
-                _countLabel = new Label
-                {
-                    pickingMode = PickingMode.Ignore
-                };
-                _countLabel.style.height = ToolbarHeight;
-                _countLabel.style.marginLeft = CountLabelInset;
-                _countLabel.style.paddingLeft = CountLabelInset;
-                _countLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
-                _countLabel.style.color = LoogaEditorStyle.TextColor;
-                _countLabel.style.fontSize = 12;
+                _searchField = CreateSearchField();
 
                 _clipboardRow = new VisualElement();
                 _clipboardRow.style.height = ToolbarHeight;
@@ -347,7 +340,7 @@ namespace LoogaSoft.Inspector.Editor
                 _clipboardRow.Add(copyButton);
                 _clipboardRow.Add(_pasteButton);
                 _clipboardRow.Add(_pasteValuesButton);
-                _clipboardRow.Add(_countLabel);
+                _clipboardRow.Add(_searchField);
 
                 _componentButtonGrid = new VisualElement();
                 _componentButtonGrid.style.flexDirection = FlexDirection.Row;
@@ -371,8 +364,29 @@ namespace LoogaSoft.Inspector.Editor
                 DisplayStyle pasteDisplay = hasClipboard ? DisplayStyle.Flex : DisplayStyle.None;
                 _pasteButton.style.display = pasteDisplay;
                 _pasteValuesButton.style.display = pasteDisplay;
-                _countLabel.style.display = pasteDisplay;
-                _countLabel.text = hasClipboard ? $"{LoogaComponentClipboard.CopiedCount} copied" : string.Empty;
+            }
+
+            private ToolbarSearchField CreateSearchField()
+            {
+                ToolbarSearchField field = new()
+                {
+                    focusable = true
+                };
+                field.style.height = SearchFieldHeight;
+                field.style.flexGrow = 1f;
+                field.style.flexShrink = 1f;
+                field.style.marginLeft = ButtonGap;
+                field.style.marginRight = ButtonGap;
+                field.style.marginTop = ButtonVerticalInset;
+                field.style.marginBottom = ButtonVerticalInset;
+                field.RegisterValueChangedCallback(change =>
+                {
+                    _searchText = change.newValue ?? string.Empty;
+                    UpdateComponentButtonVisuals();
+                    ApplyComponentFilter(ResolveGameObject(_inspectingObject));
+                });
+
+                return field;
             }
 
             private void RebuildComponentButtonsIfNeeded(GameObject gameObject)
@@ -566,8 +580,17 @@ namespace LoogaSoft.Inspector.Editor
                     if (_componentButtonGrid[i] is not Button button)
                         continue;
 
+                    button.style.display = ShouldShowComponentButtonForSearch(button) ? DisplayStyle.Flex : DisplayStyle.None;
                     button.style.backgroundColor = IsComponentButtonSelected(button) ? ComponentSelectedColor : ButtonIdleColor;
                 }
+            }
+
+            private bool ShouldShowComponentButtonForSearch(Button button)
+            {
+                if (button.userData is int allId && allId == AllComponentsButtonId)
+                    return true;
+
+                return string.IsNullOrWhiteSpace(_searchText) || button.tooltip.IndexOf(_searchText, System.StringComparison.OrdinalIgnoreCase) >= 0;
             }
 
             private void ApplyComponentFilter(GameObject gameObject)
@@ -588,9 +611,19 @@ namespace LoogaSoft.Inspector.Editor
                         continue;
 
                     Component component = components[componentIndex++];
-                    bool show = _selectedComponentIds.Count == 0 || component != null && _selectedComponentIds.Contains(component.GetInstanceID());
+                    bool show = MatchesSelection(component) && MatchesSearch(component);
                     element.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
                 }
+            }
+
+            private bool MatchesSelection(Component component)
+            {
+                return _selectedComponentIds.Count == 0 || component != null && _selectedComponentIds.Contains(component.GetInstanceID());
+            }
+
+            private bool MatchesSearch(Component component)
+            {
+                return string.IsNullOrWhiteSpace(_searchText) || ComponentName(component).IndexOf(_searchText, System.StringComparison.OrdinalIgnoreCase) >= 0;
             }
 
             private void RemoveDuplicateToolbar()
