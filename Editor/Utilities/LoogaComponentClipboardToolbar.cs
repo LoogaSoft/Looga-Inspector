@@ -4,6 +4,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
+using Unity.VectorGraphics;
 using Object = UnityEngine.Object;
 
 namespace LoogaSoft.Inspector.Editor
@@ -21,24 +22,23 @@ namespace LoogaSoft.Inspector.Editor
         private const float HorizontalPadding = 0f;
         private const float ButtonGap = 2f;
         private const float ButtonWidth = 28f;
-        private const float CountLabelWidth = 120f;
-        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.png";
-        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.png";
-        private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.png";
+        private const float ButtonVerticalInset = 2f;
+        private const float IconSize = 13f;
+        private const float CountLabelInset = 2f;
+        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
+        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
+        private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
 
         private static readonly List<InspectorToolbarContainer> Containers = new();
         private static readonly System.Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
-        private static GUIStyle _toolbarStyle;
-        private static GUIStyle _buttonStyle;
-        private static GUIStyle _labelStyle;
-        private static Texture2D _toolbarTexture;
-        private static Texture2D _buttonTexture;
-        private static Texture2D _buttonHoverTexture;
-        private static Texture2D _buttonActiveTexture;
-        private static Texture2D _copyIcon;
-        private static Texture2D _pasteIcon;
-        private static Texture2D _pasteValuesIcon;
+        private static VectorImage _copyIcon;
+        private static VectorImage _pasteIcon;
+        private static VectorImage _pasteValuesIcon;
+        private static readonly Color ButtonIdleColor = LoogaEditorStyle.ListRowColor;
+        private static readonly Color ButtonHoverColor = LoogaEditorStyle.ListHoverColor;
+        private static readonly Color ButtonActiveColor = LoogaEditorStyle.SelectionColor;
+        private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
 
         static LoogaComponentClipboardToolbar()
         {
@@ -113,67 +113,53 @@ namespace LoogaSoft.Inspector.Editor
                 Containers[i].NeedsSelectionRefresh = true;
         }
 
-        private static void DrawToolbar(GameObject gameObject, Object[] pasteTargets)
+        private static Button CreateToolbarButton(VectorImage icon, string tooltip, System.Action clicked)
         {
-            if (gameObject == null)
-                return;
-
-            EnsureStyles();
-
-            Rect rect = LoogaEditorStyle.PixelSnap(GUILayoutUtility.GetRect(0f, ToolbarHeight, GUILayout.ExpandWidth(true)));
-            RequestMouseMoveRepaint(rect);
-
-            if (Event.current.type == EventType.Repaint)
-                _toolbarStyle.Draw(rect, GUIContent.none, false, false, false, false);
-
-            Rect contentRect = LoogaEditorStyle.PixelSnap(new Rect(
-                rect.x + HorizontalPadding,
-                rect.y,
-                rect.width - HorizontalPadding * 2f,
-                rect.height));
-            Rect buttonRect = LoogaEditorStyle.PixelSnap(new Rect(contentRect.x, contentRect.y, ButtonWidth, contentRect.height));
-            if (IconButton(buttonRect, _copyIcon, "Copy components"))
-                LoogaComponentClipboard.CopyComponents(gameObject);
-
-            float nextX = buttonRect.xMax + ButtonGap;
-            if (LoogaComponentClipboard.HasClipboard)
+            Button button = new(clicked)
             {
-                Rect pasteRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
-                if (IconButton(pasteRect, _pasteIcon, "Paste components"))
-                    LoogaComponentClipboard.PasteComponents(pasteTargets);
+                tooltip = tooltip,
+                focusable = false
+            };
+            button.style.width = ButtonWidth;
+            button.style.height = ToolbarHeight - ButtonVerticalInset * 2f;
+            button.style.marginLeft = 0f;
+            button.style.marginRight = ButtonGap;
+            button.style.marginTop = ButtonVerticalInset;
+            button.style.marginBottom = ButtonVerticalInset;
+            button.style.paddingLeft = 0f;
+            button.style.paddingRight = 0f;
+            button.style.paddingTop = 0f;
+            button.style.paddingBottom = 0f;
+            button.style.alignItems = Align.Center;
+            button.style.justifyContent = Justify.Center;
+            button.style.backgroundColor = ButtonIdleColor;
+            button.style.borderTopWidth = 0f;
+            button.style.borderRightWidth = 0f;
+            button.style.borderBottomWidth = 0f;
+            button.style.borderLeftWidth = 0f;
+            button.style.borderTopLeftRadius = 2f;
+            button.style.borderTopRightRadius = 2f;
+            button.style.borderBottomLeftRadius = 2f;
+            button.style.borderBottomRightRadius = 2f;
 
-                nextX = pasteRect.xMax + ButtonGap;
-                Rect pasteValuesRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
-                if (IconButton(pasteValuesRect, _pasteValuesIcon, "Paste values into matching components"))
-                    LoogaComponentClipboard.PasteValuesIntoMatchingComponents(pasteTargets);
-
-                nextX = pasteValuesRect.xMax + ButtonGap;
-                Rect countRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, CountLabelWidth, contentRect.height));
-                GUI.Label(countRect, $"{LoogaComponentClipboard.CopiedCount} copied", _labelStyle);
-            }
-        }
-
-        private static bool IconButton(Rect rect, Texture2D icon, string tooltip)
-        {
-            GUIContent content = new(icon, tooltip);
-            return GUI.Button(rect, content, _buttonStyle);
-        }
-
-        private static void RequestMouseMoveRepaint(Rect rect)
-        {
-            Event current = Event.current;
-            if (!rect.Contains(current.mousePosition))
-                return;
-
-            EditorWindow window = EditorWindow.mouseOverWindow;
-            if (window != null)
-                window.wantsMouseMove = true;
-
-            if (current.type == EventType.MouseMove)
+            Image image = new()
             {
-                window?.Repaint();
-                HandleUtility.Repaint();
-            }
+                vectorImage = icon,
+                tintColor = IconTintColor,
+                pickingMode = PickingMode.Ignore,
+                scaleMode = ScaleMode.ScaleToFit
+            };
+            image.style.width = IconSize;
+            image.style.height = IconSize;
+            image.style.flexGrow = 0f;
+            image.style.flexShrink = 0f;
+            button.Add(image);
+
+            button.RegisterCallback<MouseEnterEvent>(_ => button.style.backgroundColor = ButtonHoverColor);
+            button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
+            button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
+            button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = button.enabledInHierarchy ? ButtonHoverColor : ButtonIdleColor);
+            return button;
         }
 
         private static GameObject ResolveGameObject(Object target)
@@ -198,60 +184,21 @@ namespace LoogaSoft.Inspector.Editor
             return 1;
         }
 
-        private static void EnsureStyles()
+        private static void EnsureIcons()
         {
-            _toolbarTexture ??= CreateTexture(LoogaEditorStyle.BoxColor);
-            _buttonTexture ??= CreateTexture(LoogaEditorStyle.ListRowColor);
-            _buttonHoverTexture ??= CreateTexture(LoogaEditorStyle.ListHoverColor);
-            _buttonActiveTexture ??= CreateTexture(LoogaEditorStyle.SelectionColor);
-            _copyIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(CopyIconPath);
-            _pasteIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteIconPath);
-            _pasteValuesIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteValuesIconPath);
-
-            _toolbarStyle ??= new GUIStyle
-            {
-                normal = { background = _toolbarTexture },
-                padding = new RectOffset(0, 0, 0, 0),
-                margin = new RectOffset(0, 0, 0, 0)
-            };
-
-            _buttonStyle ??= new GUIStyle(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                imagePosition = ImagePosition.ImageOnly,
-                fontSize = 12,
-                normal = { background = _buttonTexture, textColor = LoogaEditorStyle.TextColor },
-                hover = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
-                active = { background = _buttonActiveTexture, textColor = Color.white },
-                focused = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
-                padding = new RectOffset(0, 0, 0, 0),
-                margin = new RectOffset(0, 0, 0, 0)
-            };
-
-            _labelStyle ??= new GUIStyle(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = 12,
-                normal = { textColor = LoogaEditorStyle.TextColor }
-            };
-        }
-
-        private static Texture2D CreateTexture(Color color)
-        {
-            Texture2D texture = new(1, 1)
-            {
-                hideFlags = HideFlags.HideAndDontSave
-            };
-            texture.SetPixel(0, 0, color);
-            texture.Apply();
-            return texture;
+            _copyIcon ??= AssetDatabase.LoadAssetAtPath<VectorImage>(CopyIconPath);
+            _pasteIcon ??= AssetDatabase.LoadAssetAtPath<VectorImage>(PasteIconPath);
+            _pasteValuesIcon ??= AssetDatabase.LoadAssetAtPath<VectorImage>(PasteValuesIconPath);
         }
 
         private sealed class InspectorToolbarContainer
         {
             private readonly PropertyInfo _lockedProperty;
             private VisualElement _editorList;
-            private IMGUIContainer _toolbar;
+            private VisualElement _toolbar;
+            private Button _pasteButton;
+            private Button _pasteValuesButton;
+            private Label _countLabel;
             private Object _inspectingObject;
             private bool _wasLocked;
 
@@ -295,6 +242,8 @@ namespace LoogaSoft.Inspector.Editor
                     int index = Mathf.Clamp(ToolbarIndex(_inspectingObject), 0, _editorList.childCount);
                     _editorList.Insert(index, _toolbar);
                 }
+
+                UpdateToolbarState();
             }
 
             public void RemoveToolbar()
@@ -316,7 +265,9 @@ namespace LoogaSoft.Inspector.Editor
 
             private void CreateToolbar()
             {
-                _toolbar = new IMGUIContainer(() => DrawToolbar(ResolveGameObject(_inspectingObject), new[] { _inspectingObject }))
+                EnsureIcons();
+
+                _toolbar = new VisualElement
                 {
                     name = ToolbarName
                 };
@@ -331,6 +282,57 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.flexShrink = 0f;
                 _toolbar.style.marginTop = 0f;
                 _toolbar.style.marginBottom = 0f;
+                _toolbar.style.backgroundColor = LoogaEditorStyle.BoxColor;
+                _toolbar.style.flexDirection = FlexDirection.Row;
+                _toolbar.style.alignItems = Align.Center;
+
+                Button copyButton = CreateToolbarButton(_copyIcon, "Copy components", () =>
+                {
+                    GameObject gameObject = ResolveGameObject(_inspectingObject);
+                    if (gameObject != null)
+                        LoogaComponentClipboard.CopyComponents(gameObject);
+
+                    UpdateToolbarState();
+                });
+                _pasteButton = CreateToolbarButton(_pasteIcon, "Paste components", () =>
+                {
+                    LoogaComponentClipboard.PasteComponents(new[] { _inspectingObject });
+                    UpdateToolbarState();
+                });
+                _pasteValuesButton = CreateToolbarButton(_pasteValuesIcon, "Paste values into matching components", () =>
+                {
+                    LoogaComponentClipboard.PasteValuesIntoMatchingComponents(new[] { _inspectingObject });
+                    UpdateToolbarState();
+                });
+                _countLabel = new Label
+                {
+                    pickingMode = PickingMode.Ignore
+                };
+                _countLabel.style.height = ToolbarHeight;
+                _countLabel.style.marginLeft = CountLabelInset;
+                _countLabel.style.paddingLeft = CountLabelInset;
+                _countLabel.style.unityTextAlign = TextAnchor.MiddleLeft;
+                _countLabel.style.color = LoogaEditorStyle.TextColor;
+                _countLabel.style.fontSize = 12;
+
+                _toolbar.Add(copyButton);
+                _toolbar.Add(_pasteButton);
+                _toolbar.Add(_pasteValuesButton);
+                _toolbar.Add(_countLabel);
+                UpdateToolbarState();
+            }
+
+            private void UpdateToolbarState()
+            {
+                if (_toolbar == null)
+                    return;
+
+                bool hasClipboard = LoogaComponentClipboard.HasClipboard;
+                DisplayStyle pasteDisplay = hasClipboard ? DisplayStyle.Flex : DisplayStyle.None;
+                _pasteButton.style.display = pasteDisplay;
+                _pasteValuesButton.style.display = pasteDisplay;
+                _countLabel.style.display = pasteDisplay;
+                _countLabel.text = hasClipboard ? $"{LoogaComponentClipboard.CopiedCount} copied" : string.Empty;
             }
 
             private void RemoveDuplicateToolbar()
