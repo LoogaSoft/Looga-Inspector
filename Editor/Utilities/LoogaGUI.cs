@@ -126,8 +126,8 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawStatusActionOutline(Rect rect)
         {
             Color outline = EditorGUIUtility.isProSkin
-                ? new Color(0.20f, 0.20f, 0.20f, 1f)
-                : new Color(0.58f, 0.58f, 0.58f, 1f);
+                ? new Color(0.30f, 0.30f, 0.30f, 1f)
+                : new Color(0.72f, 0.72f, 0.72f, 1f);
             Rect snapped = LoogaEditorStyle.PixelSnap(rect);
             float line = LoogaEditorStyle.Pixels(1f);
 
