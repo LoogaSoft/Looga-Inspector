@@ -213,7 +213,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static string ResolvePackageAssetPath(string assetPath)
         {
-            PackageInfo packageInfo = PackageInfo.FindForAssetPath(assetPath);
+            UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
             if (packageInfo == null || string.IsNullOrWhiteSpace(packageInfo.resolvedPath))
                 return Path.GetFullPath(assetPath);
 
