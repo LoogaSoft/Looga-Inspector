@@ -40,7 +40,7 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly Color ButtonHoverColor = LoogaEditorStyle.ListHoverColor;
         private static readonly Color ComponentSelectedColor = LoogaEditorStyle.SelectionColor;
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
-        private static readonly Color DividerColor = new(0.16f, 0.16f, 0.16f, 1f);
+        private static readonly Color DividerColor = new(0.09f, 0.09f, 0.09f, 1f);
         private static Object _copyIcon;
         private static Object _pasteIcon;
         private static Object _pasteValuesIcon;
@@ -452,11 +452,11 @@ namespace LoogaSoft.Inspector.Editor
                         index++;
                     }
 
-                    AddComponentButtonRow(buttons, rowStart, index, availableWidth);
+                    AddComponentButtonRow(buttons, rowStart, index, availableWidth, index < buttons.Count);
                 }
             }
 
-            private void AddComponentButtonRow(List<ComponentButtonInfo> buttons, int startIndex, int endIndex, float availableWidth)
+            private void AddComponentButtonRow(List<ComponentButtonInfo> buttons, int startIndex, int endIndex, float availableWidth, bool fillRow)
             {
                 int count = endIndex - startIndex;
                 float widthTotal = 0f;
@@ -464,7 +464,7 @@ namespace LoogaSoft.Inspector.Editor
                     widthTotal += buttons[i].MinWidth;
 
                 float gapTotal = ButtonGap * Mathf.Max(0, count - 1);
-                float extraPerButton = count > 0 ? Mathf.Max(0f, availableWidth - widthTotal - gapTotal) / count : 0f;
+                float extraPerButton = fillRow && count > 0 ? Mathf.Max(0f, availableWidth - widthTotal - gapTotal) / count : 0f;
 
                 VisualElement row = new();
                 row.style.flexDirection = FlexDirection.Row;
