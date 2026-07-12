@@ -20,8 +20,11 @@ namespace LoogaSoft.Inspector.Editor
         private const float ToolbarHeight = 26f;
         private const float HorizontalPadding = 0f;
         private const float ButtonGap = 2f;
-        private const float ButtonWidth = 126f;
+        private const float ButtonWidth = 28f;
         private const float CountLabelWidth = 120f;
+        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.png";
+        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.png";
+        private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.png";
 
         private static readonly List<InspectorToolbarContainer> Containers = new();
         private static readonly System.Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
@@ -33,6 +36,9 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D _buttonTexture;
         private static Texture2D _buttonHoverTexture;
         private static Texture2D _buttonActiveTexture;
+        private static Texture2D _copyIcon;
+        private static Texture2D _pasteIcon;
+        private static Texture2D _pasteValuesIcon;
 
         static LoogaComponentClipboardToolbar()
         {
@@ -126,25 +132,31 @@ namespace LoogaSoft.Inspector.Editor
                 rect.width - HorizontalPadding * 2f,
                 rect.height));
             Rect buttonRect = LoogaEditorStyle.PixelSnap(new Rect(contentRect.x, contentRect.y, ButtonWidth, contentRect.height));
-            if (GUI.Button(buttonRect, "Copy Components", _buttonStyle))
+            if (IconButton(buttonRect, _copyIcon, "Copy components"))
                 LoogaComponentClipboard.CopyComponents(gameObject);
 
             float nextX = buttonRect.xMax + ButtonGap;
             if (LoogaComponentClipboard.HasClipboard)
             {
                 Rect pasteRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
-                if (GUI.Button(pasteRect, "Paste Components", _buttonStyle))
+                if (IconButton(pasteRect, _pasteIcon, "Paste components"))
                     LoogaComponentClipboard.PasteComponents(pasteTargets);
 
                 nextX = pasteRect.xMax + ButtonGap;
                 Rect pasteValuesRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, ButtonWidth, contentRect.height));
-                if (GUI.Button(pasteValuesRect, "Paste Values", _buttonStyle))
+                if (IconButton(pasteValuesRect, _pasteValuesIcon, "Paste values into matching components"))
                     LoogaComponentClipboard.PasteValuesIntoMatchingComponents(pasteTargets);
 
                 nextX = pasteValuesRect.xMax + ButtonGap;
                 Rect countRect = LoogaEditorStyle.PixelSnap(new Rect(nextX, contentRect.y, CountLabelWidth, contentRect.height));
                 GUI.Label(countRect, $"{LoogaComponentClipboard.CopiedCount} copied", _labelStyle);
             }
+        }
+
+        private static bool IconButton(Rect rect, Texture2D icon, string tooltip)
+        {
+            GUIContent content = new(icon, tooltip);
+            return GUI.Button(rect, content, _buttonStyle);
         }
 
         private static void RequestMouseMoveRepaint(Rect rect)
@@ -192,6 +204,9 @@ namespace LoogaSoft.Inspector.Editor
             _buttonTexture ??= CreateTexture(LoogaEditorStyle.ListRowColor);
             _buttonHoverTexture ??= CreateTexture(LoogaEditorStyle.ListHoverColor);
             _buttonActiveTexture ??= CreateTexture(LoogaEditorStyle.SelectionColor);
+            _copyIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(CopyIconPath);
+            _pasteIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteIconPath);
+            _pasteValuesIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteValuesIconPath);
 
             _toolbarStyle ??= new GUIStyle
             {
@@ -203,12 +218,13 @@ namespace LoogaSoft.Inspector.Editor
             _buttonStyle ??= new GUIStyle(EditorStyles.label)
             {
                 alignment = TextAnchor.MiddleCenter,
+                imagePosition = ImagePosition.ImageOnly,
                 fontSize = 12,
                 normal = { background = _buttonTexture, textColor = LoogaEditorStyle.TextColor },
                 hover = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
                 active = { background = _buttonActiveTexture, textColor = Color.white },
                 focused = { background = _buttonHoverTexture, textColor = LoogaEditorStyle.TextColor },
-                padding = new RectOffset(8, 8, 0, 0),
+                padding = new RectOffset(0, 0, 0, 0),
                 margin = new RectOffset(0, 0, 0, 0)
             };
 
