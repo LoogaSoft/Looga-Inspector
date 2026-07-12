@@ -20,14 +20,14 @@ namespace LoogaSoft.Inspector.Editor
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ToolbarName = "Looga Component Clipboard Toolbar";
         private const int AllComponentsButtonId = -1;
-        private const float ToolbarHeight = 26f;
+        private const float ToolbarHeight = 22f;
         private const float HorizontalPadding = 0f;
         private const float ButtonGap = 2f;
         private const float ToolbarLeftPadding = 1f;
         private const float ButtonWidth = 28f;
         private const float ButtonVerticalInset = 1f;
         private const float IconSize = 13f;
-        private const float SearchFieldHeight = 22f;
+        private const float SearchFieldHeight = ToolbarHeight - ButtonVerticalInset * 2f;
         private const float ComponentButtonHeight = 23f;
         private const float ComponentButtonGap = 2f;
         private const float ComponentButtonHorizontalPadding = 6f;
