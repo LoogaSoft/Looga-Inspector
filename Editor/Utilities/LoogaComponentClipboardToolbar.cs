@@ -18,19 +18,20 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ToolbarName = "Looga Component Clipboard Toolbar";
+        private const int AllComponentsButtonId = -1;
         private const float ToolbarHeight = 26f;
         private const float HorizontalPadding = 0f;
-        private const float ButtonGap = 2f;
-        private const float ToolbarLeftPadding = 2f;
+        private const float ButtonGap = 1f;
+        private const float ToolbarLeftPadding = 1f;
         private const float ButtonWidth = 28f;
-        private const float ButtonVerticalInset = 2f;
+        private const float ButtonVerticalInset = 1f;
         private const float IconSize = 13f;
-        private const float CountLabelInset = 2f;
+        private const float CountLabelInset = 1f;
         private const float ComponentButtonHeight = 23f;
-        private const float ComponentButtonGap = 2f;
-        private const float ComponentButtonHorizontalPadding = 7f;
+        private const float ComponentButtonGap = 1f;
+        private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
-        private const float ComponentRowTopPadding = 1f;
+        private const float ComponentRowTopPadding = 0f;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -312,7 +313,7 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     GameObject gameObject = ResolveGameObject(_inspectingObject);
                     if (gameObject != null)
-                        LoogaComponentClipboard.CopyComponents(gameObject);
+                        LoogaComponentClipboard.CopyComponents(gameObject, _selectedComponentIds);
 
                     UpdateToolbarState();
                 });
@@ -382,6 +383,7 @@ namespace LoogaSoft.Inspector.Editor
 
                 _componentSignature = signature;
                 _componentButtonGrid.Clear();
+                _componentButtonGrid.Add(CreateAllComponentButton());
 
                 Component[] components = gameObject.GetComponents<Component>();
                 for (int i = 0; i < components.Length; i++)
@@ -415,6 +417,38 @@ namespace LoogaSoft.Inspector.Editor
                 return builder.ToString();
             }
 
+            private Button CreateAllComponentButton()
+            {
+                string label = "All";
+                float minWidth = EditorStyles.boldLabel.CalcSize(new GUIContent(label)).x + ComponentButtonHorizontalPadding * 2f;
+
+                Button button = new(() =>
+                {
+                    _selectedComponentIds.Clear();
+                    UpdateComponentButtonVisuals();
+                    ApplyComponentFilter(ResolveGameObject(_inspectingObject));
+                })
+                {
+                    tooltip = "Show and copy all components",
+                    userData = AllComponentsButtonId,
+                    focusable = false
+                };
+                ConfigureComponentButton(button, minWidth);
+
+                Label name = new(label)
+                {
+                    pickingMode = PickingMode.Ignore
+                };
+                name.style.color = LoogaEditorStyle.TextColor;
+                name.style.fontSize = 12;
+                name.style.unityFontStyleAndWeight = FontStyle.Bold;
+                name.style.unityTextAlign = TextAnchor.MiddleCenter;
+                name.style.flexShrink = 0f;
+                button.Add(name);
+                RegisterComponentButtonHover(button);
+                return button;
+            }
+
             private Button CreateComponentButton(Component component)
             {
                 int componentId = component != null ? component.GetInstanceID() : 0;
@@ -438,29 +472,7 @@ namespace LoogaSoft.Inspector.Editor
                     userData = componentId,
                     focusable = false
                 };
-                button.style.minWidth = minWidth;
-                button.style.height = ComponentButtonHeight;
-                button.style.flexGrow = 1f;
-                button.style.marginLeft = 0f;
-                button.style.marginRight = ComponentButtonGap;
-                button.style.marginTop = 0f;
-                button.style.marginBottom = ComponentButtonGap;
-                button.style.paddingLeft = ComponentButtonHorizontalPadding;
-                button.style.paddingRight = ComponentButtonHorizontalPadding;
-                button.style.paddingTop = 0f;
-                button.style.paddingBottom = 0f;
-                button.style.flexDirection = FlexDirection.Row;
-                button.style.alignItems = Align.Center;
-                button.style.justifyContent = Justify.Center;
-                button.style.backgroundColor = ButtonIdleColor;
-                button.style.borderTopWidth = 0f;
-                button.style.borderRightWidth = 0f;
-                button.style.borderBottomWidth = 0f;
-                button.style.borderLeftWidth = 0f;
-                button.style.borderTopLeftRadius = 2f;
-                button.style.borderTopRightRadius = 2f;
-                button.style.borderBottomLeftRadius = 2f;
-                button.style.borderBottomRightRadius = 2f;
+                ConfigureComponentButton(button, minWidth);
 
                 Image icon = new()
                 {
@@ -486,6 +498,39 @@ namespace LoogaSoft.Inspector.Editor
 
                 button.Add(icon);
                 button.Add(name);
+                RegisterComponentButtonHover(button);
+                return button;
+            }
+
+            private static void ConfigureComponentButton(Button button, float minWidth)
+            {
+                button.style.minWidth = minWidth;
+                button.style.height = ComponentButtonHeight;
+                button.style.flexGrow = 1f;
+                button.style.marginLeft = 0f;
+                button.style.marginRight = ComponentButtonGap;
+                button.style.marginTop = 0f;
+                button.style.marginBottom = ComponentButtonGap;
+                button.style.paddingLeft = ComponentButtonHorizontalPadding;
+                button.style.paddingRight = ComponentButtonHorizontalPadding;
+                button.style.paddingTop = 0f;
+                button.style.paddingBottom = 0f;
+                button.style.flexDirection = FlexDirection.Row;
+                button.style.alignItems = Align.Center;
+                button.style.justifyContent = Justify.Center;
+                button.style.backgroundColor = ButtonIdleColor;
+                button.style.borderTopWidth = 0f;
+                button.style.borderRightWidth = 0f;
+                button.style.borderBottomWidth = 0f;
+                button.style.borderLeftWidth = 0f;
+                button.style.borderTopLeftRadius = 2f;
+                button.style.borderTopRightRadius = 2f;
+                button.style.borderBottomLeftRadius = 2f;
+                button.style.borderBottomRightRadius = 2f;
+            }
+
+            private void RegisterComponentButtonHover(Button button)
+            {
                 button.RegisterCallback<MouseEnterEvent>(_ =>
                 {
                     if (IsComponentButtonSelected(button))
@@ -496,7 +541,6 @@ namespace LoogaSoft.Inspector.Editor
                 button.RegisterCallback<MouseLeaveEvent>(_ => button.style.backgroundColor = IsComponentButtonSelected(button) ? ComponentSelectedColor : ButtonIdleColor);
                 button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = IsComponentButtonSelected(button) ? ComponentSelectedColor : ButtonIdleColor);
                 button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = IsComponentButtonSelected(button) ? ComponentSelectedColor : ButtonHoverColor);
-                return button;
             }
 
             private bool ShouldShowComponentButton(Component component)
@@ -506,6 +550,9 @@ namespace LoogaSoft.Inspector.Editor
 
             private bool IsComponentButtonSelected(Button button)
             {
+                if (button.userData is int allId && allId == AllComponentsButtonId)
+                    return _selectedComponentIds.Count == 0;
+
                 return button.userData is int componentId && _selectedComponentIds.Contains(componentId);
             }
 

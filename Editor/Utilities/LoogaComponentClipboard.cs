@@ -16,6 +16,11 @@ namespace LoogaSoft.Inspector.Editor
 
         public static void CopyComponents(GameObject source)
         {
+            CopyComponents(source, null);
+        }
+
+        public static void CopyComponents(GameObject source, ICollection<int> selectedComponentIds)
+        {
             CopiedComponents.Clear();
             _sourceName = source != null ? source.name : string.Empty;
 
@@ -24,7 +29,13 @@ namespace LoogaSoft.Inspector.Editor
 
             Component[] components = source.GetComponents<Component>();
             for (int i = 0; i < components.Length; i++)
-                CopyComponentIntoClipboard(components[i], source.name, false);
+            {
+                Component component = components[i];
+                if (selectedComponentIds != null && selectedComponentIds.Count > 0 && (component == null || !selectedComponentIds.Contains(component.GetInstanceID())))
+                    continue;
+
+                CopyComponentIntoClipboard(component, source.name, false);
+            }
         }
 
         public static void CopyComponent(Component component)
