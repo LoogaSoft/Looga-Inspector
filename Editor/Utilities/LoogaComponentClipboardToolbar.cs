@@ -1,7 +1,10 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Reflection;
+using Unity.VectorGraphics;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -21,6 +24,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ToolbarRowHeight = 22f;
         private const float ButtonGap = 2f;
         private const float ToolbarPadding = 1f;
+        private const float DividerHeight = 1f;
         private const float ButtonWidth = 28f;
         private const float ButtonHeight = 20f;
         private const float IconSize = 13f;
@@ -30,9 +34,10 @@ namespace LoogaSoft.Inspector.Editor
         private const float ComponentIconSize = 14f;
         private const float ComponentRowTopPadding = 2f;
         private const float SearchFieldRightPadding = 2f;
-        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.png";
-        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.png";
-        private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.png";
+        private const int RenderedIconSize = 32;
+        private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
+        private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
+        private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
 
         private static readonly List<InspectorToolbarContainer> Containers = new();
         private static readonly System.Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
@@ -41,6 +46,7 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly Color ButtonHoverColor = LoogaEditorStyle.ListHoverColor;
         private static readonly Color ComponentSelectedColor = LoogaEditorStyle.SelectionColor;
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
+        private static readonly Color DividerColor = new(0.16f, 0.16f, 0.16f, 1f);
         private static Texture2D _copyIcon;
         private static Texture2D _pasteIcon;
         private static Texture2D _pasteValuesIcon;
@@ -154,9 +160,9 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void EnsureResources()
         {
-            _copyIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(CopyIconPath);
-            _pasteIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteIconPath);
-            _pasteValuesIcon ??= AssetDatabase.LoadAssetAtPath<Texture2D>(PasteValuesIconPath);
+            _copyIcon ??= RenderSvgIcon(CopyIconPath);
+            _pasteIcon ??= RenderSvgIcon(PasteIconPath);
+            _pasteValuesIcon ??= RenderSvgIcon(PasteValuesIconPath);
             _idleTexture ??= CreateTexture(ButtonIdleColor);
             _hoverTexture ??= CreateTexture(ButtonHoverColor);
             _selectedTexture ??= CreateTexture(ComponentSelectedColor);
@@ -182,6 +188,40 @@ namespace LoogaSoft.Inspector.Editor
             texture.SetPixel(0, 0, color);
             texture.Apply();
             return texture;
+        }
+
+        private static Texture2D RenderSvgIcon(string assetPath)
+        {
+            string absolutePath = ResolvePackageAssetPath(assetPath);
+            if (!File.Exists(absolutePath))
+                return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+
+            using StringReader reader = new(File.ReadAllText(absolutePath));
+            SVGParser.SceneInfo sceneInfo = SVGParser.ImportSVG(reader, 0f, 1f, 0, 0, false);
+            List<VectorUtils.Geometry> geometry = VectorUtils.TessellateScene(sceneInfo.Scene, new VectorUtils.TessellationOptions
+            {
+                StepDistance = 100f,
+                MaxCordDeviation = 0.1f,
+                MaxTanAngleDeviation = 0.1f,
+                SamplingStepSize = 0.01f
+            }, null);
+            Sprite sprite = VectorUtils.BuildSprite(geometry, 100f, VectorUtils.Alignment.Center, Vector2.zero, 128, true);
+            Texture2D texture = VectorUtils.RenderSpriteToTexture2D(sprite, RenderedIconSize, RenderedIconSize, null, 4, true);
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            return texture;
+        }
+
+        private static string ResolvePackageAssetPath(string assetPath)
+        {
+            PackageInfo packageInfo = PackageInfo.FindForAssetPath(assetPath);
+            if (packageInfo == null || string.IsNullOrWhiteSpace(packageInfo.resolvedPath))
+                return Path.GetFullPath(assetPath);
+
+            string packagePrefix = $"Packages/{packageInfo.name}/";
+            string relativePath = assetPath.StartsWith(packagePrefix)
+                ? assetPath[packagePrefix.Length..]
+                : assetPath;
+            return Path.Combine(packageInfo.resolvedPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
         }
 
         private static GUIStyle CreateButtonStyle(Texture2D normal, Texture2D hover)
@@ -322,6 +362,10 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.paddingTop = 0f;
                 _toolbar.style.paddingBottom = 0f;
                 _toolbar.style.backgroundColor = LoogaEditorStyle.BoxColor;
+                _toolbar.style.borderTopWidth = DividerHeight;
+                _toolbar.style.borderBottomWidth = DividerHeight;
+                _toolbar.style.borderTopColor = DividerColor;
+                _toolbar.style.borderBottomColor = DividerColor;
             }
 
             private void DrawToolbar()
@@ -334,6 +378,8 @@ namespace LoogaSoft.Inspector.Editor
 
                 Rect fullRect = _toolbar.contentRect;
                 EditorGUI.DrawRect(fullRect, LoogaEditorStyle.BoxColor);
+                EditorGUI.DrawRect(new Rect(fullRect.x, fullRect.y, fullRect.width, DividerHeight), DividerColor);
+                EditorGUI.DrawRect(new Rect(fullRect.x, fullRect.yMax - DividerHeight, fullRect.width, DividerHeight), DividerColor);
 
                 DrawActionRow(fullRect, gameObject);
                 DrawComponentButtons(fullRect, gameObject);
