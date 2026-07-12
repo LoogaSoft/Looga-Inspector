@@ -346,7 +346,9 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.paddingRight = ToolbarPadding;
                 _toolbar.style.paddingTop = ToolbarPadding;
                 _toolbar.style.paddingBottom = ToolbarPadding;
-VisualElement actionRow = new();
+                _toolbar.style.borderTopWidth = DividerHeight;
+                _toolbar.style.borderTopColor = DividerColor;
+                VisualElement actionRow = new();
                 actionRow.style.flexDirection = FlexDirection.Row;
                 actionRow.style.height = ActionRowHeight;
                 actionRow.style.marginBottom = ButtonGap;
