@@ -1,10 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Reflection;
-using Unity.VectorGraphics;
 using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Object = UnityEngine.Object;
@@ -34,7 +31,6 @@ namespace LoogaSoft.Inspector.Editor
         private const float ComponentIconSize = 14f;
         private const float ComponentRowTopPadding = 2f;
         private const float SearchFieldRightPadding = 2f;
-        private const int RenderedIconSize = 32;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -160,9 +156,9 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void EnsureResources()
         {
-            _copyIcon ??= RenderSvgIcon(CopyIconPath);
-            _pasteIcon ??= RenderSvgIcon(PasteIconPath);
-            _pasteValuesIcon ??= RenderSvgIcon(PasteValuesIconPath);
+            _copyIcon ??= LoadIcon(CopyIconPath);
+            _pasteIcon ??= LoadIcon(PasteIconPath);
+            _pasteValuesIcon ??= LoadIcon(PasteValuesIconPath);
             _idleTexture ??= CreateTexture(ButtonIdleColor);
             _hoverTexture ??= CreateTexture(ButtonHoverColor);
             _selectedTexture ??= CreateTexture(ComponentSelectedColor);
@@ -189,39 +185,14 @@ namespace LoogaSoft.Inspector.Editor
             texture.Apply();
             return texture;
         }
-
-        private static Texture2D RenderSvgIcon(string assetPath)
+        private static Texture2D LoadIcon(string assetPath)
         {
-            string absolutePath = ResolvePackageAssetPath(assetPath);
-            if (!File.Exists(absolutePath))
-                return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
+            if (texture != null)
+                return texture;
 
-            using StringReader reader = new(File.ReadAllText(absolutePath));
-            SVGParser.SceneInfo sceneInfo = SVGParser.ImportSVG(reader, 0f, 1f, 0, 0, false);
-            List<VectorUtils.Geometry> geometry = VectorUtils.TessellateScene(sceneInfo.Scene, new VectorUtils.TessellationOptions
-            {
-                StepDistance = 100f,
-                MaxCordDeviation = 0.1f,
-                MaxTanAngleDeviation = 0.1f,
-                SamplingStepSize = 0.01f
-            }, null);
-            Sprite sprite = VectorUtils.BuildSprite(geometry, 100f, VectorUtils.Alignment.Center, Vector2.zero, 128, true);
-            Texture2D texture = VectorUtils.RenderSpriteToTexture2D(sprite, RenderedIconSize, RenderedIconSize, null, 4, true);
-            texture.hideFlags = HideFlags.HideAndDontSave;
-            return texture;
-        }
-
-        private static string ResolvePackageAssetPath(string assetPath)
-        {
-            UnityEditor.PackageManager.PackageInfo packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssetPath(assetPath);
-            if (packageInfo == null || string.IsNullOrWhiteSpace(packageInfo.resolvedPath))
-                return Path.GetFullPath(assetPath);
-
-            string packagePrefix = $"Packages/{packageInfo.name}/";
-            string relativePath = assetPath.StartsWith(packagePrefix)
-                ? assetPath[packagePrefix.Length..]
-                : assetPath;
-            return Path.Combine(packageInfo.resolvedPath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
+            return sprite != null ? sprite.texture : null;
         }
 
         private static GUIStyle CreateButtonStyle(Texture2D normal, Texture2D hover)
