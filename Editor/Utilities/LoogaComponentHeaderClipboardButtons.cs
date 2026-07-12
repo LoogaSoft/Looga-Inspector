@@ -18,6 +18,7 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ButtonContainerName = "looga-component-header-clipboard-buttons";
+        private const string CopyButtonName = "looga-component-header-copy-button";
         private const string PasteButtonName = "looga-component-header-paste-button";
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
@@ -80,8 +81,6 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void InjectIntoEditorTree(VisualElement root)
         {
-            RemoveInjectedContainers(root);
-
             ScratchElements.Clear();
             CandidateByComponent.Clear();
             CollectElements(root, ScratchElements);
@@ -101,16 +100,26 @@ namespace LoogaSoft.Inspector.Editor
                     CandidateByComponent[instanceId] = candidate;
             }
 
+            RemoveStaleInjectedContainers(root);
+
             foreach (HeaderCandidate candidate in CandidateByComponent.Values)
                 EnsureButtonContainer(candidate.Element, candidate.Component, candidate.Targets);
         }
 
-        private static void RemoveInjectedContainers(VisualElement root)
+        private static void RemoveStaleInjectedContainers(VisualElement root)
         {
+            HashSet<VisualElement> activeElements = new();
+            foreach (HeaderCandidate candidate in CandidateByComponent.Values)
+                activeElements.Add(candidate.Element);
+
             ScratchElements.Clear();
             root.Query<VisualElement>(name: ButtonContainerName).ForEach(element => ScratchElements.Add(element));
             for (int i = 0; i < ScratchElements.Count; i++)
-                ScratchElements[i].RemoveFromHierarchy();
+            {
+                VisualElement container = ScratchElements[i];
+                if (!activeElements.Contains(container.parent))
+                    container.RemoveFromHierarchy();
+            }
         }
 
         private static bool IsBetterCandidate(HeaderCandidate candidate, HeaderCandidate current)
@@ -201,10 +210,25 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void EnsureButtonContainer(VisualElement editorElement, Component component, Object[] targets)
         {
+            VisualElement existingContainer = editorElement.Q<VisualElement>(name: ButtonContainerName);
+            if (existingContainer != null)
+            {
+                int componentId = component.GetInstanceID();
+                if (existingContainer.userData is int existingComponentId && existingComponentId == componentId)
+                {
+                    UpdateCopyButton(existingContainer, component);
+                    UpdatePasteButton(existingContainer, targets);
+                    return;
+                }
+
+                existingContainer.RemoveFromHierarchy();
+            }
+
             VisualElement container = new()
             {
                 name = ButtonContainerName,
-                pickingMode = PickingMode.Position
+                pickingMode = PickingMode.Position,
+                userData = component.GetInstanceID()
             };
             container.style.position = Position.Absolute;
             container.style.top = TopOffset;
@@ -216,13 +240,12 @@ namespace LoogaSoft.Inspector.Editor
             bool showCopySuccess = IsCopySuccessActive(component);
             Object copyIcon = showCopySuccess ? GetCheckIcon() : GetCopyIcon();
             Color copyTint = showCopySuccess ? SuccessIconTintColor : IconTintColor;
-            Button copyButton = CreateHeaderButton(copyIcon, "Copy component", () =>
+            Button copyButton = CreateHeaderButton(CopyButtonName, copyIcon, "Copy component", () =>
             {
                 LoogaComponentClipboard.CopyComponent(component);
                 MarkCopySuccess(component);
             }, copyTint, true, GetCopyIcon());
-            Button pasteButton = CreateHeaderButton(GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets), IconTintColor);
-            pasteButton.name = PasteButtonName;
+            Button pasteButton = CreateHeaderButton(PasteButtonName, GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets), IconTintColor);
             pasteButton.style.marginLeft = ButtonGap;
 
             container.Add(copyButton);
@@ -231,7 +254,7 @@ namespace LoogaSoft.Inspector.Editor
             UpdatePasteButton(container, targets);
         }
 
-        private static Button CreateHeaderButton(Object icon, string tooltip, Action clicked, Color iconTint, bool flashSuccess = false, Object restoreIcon = null)
+        private static Button CreateHeaderButton(string name, Object icon, string tooltip, Action clicked, Color iconTint, bool flashSuccess = false, Object restoreIcon = null)
         {
             Image iconImage = null;
             Button button = new(() =>
@@ -241,6 +264,7 @@ namespace LoogaSoft.Inspector.Editor
                     FlashSuccessIcon(iconImage, restoreIcon ?? icon);
             })
             {
+                name = name,
                 tooltip = tooltip,
                 text = icon == null ? tooltip[..1] : string.Empty
             };
@@ -292,6 +316,17 @@ namespace LoogaSoft.Inspector.Editor
             button.RegisterCallback<MouseDownEvent>(_ => button.style.backgroundColor = ButtonIdleColor);
             button.RegisterCallback<MouseUpEvent>(_ => button.style.backgroundColor = button.enabledInHierarchy ? ButtonHoverColor : ButtonIdleColor);
             return button;
+        }
+
+        private static void UpdateCopyButton(VisualElement container, Component component)
+        {
+            Button copyButton = container.Q<Button>(name: CopyButtonName);
+            Image image = copyButton?.Q<Image>();
+            if (image == null)
+                return;
+
+            bool showCopySuccess = IsCopySuccessActive(component);
+            SetIconImage(image, showCopySuccess ? GetCheckIcon() : GetCopyIcon(), showCopySuccess ? SuccessIconTintColor : IconTintColor);
         }
 
         private static void FlashSuccessIcon(Image image, Object normalIcon)
