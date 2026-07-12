@@ -10,7 +10,7 @@ namespace LoogaSoft.Inspector.Editor
 {
     /// <summary>
     /// Adds a Looga-styled component clipboard above the first component in GameObject inspectors.
-    /// The toolbar itself is drawn through IMGUI so it sits in Unity's inspector list like native inspector rows.
+    /// The toolbar uses UI Toolkit so SVG icons, hover states, and inspector layout all stay native and stable.
     /// </summary>
     [InitializeOnLoad]
     internal static class LoogaComponentClipboardToolbar
@@ -18,19 +18,16 @@ namespace LoogaSoft.Inspector.Editor
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ToolbarName = "Looga Component Clipboard Toolbar";
         private const int AllComponentsButtonId = -1;
-        private const float ToolbarRowHeight = 22f;
-        private const float ButtonGap = 2f;
         private const float ToolbarPadding = 1f;
         private const float DividerHeight = 1f;
-        private const float ButtonWidth = 28f;
-        private const float ButtonHeight = 20f;
+        private const float ActionButtonWidth = 28f;
+        private const float ActionRowHeight = 20f;
+        private const float ButtonGap = 2f;
         private const float IconSize = 13f;
         private const float ComponentButtonHeight = 23f;
-        private const float ComponentButtonGap = 2f;
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
-        private const float ComponentRowTopPadding = 2f;
-        private const float SearchFieldRightPadding = 2f;
+        private const float ComponentRowsTopPadding = 2f;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -38,21 +35,15 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly List<InspectorToolbarContainer> Containers = new();
         private static readonly System.Type InspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
+        private static readonly Color ToolbarColor = LoogaEditorStyle.BoxColor;
         private static readonly Color ButtonIdleColor = LoogaEditorStyle.ListRowColor;
         private static readonly Color ButtonHoverColor = LoogaEditorStyle.ListHoverColor;
         private static readonly Color ComponentSelectedColor = LoogaEditorStyle.SelectionColor;
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color DividerColor = new(0.16f, 0.16f, 0.16f, 1f);
-        private static Texture2D _copyIcon;
-        private static Texture2D _pasteIcon;
-        private static Texture2D _pasteValuesIcon;
-        private static Texture2D _idleTexture;
-        private static Texture2D _hoverTexture;
-        private static Texture2D _selectedTexture;
-        private static Texture2D _toolbarTexture;
-        private static GUIStyle _buttonStyle;
-        private static GUIStyle _selectedButtonStyle;
-        private static GUIStyle _componentTextStyle;
+        private static Object _copyIcon;
+        private static Object _pasteIcon;
+        private static Object _pasteValuesIcon;
 
         static LoogaComponentClipboardToolbar()
         {
@@ -154,84 +145,99 @@ namespace LoogaSoft.Inspector.Editor
             return component == null ? "MissingScript" : component.GetType().Name;
         }
 
-        private static void EnsureResources()
+        private static Object CopyIcon()
         {
-            _copyIcon ??= LoadIcon(CopyIconPath);
-            _pasteIcon ??= LoadIcon(PasteIconPath);
-            _pasteValuesIcon ??= LoadIcon(PasteValuesIconPath);
-            _idleTexture ??= CreateTexture(ButtonIdleColor);
-            _hoverTexture ??= CreateTexture(ButtonHoverColor);
-            _selectedTexture ??= CreateTexture(ComponentSelectedColor);
-            _toolbarTexture ??= CreateTexture(LoogaEditorStyle.BoxColor);
-
-            _buttonStyle ??= CreateButtonStyle(_idleTexture, _hoverTexture);
-            _selectedButtonStyle ??= CreateButtonStyle(_selectedTexture, _selectedTexture);
-            _componentTextStyle ??= new GUIStyle(EditorStyles.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold,
-                fontSize = 11,
-                normal = { textColor = LoogaEditorStyle.TextColor }
-            };
+            _copyIcon ??= LoadPackageIcon(CopyIconPath);
+            return _copyIcon;
         }
 
-        private static Texture2D CreateTexture(Color color)
+        private static Object PasteIcon()
         {
-            Texture2D texture = new(1, 1)
-            {
-                hideFlags = HideFlags.HideAndDontSave
-            };
-            texture.SetPixel(0, 0, color);
-            texture.Apply();
-            return texture;
-        }
-        private static Texture2D LoadIcon(string assetPath)
-        {
-            Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
-            if (texture != null)
-                return texture;
-
-            Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(assetPath);
-            return sprite != null ? sprite.texture : null;
+            _pasteIcon ??= LoadPackageIcon(PasteIconPath);
+            return _pasteIcon;
         }
 
-        private static GUIStyle CreateButtonStyle(Texture2D normal, Texture2D hover)
+        private static Object PasteValuesIcon()
         {
-            return new GUIStyle(GUIStyle.none)
-            {
-                normal = { background = normal },
-                hover = { background = hover },
-                active = { background = normal },
-                focused = { background = normal },
-                padding = new RectOffset(0, 0, 0, 0),
-                margin = new RectOffset(0, 0, 0, 0),
-                border = new RectOffset(0, 0, 0, 0),
-                alignment = TextAnchor.MiddleCenter
-            };
+            _pasteValuesIcon ??= LoadPackageIcon(PasteValuesIconPath);
+            return _pasteValuesIcon;
         }
 
-        private static bool DrawIconButton(Rect rect, Texture2D icon, string tooltip)
+        private static Object LoadPackageIcon(string assetPath)
         {
-            bool pressed = GUI.Button(rect, new GUIContent(string.Empty, tooltip), _buttonStyle);
+            Object icon = AssetDatabase.LoadAssetAtPath<VectorImage>(assetPath);
             if (icon != null)
-            {
-                Rect iconRect = CenterRect(rect, IconSize, IconSize);
-                Color previousColor = GUI.color;
-                GUI.color = IconTintColor;
-                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
-                GUI.color = previousColor;
-            }
+                return icon;
 
-            return pressed;
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);
         }
 
-        private static Rect CenterRect(Rect parent, float width, float height)
+        private static void SetIconImage(Image image, Object icon, Color tint)
         {
-            return new Rect(
-                Mathf.Round(parent.x + (parent.width - width) * 0.5f),
-                Mathf.Round(parent.y + (parent.height - height) * 0.5f),
-                width,
-                height);
+            image.image = null;
+            image.vectorImage = null;
+            image.tintColor = tint;
+
+            if (icon is Texture2D textureIcon)
+                image.image = textureIcon;
+            else if (icon is VectorImage vectorIcon)
+                image.vectorImage = vectorIcon;
+        }
+
+        private static Button CreateIconButton(Object icon, string tooltip, System.Action clicked)
+        {
+            Image iconImage = new()
+            {
+                pickingMode = PickingMode.Ignore,
+                scaleMode = ScaleMode.ScaleToFit
+            };
+            SetIconImage(iconImage, icon, IconTintColor);
+            iconImage.style.width = IconSize;
+            iconImage.style.height = IconSize;
+            iconImage.style.flexShrink = 0f;
+            iconImage.style.alignSelf = Align.Center;
+
+            Button button = new(clicked)
+            {
+                tooltip = tooltip
+            };
+            button.Add(iconImage);
+            button.style.width = ActionButtonWidth;
+            button.style.height = ActionRowHeight;
+            button.style.marginLeft = 0f;
+            button.style.marginRight = ButtonGap;
+            button.style.marginTop = 0f;
+            button.style.marginBottom = 0f;
+            button.style.paddingLeft = 0f;
+            button.style.paddingRight = 0f;
+            button.style.paddingTop = 0f;
+            button.style.paddingBottom = 0f;
+            button.style.alignItems = Align.Center;
+            button.style.justifyContent = Justify.Center;
+            button.style.backgroundColor = ButtonIdleColor;
+            ClearBorderAndRadius(button);
+            RegisterHover(button, ButtonIdleColor, ButtonHoverColor);
+            return button;
+        }
+
+        private static void RegisterHover(VisualElement element, Color idleColor, Color hoverColor)
+        {
+            element.RegisterCallback<MouseEnterEvent>(_ => element.style.backgroundColor = hoverColor);
+            element.RegisterCallback<MouseLeaveEvent>(_ => element.style.backgroundColor = idleColor);
+            element.RegisterCallback<MouseDownEvent>(_ => element.style.backgroundColor = idleColor);
+            element.RegisterCallback<MouseUpEvent>(_ => element.style.backgroundColor = hoverColor);
+        }
+
+        private static void ClearBorderAndRadius(VisualElement element)
+        {
+            element.style.borderTopWidth = 0f;
+            element.style.borderRightWidth = 0f;
+            element.style.borderBottomWidth = 0f;
+            element.style.borderLeftWidth = 0f;
+            element.style.borderTopLeftRadius = 0f;
+            element.style.borderTopRightRadius = 0f;
+            element.style.borderBottomLeftRadius = 0f;
+            element.style.borderBottomRightRadius = 0f;
         }
 
         private sealed class InspectorToolbarContainer
@@ -239,7 +245,11 @@ namespace LoogaSoft.Inspector.Editor
             private readonly PropertyInfo _lockedProperty;
             private readonly HashSet<int> _selectedComponentIds = new();
             private VisualElement _editorList;
-            private IMGUIContainer _toolbar;
+            private VisualElement _toolbar;
+            private VisualElement _componentRows;
+            private Button _pasteButton;
+            private Button _pasteValuesButton;
+            private TextField _searchField;
             private Object _inspectingObject;
             private string _componentSignature;
             private string _searchText = string.Empty;
@@ -286,7 +296,8 @@ namespace LoogaSoft.Inspector.Editor
                     _editorList.Insert(index, _toolbar);
                 }
 
-                RefreshToolbarHeight(gameObject);
+                RefreshActionButtons();
+                RefreshComponentRows(gameObject);
                 ApplyComponentFilter(gameObject);
             }
 
@@ -309,6 +320,8 @@ namespace LoogaSoft.Inspector.Editor
                     _selectedComponentIds.Clear();
                     _componentSignature = string.Empty;
                     _searchText = string.Empty;
+                    if (_searchField != null)
+                        _searchField.SetValueWithoutNotify(string.Empty);
                 }
 
                 _wasLocked = locked;
@@ -317,112 +330,112 @@ namespace LoogaSoft.Inspector.Editor
 
             private void CreateToolbar()
             {
-                EnsureResources();
-
-                _toolbar = new IMGUIContainer(DrawToolbar)
+                _toolbar = new VisualElement
                 {
-                    name = ToolbarName
+                    name = ToolbarName,
+                    pickingMode = PickingMode.Position
                 };
                 _toolbar.style.flexShrink = 0f;
+                _toolbar.style.flexDirection = FlexDirection.Column;
+                _toolbar.style.backgroundColor = ToolbarColor;
                 _toolbar.style.marginLeft = 0f;
                 _toolbar.style.marginRight = 0f;
                 _toolbar.style.marginTop = 0f;
                 _toolbar.style.marginBottom = 0f;
-                _toolbar.style.paddingLeft = 0f;
-                _toolbar.style.paddingRight = 0f;
-                _toolbar.style.paddingTop = 0f;
-                _toolbar.style.paddingBottom = 0f;
-                _toolbar.style.backgroundColor = LoogaEditorStyle.BoxColor;
+                _toolbar.style.paddingLeft = ToolbarPadding;
+                _toolbar.style.paddingRight = ToolbarPadding;
+                _toolbar.style.paddingTop = ToolbarPadding;
+                _toolbar.style.paddingBottom = ToolbarPadding;
                 _toolbar.style.borderTopWidth = DividerHeight;
                 _toolbar.style.borderBottomWidth = DividerHeight;
                 _toolbar.style.borderTopColor = DividerColor;
                 _toolbar.style.borderBottomColor = DividerColor;
+
+                VisualElement actionRow = new();
+                actionRow.style.flexDirection = FlexDirection.Row;
+                actionRow.style.height = ActionRowHeight;
+                actionRow.style.marginBottom = ButtonGap;
+                actionRow.style.alignItems = Align.Center;
+
+                Button copyButton = CreateIconButton(CopyIcon(), "Copy selected components", () =>
+                {
+                    GameObject gameObject = ResolveGameObject(_inspectingObject);
+                    if (gameObject == null)
+                        return;
+
+                    LoogaComponentClipboard.CopyComponents(gameObject, _selectedComponentIds);
+                    RefreshActionButtons();
+                });
+
+                _pasteButton = CreateIconButton(PasteIcon(), "Paste components", () =>
+                {
+                    LoogaComponentClipboard.PasteComponents(new[] { _inspectingObject });
+                    RefreshActionButtons();
+                });
+
+                _pasteValuesButton = CreateIconButton(PasteValuesIcon(), "Paste values into matching components", () =>
+                {
+                    LoogaComponentClipboard.PasteValuesIntoMatchingComponents(new[] { _inspectingObject });
+                    RefreshActionButtons();
+                });
+
+                _searchField = new TextField
+                {
+                    value = _searchText
+                };
+                _searchField.style.flexGrow = 1f;
+                _searchField.style.height = ActionRowHeight;
+                _searchField.style.marginLeft = 0f;
+                _searchField.style.marginRight = 0f;
+                _searchField.style.marginTop = 0f;
+                _searchField.style.marginBottom = 0f;
+                _searchField.RegisterValueChangedCallback(evt =>
+                {
+                    _searchText = evt.newValue ?? string.Empty;
+                    _componentSignature = string.Empty;
+                    GameObject gameObject = ResolveGameObject(_inspectingObject);
+                    RefreshComponentRows(gameObject);
+                    ApplyComponentFilter(gameObject);
+                });
+
+                actionRow.Add(copyButton);
+                actionRow.Add(_pasteButton);
+                actionRow.Add(_pasteValuesButton);
+                actionRow.Add(_searchField);
+
+                _componentRows = new VisualElement();
+                _componentRows.style.flexDirection = FlexDirection.Column;
+
+                _toolbar.Add(actionRow);
+                _toolbar.Add(_componentRows);
             }
 
-            private void DrawToolbar()
+            private void RefreshActionButtons()
             {
-                EnsureResources();
-
-                GameObject gameObject = ResolveGameObject(_inspectingObject);
-                if (gameObject == null)
+                if (_pasteButton == null || _pasteValuesButton == null)
                     return;
 
-                Rect fullRect = _toolbar.contentRect;
-                EditorGUI.DrawRect(fullRect, LoogaEditorStyle.BoxColor);
-                EditorGUI.DrawRect(new Rect(fullRect.x, fullRect.y, fullRect.width, DividerHeight), DividerColor);
-                EditorGUI.DrawRect(new Rect(fullRect.x, fullRect.yMax - DividerHeight, fullRect.width, DividerHeight), DividerColor);
-
-                DrawActionRow(fullRect, gameObject);
-                DrawComponentButtons(fullRect, gameObject);
-
-                if (Event.current.type is EventType.MouseMove or EventType.MouseDrag)
-                    _toolbar.MarkDirtyRepaint();
+                _pasteButton.style.display = LoogaComponentClipboard.HasPasteableComponents ? DisplayStyle.Flex : DisplayStyle.None;
+                _pasteValuesButton.style.display = LoogaComponentClipboard.HasClipboard ? DisplayStyle.Flex : DisplayStyle.None;
             }
 
-            private void DrawActionRow(Rect fullRect, GameObject gameObject)
+            private void RefreshComponentRows(GameObject gameObject)
             {
-                Rect rowRect = new(
-                    fullRect.x + ToolbarPadding,
-                    fullRect.y + ToolbarPadding,
-                    fullRect.width - ToolbarPadding * 2f,
-                    ToolbarRowHeight - ToolbarPadding * 2f);
+                if (gameObject == null || _componentRows == null)
+                    return;
 
-                Rect buttonRect = new(rowRect.x, rowRect.y, ButtonWidth, ButtonHeight);
-                if (DrawIconButton(buttonRect, _copyIcon, "Copy selected components"))
-                {
-                    LoogaComponentClipboard.CopyComponents(gameObject, _selectedComponentIds);
-                    _toolbar.MarkDirtyRepaint();
-                }
+                string signature = BuildToolbarSignature(gameObject);
+                if (signature == _componentSignature)
+                    return;
 
-                float nextX = buttonRect.xMax + ButtonGap;
-                if (LoogaComponentClipboard.HasPasteableComponents)
-                {
-                    buttonRect.x = nextX;
-                    if (DrawIconButton(buttonRect, _pasteIcon, "Paste components"))
-                    {
-                        LoogaComponentClipboard.PasteComponents(new[] { _inspectingObject });
-                        _toolbar.MarkDirtyRepaint();
-                    }
+                _componentSignature = signature;
+                _componentRows.Clear();
 
-                    nextX = buttonRect.xMax + ButtonGap;
-                }
-
-                if (LoogaComponentClipboard.HasClipboard)
-                {
-                    buttonRect.x = nextX;
-                    if (DrawIconButton(buttonRect, _pasteValuesIcon, "Paste values into matching components"))
-                    {
-                        LoogaComponentClipboard.PasteValuesIntoMatchingComponents(new[] { _inspectingObject });
-                        _toolbar.MarkDirtyRepaint();
-                    }
-
-                    nextX = buttonRect.xMax + ButtonGap;
-                }
-
-                Rect searchRect = new(
-                    nextX,
-                    rowRect.y,
-                    Mathf.Max(0f, rowRect.xMax - nextX - SearchFieldRightPadding),
-                    ButtonHeight);
-
-                EditorGUI.BeginChangeCheck();
-                string newSearchText = EditorGUI.TextField(searchRect, _searchText, EditorStyles.toolbarSearchField);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    _searchText = newSearchText ?? string.Empty;
-                    RefreshToolbarHeight(gameObject);
-                    ApplyComponentFilter(gameObject);
-                }
-            }
-
-            private void DrawComponentButtons(Rect fullRect, GameObject gameObject)
-            {
                 List<ComponentButtonInfo> buttons = BuildVisibleComponentButtons(gameObject);
                 if (buttons.Count == 0)
                     return;
 
-                float availableWidth = fullRect.width - ToolbarPadding * 2f;
-                float rowY = fullRect.y + ToolbarRowHeight + ComponentRowTopPadding;
+                float availableWidth = Mathf.Max(1f, _editorList != null ? _editorList.layout.width - ToolbarPadding * 2f : 1f);
                 int index = 0;
                 while (index < buttons.Count)
                 {
@@ -431,7 +444,7 @@ namespace LoogaSoft.Inspector.Editor
                     while (index < buttons.Count)
                     {
                         float nextWidth = buttons[index].MinWidth;
-                        float projectedWidth = rowWidth <= 0f ? nextWidth : rowWidth + ComponentButtonGap + nextWidth;
+                        float projectedWidth = rowWidth <= 0f ? nextWidth : rowWidth + ButtonGap + nextWidth;
                         if (projectedWidth > availableWidth && index > rowStart)
                             break;
 
@@ -439,98 +452,101 @@ namespace LoogaSoft.Inspector.Editor
                         index++;
                     }
 
-                    DrawComponentButtonRow(buttons, rowStart, index, rowY, availableWidth);
-                    rowY += ComponentButtonHeight + ComponentButtonGap;
+                    AddComponentButtonRow(buttons, rowStart, index, availableWidth);
                 }
             }
 
-            private void DrawComponentButtonRow(List<ComponentButtonInfo> buttons, int startIndex, int endIndex, float y, float availableWidth)
+            private void AddComponentButtonRow(List<ComponentButtonInfo> buttons, int startIndex, int endIndex, float availableWidth)
             {
                 int count = endIndex - startIndex;
                 float widthTotal = 0f;
                 for (int i = startIndex; i < endIndex; i++)
                     widthTotal += buttons[i].MinWidth;
 
-                float gapTotal = ComponentButtonGap * Mathf.Max(0, count - 1);
+                float gapTotal = ButtonGap * Mathf.Max(0, count - 1);
                 float extraPerButton = count > 0 ? Mathf.Max(0f, availableWidth - widthTotal - gapTotal) / count : 0f;
-                float x = ToolbarPadding;
+
+                VisualElement row = new();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.height = ComponentButtonHeight;
+                row.style.marginTop = _componentRows.childCount == 0 ? ComponentRowsTopPadding : ButtonGap;
+
                 for (int i = startIndex; i < endIndex; i++)
                 {
                     ComponentButtonInfo info = buttons[i];
                     float width = Mathf.Floor(info.MinWidth + extraPerButton);
-                    Rect rect = new(x, y, width, ComponentButtonHeight);
-                    DrawComponentButton(rect, info);
-                    x += width + ComponentButtonGap;
+                    Button button = CreateComponentButton(info, width);
+                    if (i < endIndex - 1)
+                        button.style.marginRight = ButtonGap;
+
+                    row.Add(button);
                 }
+
+                _componentRows.Add(row);
             }
 
-            private void DrawComponentButton(Rect rect, ComponentButtonInfo info)
+            private Button CreateComponentButton(ComponentButtonInfo info, float width)
             {
                 bool selected = IsComponentButtonSelected(info.ComponentId);
-                GUIStyle style = selected ? _selectedButtonStyle : _buttonStyle;
-                if (GUI.Button(rect, GUIContent.none, style))
+                Color idleColor = selected ? ComponentSelectedColor : ButtonIdleColor;
+                Color hoverColor = selected ? ComponentSelectedColor : ButtonHoverColor;
+
+                Button button = new(() =>
                 {
                     if (info.ComponentId == AllComponentsButtonId)
                         _selectedComponentIds.Clear();
                     else if (!_selectedComponentIds.Add(info.ComponentId))
                         _selectedComponentIds.Remove(info.ComponentId);
 
-                    ApplyComponentFilter(ResolveGameObject(_inspectingObject));
-                    _toolbar.MarkDirtyRepaint();
-                }
+                    _componentSignature = string.Empty;
+                    GameObject gameObject = ResolveGameObject(_inspectingObject);
+                    RefreshComponentRows(gameObject);
+                    ApplyComponentFilter(gameObject);
+                });
+                button.style.width = width;
+                button.style.height = ComponentButtonHeight;
+                button.style.marginLeft = 0f;
+                button.style.marginRight = 0f;
+                button.style.marginTop = 0f;
+                button.style.marginBottom = 0f;
+                button.style.paddingLeft = ComponentButtonHorizontalPadding;
+                button.style.paddingRight = ComponentButtonHorizontalPadding;
+                button.style.paddingTop = 0f;
+                button.style.paddingBottom = 0f;
+                button.style.flexDirection = FlexDirection.Row;
+                button.style.alignItems = Align.Center;
+                button.style.justifyContent = Justify.Center;
+                button.style.backgroundColor = idleColor;
+                ClearBorderAndRadius(button);
+                RegisterHover(button, idleColor, hoverColor);
 
                 if (info.Icon != null)
                 {
-                    Rect iconRect = new(
-                        rect.x + ComponentButtonHorizontalPadding,
-                        Mathf.Round(rect.y + (rect.height - ComponentIconSize) * 0.5f),
-                        ComponentIconSize,
-                        ComponentIconSize);
-                    GUI.DrawTexture(iconRect, info.Icon, ScaleMode.ScaleToFit, true);
-                }
-
-                float labelLeft = info.Icon != null
-                    ? rect.x + ComponentButtonHorizontalPadding + ComponentIconSize + ButtonGap
-                    : rect.x + ComponentButtonHorizontalPadding;
-                Rect labelRect = new(labelLeft, rect.y, rect.xMax - labelLeft - ComponentButtonHorizontalPadding, rect.height);
-                GUI.Label(labelRect, info.Label, _componentTextStyle);
-            }
-
-            private void RefreshToolbarHeight(GameObject gameObject)
-            {
-                string signature = BuildComponentSignature(gameObject);
-                if (signature == _componentSignature && _toolbar != null && _toolbar.resolvedStyle.height > 0f)
-                    return;
-
-                _componentSignature = signature;
-                float height = CalculateToolbarHeight(gameObject);
-                _toolbar.style.height = height;
-                _toolbar.style.minHeight = height;
-                _toolbar.style.width = new StyleLength(StyleKeyword.Auto);
-                _toolbar.MarkDirtyRepaint();
-            }
-
-            private float CalculateToolbarHeight(GameObject gameObject)
-            {
-                List<ComponentButtonInfo> buttons = BuildVisibleComponentButtons(gameObject);
-                float availableWidth = Mathf.Max(1f, _editorList != null ? _editorList.layout.width - ToolbarPadding * 2f : 1f);
-                int rowCount = 1;
-                float rowWidth = 0f;
-                for (int i = 0; i < buttons.Count; i++)
-                {
-                    float nextWidth = buttons[i].MinWidth;
-                    float projectedWidth = rowWidth <= 0f ? nextWidth : rowWidth + ComponentButtonGap + nextWidth;
-                    if (projectedWidth > availableWidth && rowWidth > 0f)
+                    Image icon = new()
                     {
-                        rowCount++;
-                        rowWidth = nextWidth;
-                        continue;
-                    }
-
-                    rowWidth = projectedWidth;
+                        image = info.Icon,
+                        pickingMode = PickingMode.Ignore,
+                        scaleMode = ScaleMode.ScaleToFit
+                    };
+                    icon.style.width = ComponentIconSize;
+                    icon.style.height = ComponentIconSize;
+                    icon.style.marginRight = ButtonGap;
+                    icon.style.flexShrink = 0f;
+                    button.Add(icon);
                 }
 
-                return ToolbarRowHeight + ComponentRowTopPadding + rowCount * (ComponentButtonHeight + ComponentButtonGap);
+                Label label = new(info.Label)
+                {
+                    pickingMode = PickingMode.Ignore
+                };
+                label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                label.style.unityFontStyleAndWeight = FontStyle.Bold;
+                label.style.fontSize = 11;
+                label.style.color = LoogaEditorStyle.TextColor;
+                label.style.flexShrink = 1f;
+                button.Add(label);
+
+                return button;
             }
 
             private List<ComponentButtonInfo> BuildVisibleComponentButtons(GameObject gameObject)
@@ -553,11 +569,15 @@ namespace LoogaSoft.Inspector.Editor
                 return buttons;
             }
 
-            private string BuildComponentSignature(GameObject gameObject)
+            private string BuildToolbarSignature(GameObject gameObject)
             {
                 Component[] components = gameObject.GetComponents<Component>();
-                System.Text.StringBuilder builder = new(components.Length * 16);
+                System.Text.StringBuilder builder = new(components.Length * 24);
                 builder.Append(_searchText);
+                builder.Append('|');
+                builder.Append(Mathf.RoundToInt(_editorList != null ? _editorList.layout.width : 0f));
+                builder.Append('|');
+                builder.Append(_selectedComponentIds.Count);
                 builder.Append('|');
                 for (int i = 0; i < components.Length; i++)
                 {
@@ -565,9 +585,12 @@ namespace LoogaSoft.Inspector.Editor
                     if (!ShouldShowComponentButton(component))
                         continue;
 
-                    builder.Append(component != null ? component.GetInstanceID() : 0);
-                    builder.Append('|');
+                    int id = component != null ? component.GetInstanceID() : 0;
+                    builder.Append(id);
+                    builder.Append(':');
                     builder.Append(component != null ? component.GetType().FullName : "Missing");
+                    builder.Append(':');
+                    builder.Append(_selectedComponentIds.Contains(id));
                     builder.Append(';');
                 }
 
