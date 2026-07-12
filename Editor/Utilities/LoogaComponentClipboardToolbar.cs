@@ -31,7 +31,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ComponentButtonGap = 2f;
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
-        private const float ComponentRowTopPadding = 0f;
+        private const float ComponentRowTopPadding = ButtonGap;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
