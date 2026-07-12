@@ -17,6 +17,7 @@ namespace LoogaSoft.Inspector.Editor
     {
         private const string InspectorListClassName = "unity-inspector-editors-list";
         private const string ToolbarName = "Looga Component Clipboard Toolbar";
+        private const string TopDividerName = "Looga Component Clipboard Toolbar Top Divider";
         private const int AllComponentsButtonId = -1;
         private const float ToolbarPadding = 1f;
         private const float DividerHeight = 1f;
@@ -346,10 +347,19 @@ namespace LoogaSoft.Inspector.Editor
                 _toolbar.style.paddingRight = ToolbarPadding;
                 _toolbar.style.paddingTop = ToolbarPadding;
                 _toolbar.style.paddingBottom = ToolbarPadding;
-                _toolbar.style.borderTopWidth = DividerHeight;
-                _toolbar.style.borderBottomWidth = DividerHeight;
-                _toolbar.style.borderTopColor = DividerColor;
-                _toolbar.style.borderBottomColor = DividerColor;
+
+                VisualElement topDivider = new()
+                {
+                    name = TopDividerName,
+                    pickingMode = PickingMode.Ignore
+                };
+                topDivider.style.height = DividerHeight;
+                topDivider.style.flexShrink = 0f;
+                topDivider.style.marginLeft = -ToolbarPadding;
+                topDivider.style.marginRight = -ToolbarPadding;
+                topDivider.style.marginTop = -ToolbarPadding;
+                topDivider.style.marginBottom = ToolbarPadding;
+                topDivider.style.backgroundColor = DividerColor;
 
                 VisualElement actionRow = new();
                 actionRow.style.flexDirection = FlexDirection.Row;
@@ -406,6 +416,7 @@ namespace LoogaSoft.Inspector.Editor
                 _componentRows = new VisualElement();
                 _componentRows.style.flexDirection = FlexDirection.Column;
 
+                _toolbar.Add(topDivider);
                 _toolbar.Add(actionRow);
                 _toolbar.Add(_componentRows);
             }
