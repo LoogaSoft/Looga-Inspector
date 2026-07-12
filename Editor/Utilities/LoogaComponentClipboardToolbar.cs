@@ -21,14 +21,14 @@ namespace LoogaSoft.Inspector.Editor
         private const int AllComponentsButtonId = -1;
         private const float ToolbarHeight = 26f;
         private const float HorizontalPadding = 0f;
-        private const float ButtonGap = 1f;
+        private const float ButtonGap = 2f;
         private const float ToolbarLeftPadding = 1f;
         private const float ButtonWidth = 28f;
         private const float ButtonVerticalInset = 1f;
         private const float IconSize = 13f;
         private const float CountLabelInset = 1f;
         private const float ComponentButtonHeight = 23f;
-        private const float ComponentButtonGap = 1f;
+        private const float ComponentButtonGap = 2f;
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
         private const float ComponentRowTopPadding = 0f;
@@ -440,7 +440,7 @@ namespace LoogaSoft.Inspector.Editor
                     pickingMode = PickingMode.Ignore
                 };
                 name.style.color = LoogaEditorStyle.TextColor;
-                name.style.fontSize = 12;
+                name.style.fontSize = 11;
                 name.style.unityFontStyleAndWeight = FontStyle.Bold;
                 name.style.unityTextAlign = TextAnchor.MiddleCenter;
                 name.style.flexShrink = 0f;
@@ -491,7 +491,7 @@ namespace LoogaSoft.Inspector.Editor
                     pickingMode = PickingMode.Ignore
                 };
                 name.style.color = LoogaEditorStyle.TextColor;
-                name.style.fontSize = 12;
+                name.style.fontSize = 11;
                 name.style.unityFontStyleAndWeight = FontStyle.Bold;
                 name.style.unityTextAlign = TextAnchor.MiddleCenter;
                 name.style.flexShrink = 0f;

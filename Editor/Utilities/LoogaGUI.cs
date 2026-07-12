@@ -10,7 +10,7 @@ namespace LoogaSoft.Inspector.Editor
     /// </summary>
     public static class LoogaGUI
     {
-        private const float StatusBoxPadding = 7f;
+        private const float StatusBoxPadding = 3f;
         private const float StatusActionSize = 18f;
 
         private static Color StatusActionColor => EditorGUIUtility.isProSkin
@@ -72,9 +72,9 @@ namespace LoogaSoft.Inspector.Editor
 
             Rect labelRect = new(
                 rect.x + LoogaEditorStyle.AccentRailWidth + StatusBoxPadding,
-                rect.y,
+                rect.y + 1f,
                 Mathf.Max(0f, rect.width - LoogaEditorStyle.AccentRailWidth - StatusBoxPadding * 2f - actionWidth - (hasAction ? StatusBoxPadding : 0f)),
-                rect.height);
+                Mathf.Max(0f, rect.height - 2f));
 
             GUI.Label(labelRect, new GUIContent(message), GetStatusMessageStyle());
 
@@ -96,7 +96,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             return string.IsNullOrWhiteSpace(message)
                 ? 0f
-                : EditorGUIUtility.singleLineHeight + StatusBoxPadding * 2f;
+                : Mathf.Ceil(EditorGUIUtility.singleLineHeight + StatusBoxPadding * 2f);
         }
 
         private static bool DrawTextActionButton(Rect rect, string label, string tooltip)
@@ -192,7 +192,8 @@ namespace LoogaSoft.Inspector.Editor
             {
                 alignment = TextAnchor.MiddleLeft,
                 wordWrap = true,
-                clipping = TextClipping.Clip
+                clipping = TextClipping.Clip,
+                fontSize = Mathf.Max(1, EditorStyles.label.fontSize - 1)
             };
             style.normal.textColor = LoogaEditorStyle.TextColor;
             return style;
