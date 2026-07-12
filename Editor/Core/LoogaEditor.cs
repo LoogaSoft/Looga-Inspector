@@ -25,7 +25,7 @@ namespace LoogaSoft.Inspector.Editor
         private int _hoveredListIndex = -1;
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
-        private static readonly Dictionary<Type, StatusBoxAttribute[]> _statusBoxCache = new();
+        private static readonly Dictionary<Type, NoticeAttribute[]> _noticeCache = new();
         private static readonly Dictionary<Type, OpenEditorWindowAttribute[]> _openWindowCache = new();
         
         #region Built-In
@@ -77,7 +77,7 @@ namespace LoogaSoft.Inspector.Editor
         protected void DrawHeaderAttributes(Type inspectedType)
         {
             DrawInspectorMessages(inspectedType);
-            DrawStatusBoxes(inspectedType);
+            DrawNotices(inspectedType);
             DrawOpenEditorWindowButtons(inspectedType);
         }
 
@@ -115,36 +115,36 @@ namespace LoogaSoft.Inspector.Editor
             return false;
         }
 
-        private void DrawStatusBoxes(Type inspectedType)
+        private void DrawNotices(Type inspectedType)
         {
-            StatusBoxAttribute[] statusBoxes = GetStatusBoxes(inspectedType);
-            if (statusBoxes.Length == 0)
+            NoticeAttribute[] notices = GetNotices(inspectedType);
+            if (notices.Length == 0)
                 return;
 
-            for (int i = 0; i < statusBoxes.Length; i++)
+            for (int i = 0; i < notices.Length; i++)
             {
-                StatusBoxAttribute statusBox = statusBoxes[i];
-                if (!ShouldDrawStatusBox(statusBox, out string message))
+                NoticeAttribute notice = notices[i];
+                if (!ShouldDrawNotice(notice, out string message))
                     continue;
 
-                Rect statusRect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetStatusBoxHeight(message));
-                bool hasAction = !string.IsNullOrWhiteSpace(statusBox.AssetPath) || !string.IsNullOrWhiteSpace(statusBox.MenuPath);
-                string tooltip = string.IsNullOrWhiteSpace(statusBox.ActionTooltip) ? "Open" : statusBox.ActionTooltip;
-                if (LoogaGUI.StatusBox(statusRect, message, statusBox.Type, hasAction, statusBox.ButtonLabel, tooltip))
-                    ExecuteStatusBoxAction(statusBox, !string.IsNullOrWhiteSpace(statusBox.AssetPath));
+                Rect statusRect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetNoticeHeight(message));
+                bool hasAction = !string.IsNullOrWhiteSpace(notice.AssetPath) || !string.IsNullOrWhiteSpace(notice.MenuPath);
+                string tooltip = string.IsNullOrWhiteSpace(notice.ActionTooltip) ? "Open" : notice.ActionTooltip;
+                if (LoogaGUI.Notice(statusRect, message, notice.Type, hasAction, notice.ButtonLabel, tooltip))
+                    ExecuteNoticeAction(notice, !string.IsNullOrWhiteSpace(notice.AssetPath));
                 EditorGUILayout.Space(1f);
             }
         }
 
-        private static void ExecuteStatusBoxAction(StatusBoxAttribute statusBox, bool hasAssetPath)
+        private static void ExecuteNoticeAction(NoticeAttribute notice, bool hasAssetPath)
         {
             if (hasAssetPath)
             {
-                SelectAssetAtPath(statusBox.AssetPath);
+                SelectAssetAtPath(notice.AssetPath);
                 return;
             }
 
-            EditorApplication.ExecuteMenuItem(statusBox.MenuPath);
+            EditorApplication.ExecuteMenuItem(notice.MenuPath);
         }
 
         private static void SelectAssetAtPath(string assetPath)
@@ -163,18 +163,18 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUIUtility.PingObject(asset);
         }
 
-        private bool ShouldDrawStatusBox(StatusBoxAttribute statusBox, out string message)
+        private bool ShouldDrawNotice(NoticeAttribute notice, out string message)
         {
             message = string.Empty;
-            if (statusBox == null)
+            if (notice == null)
                 return false;
 
             for (int i = 0; i < targets.Length; i++)
             {
-                if (!StatusBoxDrawer.ShouldShow(targets[i], statusBox))
+                if (!NoticeDrawer.ShouldShow(targets[i], notice))
                     continue;
 
-                message = StatusBoxDrawer.ResolveMessage(targets[i], statusBox);
+                message = NoticeDrawer.ResolveMessage(targets[i], notice);
                 if (!string.IsNullOrWhiteSpace(message))
                     return true;
             }
@@ -2094,14 +2094,14 @@ namespace LoogaSoft.Inspector.Editor
             return messages;
         }
 
-        private static StatusBoxAttribute[] GetStatusBoxes(Type inspectedType)
+        private static NoticeAttribute[] GetNotices(Type inspectedType)
         {
-            if (_statusBoxCache.TryGetValue(inspectedType, out StatusBoxAttribute[] statusBoxes))
-                return statusBoxes;
+            if (_noticeCache.TryGetValue(inspectedType, out NoticeAttribute[] notices))
+                return notices;
 
-            statusBoxes = inspectedType.GetCustomAttributes<StatusBoxAttribute>(inherit: true).ToArray();
-            _statusBoxCache[inspectedType] = statusBoxes;
-            return statusBoxes;
+            notices = inspectedType.GetCustomAttributes<NoticeAttribute>(inherit: true).ToArray();
+            _noticeCache[inspectedType] = notices;
+            return notices;
         }
 
         private static OpenEditorWindowAttribute[] GetOpenEditorWindowAttributes(Type inspectedType)

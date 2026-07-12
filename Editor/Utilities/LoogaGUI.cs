@@ -10,12 +10,12 @@ namespace LoogaSoft.Inspector.Editor
     /// </summary>
     public static class LoogaGUI
     {
-        private const float StatusBoxPadding = 2f;
-        private const float StatusActionSize = 18f;
-        private const string DefaultStatusActionLabel = "Open";
-        private const float StatusIndicatorSize = 5f;
+        private const float NoticePadding = 2f;
+        private const float NoticeActionSize = 18f;
+        private const string DefaultNoticeActionLabel = "Open";
+        private const float NoticeIndicatorSize = 5f;
 
-        private static Color StatusBackgroundColor => EditorGUIUtility.isProSkin
+        private static Color NoticeBackgroundColor => EditorGUIUtility.isProSkin
             ? new Color(0.225f, 0.225f, 0.225f, 1f)
             : new Color(0.79f, 0.79f, 0.79f, 1f);
         private static GUIStyle _dropdownStyle;
@@ -76,6 +76,59 @@ namespace LoogaSoft.Inspector.Editor
         }
 
 
+        public static bool Notice(
+            Rect position,
+            string message,
+            LoogaNoticeType type = LoogaNoticeType.Info,
+            bool hasAction = false,
+            string actionLabel = "",
+            string actionTooltip = "Open")
+        {
+            Rect rect = LoogaEditorStyle.PixelSnap(position);
+            EditorGUI.DrawRect(rect, NoticeBackgroundColor);
+
+            Rect indicatorRect = new(
+                rect.x + NoticePadding + 1f,
+                rect.y + Mathf.Round((rect.height - NoticeIndicatorSize) * 0.5f),
+                NoticeIndicatorSize,
+                NoticeIndicatorSize);
+            DrawNoticeIndicator(indicatorRect, GetNoticeAccentColor(type));
+
+            if (hasAction && string.IsNullOrWhiteSpace(actionLabel))
+                actionLabel = DefaultNoticeActionLabel;
+
+            float actionWidth = 0f;
+            if (hasAction)
+                actionWidth = Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 14f);
+
+            float labelX = indicatorRect.xMax + NoticePadding + 3f;
+            Rect labelRect = new(
+                labelX,
+                rect.y,
+                Mathf.Max(0f, rect.xMax - labelX - NoticePadding - actionWidth - (hasAction ? NoticePadding : 0f)),
+                rect.height);
+
+            GUI.Label(labelRect, new GUIContent(message), GetNoticeMessageStyle());
+
+            if (!hasAction)
+                return false;
+
+            Rect actionRect = new(
+                rect.xMax - NoticePadding - actionWidth,
+                rect.y + Mathf.Round((rect.height - NoticeActionSize) * 0.5f),
+                actionWidth,
+                NoticeActionSize);
+
+            return GUI.Button(actionRect, new GUIContent(actionLabel, actionTooltip), EditorStyles.miniButton);
+        }
+
+        public static float GetNoticeHeight(string message)
+        {
+            return string.IsNullOrWhiteSpace(message)
+                ? 0f
+                : Mathf.Ceil(EditorGUIUtility.singleLineHeight + NoticePadding * 2f);
+        }
+        [System.Obsolete("Use Notice instead.")]
         public static bool StatusBox(
             Rect position,
             string message,
@@ -84,49 +137,13 @@ namespace LoogaSoft.Inspector.Editor
             string actionLabel = "",
             string actionTooltip = "Open")
         {
-            Rect rect = LoogaEditorStyle.PixelSnap(position);
-            EditorGUI.DrawRect(rect, StatusBackgroundColor);
-
-            Rect indicatorRect = new(
-                rect.x + StatusBoxPadding + 1f,
-                rect.y + Mathf.Round((rect.height - StatusIndicatorSize) * 0.5f),
-                StatusIndicatorSize,
-                StatusIndicatorSize);
-            DrawStatusIndicator(indicatorRect, GetStatusAccentColor(type));
-
-            if (hasAction && string.IsNullOrWhiteSpace(actionLabel))
-                actionLabel = DefaultStatusActionLabel;
-
-            float actionWidth = 0f;
-            if (hasAction)
-                actionWidth = Mathf.Min(150f, EditorStyles.miniButton.CalcSize(new GUIContent(actionLabel)).x + 14f);
-
-            float labelX = indicatorRect.xMax + StatusBoxPadding + 3f;
-            Rect labelRect = new(
-                labelX,
-                rect.y,
-                Mathf.Max(0f, rect.xMax - labelX - StatusBoxPadding - actionWidth - (hasAction ? StatusBoxPadding : 0f)),
-                rect.height);
-
-            GUI.Label(labelRect, new GUIContent(message), GetStatusMessageStyle());
-
-            if (!hasAction)
-                return false;
-
-            Rect actionRect = new(
-                rect.xMax - StatusBoxPadding - actionWidth,
-                rect.y + Mathf.Round((rect.height - StatusActionSize) * 0.5f),
-                actionWidth,
-                StatusActionSize);
-
-            return GUI.Button(actionRect, new GUIContent(actionLabel, actionTooltip), EditorStyles.miniButton);
+            return Notice(position, message, (LoogaNoticeType)(int)type, hasAction, actionLabel, actionTooltip);
         }
 
+        [System.Obsolete("Use GetNoticeHeight instead.")]
         public static float GetStatusBoxHeight(string message)
         {
-            return string.IsNullOrWhiteSpace(message)
-                ? 0f
-                : Mathf.Ceil(EditorGUIUtility.singleLineHeight + StatusBoxPadding * 2f);
+            return GetNoticeHeight(message);
         }
 
         private static Rect GetLabeledFieldRect(Rect position, GUIContent label)
@@ -211,7 +228,7 @@ namespace LoogaSoft.Inspector.Editor
             Handles.color = previous;
             Handles.EndGUI();
         }
-        private static void DrawStatusIndicator(Rect rect, Color color)
+        private static void DrawNoticeIndicator(Rect rect, Color color)
         {
             Rect snapped = LoogaEditorStyle.PixelSnap(rect);
             Vector3 center = new(snapped.center.x, snapped.center.y, 0f);
@@ -227,7 +244,7 @@ namespace LoogaSoft.Inspector.Editor
 
 
 
-        private static GUIStyle GetStatusMessageStyle()
+        private static GUIStyle GetNoticeMessageStyle()
         {
             GUIStyle style = new(EditorStyles.label)
             {
@@ -240,12 +257,12 @@ namespace LoogaSoft.Inspector.Editor
             return style;
         }
 
-        private static Color GetStatusAccentColor(LoogaStatusBoxType type)
+        private static Color GetNoticeAccentColor(LoogaNoticeType type)
         {
             return type switch
             {
-                LoogaStatusBoxType.Warning => new Color(0.95f, 0.68f, 0.22f, 1f),
-                LoogaStatusBoxType.Error => new Color(0.86f, 0.24f, 0.20f, 1f),
+                LoogaNoticeType.Warning => new Color(0.95f, 0.68f, 0.22f, 1f),
+                LoogaNoticeType.Error => new Color(0.86f, 0.24f, 0.20f, 1f),
                 _ => LoogaEditorStyle.ActionAccentColor
             };
         }

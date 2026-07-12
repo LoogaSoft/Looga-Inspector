@@ -1,22 +1,23 @@
+using System;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
 namespace LoogaSoft.Inspector.Editor
 {
-    [CustomPropertyDrawer(typeof(StatusBoxAttribute))]
-    public sealed class StatusBoxDrawer : PropertyDrawerBase
+    [CustomPropertyDrawer(typeof(NoticeAttribute))]
+    public class NoticeDrawer : PropertyDrawerBase
     {
         protected override void OnGUI_Internal(Rect position, SerializedProperty property, GUIContent label)
         {
-            StatusBoxAttribute statusAttribute = (StatusBoxAttribute)attribute;
-            float helpHeight = GetStatusHeight(property, statusAttribute);
-            if (helpHeight > 0f)
+            NoticeAttribute noticeAttribute = (NoticeAttribute)attribute;
+            float noticeHeight = GetNoticeHeight(property, noticeAttribute);
+            if (noticeHeight > 0f)
             {
-                Rect helpRect = new(position.x, position.y, position.width, helpHeight);
-                LoogaGUI.StatusBox(helpRect, ResolveMessage(property, statusAttribute), statusAttribute.Type);
-                position.y += helpHeight + EditorGUIUtility.standardVerticalSpacing;
-                position.height -= helpHeight + EditorGUIUtility.standardVerticalSpacing;
+                Rect noticeRect = new(position.x, position.y, position.width, noticeHeight);
+                LoogaGUI.Notice(noticeRect, ResolveMessage(property, noticeAttribute), noticeAttribute.Type);
+                position.y += noticeHeight + EditorGUIUtility.standardVerticalSpacing;
+                position.height -= noticeHeight + EditorGUIUtility.standardVerticalSpacing;
             }
 
             EditorGUI.PropertyField(position, property, label, true);
@@ -25,57 +26,63 @@ namespace LoogaSoft.Inspector.Editor
         protected override float GetPropertyHeight_Internal(SerializedProperty property, GUIContent label)
         {
             float height = EditorGUI.GetPropertyHeight(property, label, true);
-            float helpHeight = GetStatusHeight(property, (StatusBoxAttribute)attribute);
-            return helpHeight <= 0f ? height : height + helpHeight + EditorGUIUtility.standardVerticalSpacing;
+            float noticeHeight = GetNoticeHeight(property, (NoticeAttribute)attribute);
+            return noticeHeight <= 0f ? height : height + noticeHeight + EditorGUIUtility.standardVerticalSpacing;
         }
 
-        internal static MessageType ToMessageType(LoogaStatusBoxType type)
+        internal static MessageType ToMessageType(LoogaNoticeType type)
         {
             return type switch
             {
-                LoogaStatusBoxType.Warning => MessageType.Warning,
-                LoogaStatusBoxType.Error => MessageType.Error,
+                LoogaNoticeType.Warning => MessageType.Warning,
+                LoogaNoticeType.Error => MessageType.Error,
                 _ => MessageType.Info
             };
         }
 
-        internal static bool ShouldShow(object target, StatusBoxAttribute statusAttribute)
+        internal static bool ShouldShow(object target, NoticeAttribute noticeAttribute)
         {
-            if (statusAttribute == null)
+            if (noticeAttribute == null)
                 return false;
 
-            if (string.IsNullOrWhiteSpace(statusAttribute.Condition))
+            if (string.IsNullOrWhiteSpace(noticeAttribute.Condition))
                 return true;
 
-            bool condition = PropertyUtils.GetConditionValue(target, statusAttribute.Condition);
-            return statusAttribute.Invert ? !condition : condition;
+            bool condition = PropertyUtils.GetConditionValue(target, noticeAttribute.Condition);
+            return noticeAttribute.Invert ? !condition : condition;
         }
 
-        internal static string ResolveMessage(SerializedProperty property, StatusBoxAttribute statusAttribute)
+        internal static string ResolveMessage(SerializedProperty property, NoticeAttribute noticeAttribute)
         {
-            return ResolveMessage(PropertyUtils.GetTargetObjectWithProperty(property), statusAttribute);
+            return ResolveMessage(PropertyUtils.GetTargetObjectWithProperty(property), noticeAttribute);
         }
 
-        internal static string ResolveMessage(object target, StatusBoxAttribute statusAttribute)
+        internal static string ResolveMessage(object target, NoticeAttribute noticeAttribute)
         {
-            if (statusAttribute == null)
+            if (noticeAttribute == null)
                 return string.Empty;
 
-            if (!statusAttribute.UseMember || target == null || string.IsNullOrWhiteSpace(statusAttribute.Message))
-                return statusAttribute.Message ?? string.Empty;
+            if (!noticeAttribute.UseMember || target == null || string.IsNullOrWhiteSpace(noticeAttribute.Message))
+                return noticeAttribute.Message ?? string.Empty;
 
-            object value = LoogaMemberValueUtility.GetValue(target, statusAttribute.Message);
+            object value = LoogaMemberValueUtility.GetValue(target, noticeAttribute.Message);
             return value?.ToString() ?? string.Empty;
         }
 
-        private static float GetStatusHeight(SerializedProperty property, StatusBoxAttribute statusAttribute)
+        private static float GetNoticeHeight(SerializedProperty property, NoticeAttribute noticeAttribute)
         {
             object target = PropertyUtils.GetTargetObjectWithProperty(property);
-            if (!ShouldShow(target, statusAttribute))
+            if (!ShouldShow(target, noticeAttribute))
                 return 0f;
 
-            string message = ResolveMessage(target, statusAttribute);
-            return string.IsNullOrWhiteSpace(message) ? 0f : LoogaGUI.GetStatusBoxHeight(message);
+            string message = ResolveMessage(target, noticeAttribute);
+            return string.IsNullOrWhiteSpace(message) ? 0f : LoogaGUI.GetNoticeHeight(message);
         }
+    }
+
+    [Obsolete("Use NoticeDrawer instead.")]
+    [CustomPropertyDrawer(typeof(StatusBoxAttribute))]
+    public sealed class StatusBoxDrawer : NoticeDrawer
+    {
     }
 }

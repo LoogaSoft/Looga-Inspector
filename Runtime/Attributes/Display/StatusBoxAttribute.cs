@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace LoogaSoft.Inspector.Runtime
 {
-    public enum LoogaStatusBoxType
+    public enum LoogaNoticeType
     {
         Info,
         Warning,
@@ -11,10 +11,10 @@ namespace LoogaSoft.Inspector.Runtime
     }
 
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field, AllowMultiple = true)]
-    public sealed class StatusBoxAttribute : PropertyAttribute, ILoogaAttribute
+    public class NoticeAttribute : PropertyAttribute, ILoogaAttribute
     {
         public readonly string Message;
-        public readonly LoogaStatusBoxType Type;
+        public readonly LoogaNoticeType Type;
 
         public string Condition { get; set; } = string.Empty;
         public bool Invert { get; set; }
@@ -24,10 +24,28 @@ namespace LoogaSoft.Inspector.Runtime
         public string MenuPath { get; set; } = string.Empty;
         public string ActionTooltip { get; set; } = string.Empty;
 
-        public StatusBoxAttribute(string message, LoogaStatusBoxType type = LoogaStatusBoxType.Info)
+        public NoticeAttribute(string message, LoogaNoticeType type = LoogaNoticeType.Info)
         {
             Message = message;
             Type = type;
+        }
+    }
+
+    [Obsolete("Use LoogaNoticeType instead.")]
+    public enum LoogaStatusBoxType
+    {
+        Info,
+        Warning,
+        Error
+    }
+
+    [Obsolete("Use NoticeAttribute instead.")]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Field, AllowMultiple = true)]
+    public sealed class StatusBoxAttribute : NoticeAttribute
+    {
+        public StatusBoxAttribute(string message, LoogaStatusBoxType type = LoogaStatusBoxType.Info)
+            : base(message, (LoogaNoticeType)(int)type)
+        {
         }
     }
 }

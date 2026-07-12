@@ -30,7 +30,7 @@ Runtime/
     Animator/            Animator controller selector attributes.
     Class/               Class-level inspector attributes.
     Decorators/          Header and divider attributes.
-    Display/             Labels, read-only fields, fitted text, status boxes, and tooltip boxes.
+    Display/             Labels, read-only fields, fitted text, noticees, and tooltip boxes.
     Groups/              Foldouts, boxes, tabs, inline rows, and table lists.
     Input/               Dropdowns, enum filters, bool buttons, ranges, and secure strings.
     Rendering/           Shader, material, and volume profile attributes.
@@ -256,34 +256,34 @@ Use inline rows for small scalar values. Prefer boxes, foldouts, or tables for c
 [SerializeField] private float _nextSectionValue;
 ```
 
-`TooltipBoxAttribute` draws an info, warning, or error box above a field.
+`TooltipBoxAttribute` draws an info, warning, or error notice above a field.
 
 ```csharp
 [TooltipBox("Used only while testing.", TooltipType.Warning)]
 [SerializeField] private bool _debugMode;
 ```
 
-`StatusBoxAttribute` draws an info, warning, or error box above a field or at the top of the whole inspector. It can be unconditional, conditional, or use a member as the message.
+`NoticeAttribute` draws an info, warning, or error notice above a field or at the top of the whole inspector. It can be unconditional, conditional, or use a member as the message.
 
 ```csharp
-[StatusBox("Assign a profile before entering play mode.", LoogaStatusBoxType.Warning, Condition = nameof(MissingProfile))]
+[Notice("Assign a profile before entering play mode.", LoogaNoticeType.Warning, Condition = nameof(MissingProfile))]
 [SerializeField] private ScriptableObject _profile;
 
 private bool MissingProfile => _profile == null;
 ```
 
 ```csharp
-[StatusBox(nameof(GetStatusMessage), LoogaStatusBoxType.Info, UseMember = true)]
+[Notice(nameof(GetStatusMessage), LoogaNoticeType.Info, UseMember = true)]
 public sealed class ExampleComponent : MonoBehaviour
 {
     private string GetStatusMessage() => "Ready.";
 }
 ```
 
-A class-level status box can also draw one action button. Use `AssetPath` to select and ping an asset, or `MenuPath` to execute an editor menu item.
+A class-level notice can also draw one action button. Use `AssetPath` to select and ping an asset, or `MenuPath` to execute an editor menu item.
 
 ```csharp
-[StatusBox("Managed by a shared configuration asset.", AssetPath = "Assets/Config/Game Settings.asset", ButtonLabel = "Open Settings")]
+[Notice("Managed by a shared configuration asset.", AssetPath = "Assets/Config/Game Settings.asset", ButtonLabel = "Open Settings")]
 public sealed class ConfiguredComponent : MonoBehaviour
 {
 }

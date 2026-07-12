@@ -1,4 +1,5 @@
 using System;
+using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
 
@@ -62,15 +63,26 @@ namespace LoogaSoft.Inspector.Editor
             BoxSmall(new GUIContent(label), content);
         }
 
-        public static bool StatusBox(
+        public static bool Notice(
             string message,
-            LoogaSoft.Inspector.Runtime.LoogaStatusBoxType type = LoogaSoft.Inspector.Runtime.LoogaStatusBoxType.Info,
+            LoogaNoticeType type = LoogaNoticeType.Info,
             bool hasAction = false,
             string actionLabel = "",
             string actionTooltip = "Open")
         {
-            Rect rect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetStatusBoxHeight(message));
-            return LoogaGUI.StatusBox(rect, message, type, hasAction, actionLabel, actionTooltip);
+            Rect rect = EditorGUILayout.GetControlRect(false, LoogaGUI.GetNoticeHeight(message));
+            return LoogaGUI.Notice(rect, message, type, hasAction, actionLabel, actionTooltip);
+        }
+
+        [Obsolete("Use Notice instead.")]
+        public static bool StatusBox(
+            string message,
+            LoogaStatusBoxType type = LoogaStatusBoxType.Info,
+            bool hasAction = false,
+            string actionLabel = "",
+            string actionTooltip = "Open")
+        {
+            return Notice(message, (LoogaNoticeType)(int)type, hasAction, actionLabel, actionTooltip);
         }
     }
 }
