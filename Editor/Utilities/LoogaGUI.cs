@@ -128,8 +128,8 @@ namespace LoogaSoft.Inspector.Editor
         private static void DrawStatusActionOutline(Rect rect)
         {
             Color outline = EditorGUIUtility.isProSkin
-                ? new Color(0.16f, 0.16f, 0.16f, 1f)
-                : new Color(0.52f, 0.52f, 0.52f, 1f);
+                ? new Color(0.10f, 0.10f, 0.10f, 1f)
+                : new Color(0.42f, 0.42f, 0.42f, 1f);
             Rect snapped = LoogaEditorStyle.PixelSnap(rect);
             float line = LoogaEditorStyle.Pixels(1f);
 
@@ -177,6 +177,7 @@ namespace LoogaSoft.Inspector.Editor
                         : StatusActionColor;
                 Rect background = LoogaEditorStyle.PixelSnap(rect);
                 EditorGUI.DrawRect(background, color);
+                DrawStatusActionOutline(background);
                 DrawOpenGlyph(background, hovered || pressed);
             }
 
@@ -280,6 +281,7 @@ namespace LoogaSoft.Inspector.Editor
         }
     }
 }
+
 
 
 
