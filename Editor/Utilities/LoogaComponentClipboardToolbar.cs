@@ -360,10 +360,8 @@ namespace LoogaSoft.Inspector.Editor
                 if (_toolbar == null)
                     return;
 
-                bool hasClipboard = LoogaComponentClipboard.HasClipboard;
-                DisplayStyle pasteDisplay = hasClipboard ? DisplayStyle.Flex : DisplayStyle.None;
-                _pasteButton.style.display = pasteDisplay;
-                _pasteValuesButton.style.display = pasteDisplay;
+                _pasteButton.style.display = LoogaComponentClipboard.HasPasteableComponents ? DisplayStyle.Flex : DisplayStyle.None;
+                _pasteValuesButton.style.display = LoogaComponentClipboard.HasClipboard ? DisplayStyle.Flex : DisplayStyle.None;
             }
 
             private ToolbarSearchField CreateSearchField()

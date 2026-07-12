@@ -12,6 +12,21 @@ namespace LoogaSoft.Inspector.Editor
         private static string _sourceName;
 
         public static bool HasClipboard => CopiedComponents.Count > 0;
+        public static bool HasPasteableComponents
+        {
+            get
+            {
+                for (int i = 0; i < CopiedComponents.Count; i++)
+                {
+                    Type type = Type.GetType(CopiedComponents[i].TypeName);
+                    if (IsPasteableComponentType(type))
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
         public static int CopiedCount => CopiedComponents.Count;
 
         public static void CopyComponents(GameObject source)
@@ -110,7 +125,7 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     CopiedComponent copied = CopiedComponents[componentIndex];
                     Type type = Type.GetType(copied.TypeName);
-                    if (!IsPasteableComponentType(type))
+                    if (!IsValuePasteableComponentType(type))
                         continue;
 
                     Component[] matchingComponents = targetGameObject.GetComponents(type);
@@ -189,9 +204,6 @@ namespace LoogaSoft.Inspector.Editor
             if (component == null)
                 return;
 
-            if (component is Transform)
-                return;
-
             Type type = component.GetType();
             try
             {
@@ -241,6 +253,11 @@ namespace LoogaSoft.Inspector.Editor
         private static bool IsPasteableComponentType(Type type)
         {
             return type != null && typeof(Component).IsAssignableFrom(type) && !typeof(Transform).IsAssignableFrom(type);
+        }
+
+        private static bool IsValuePasteableComponentType(Type type)
+        {
+            return type != null && typeof(Component).IsAssignableFrom(type);
         }
 
         private static GameObject ResolveGameObject(Object target)
