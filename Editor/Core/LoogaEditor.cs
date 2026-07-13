@@ -1634,7 +1634,6 @@ namespace LoogaSoft.Inspector.Editor
         private void RepaintListHover()
         {
             Repaint();
-            HandleUtility.Repaint();
         }
 
         private static float GetListVisualRowY(SerializedProperty property, Rect contentRect, int rowIndex, int sourceIndex, int dropIndex, float draggedRowHeight)

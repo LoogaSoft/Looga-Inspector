@@ -91,7 +91,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureStyles();
             if (Event.current.type == EventType.MouseMove && fullRect.Contains(Event.current.mousePosition))
-                HandleUtility.Repaint();
+                RepaintMouseOverWindow();
 
             int newSelectedIndex = selectedIndex;
 
@@ -121,7 +121,7 @@ namespace LoogaSoft.Inspector.Editor
                     bool hovered = tabRect.Contains(Event.current.mousePosition);
 
                     if (hovered && Event.current.type == EventType.MouseMove)
-                        HandleUtility.Repaint();
+                        RepaintMouseOverWindow();
 
                     DrawTab(tabRect, tabNames[tabIndex], selected, hovered, localIndex < row.Count - 1);
 
@@ -134,6 +134,11 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             return newSelectedIndex;
+        }
+
+        private static void RepaintMouseOverWindow()
+        {
+            EditorWindow.mouseOverWindow?.Repaint();
         }
 
         private static void DrawRowBackground(Rect rect)
