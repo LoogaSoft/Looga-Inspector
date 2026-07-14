@@ -9,7 +9,16 @@ namespace LoogaSoft.Inspector.Editor
     {
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
-            property.intValue = LoogaGUI.Popup(position, label.text, property.intValue, property.enumDisplayNames);
+            if (property.propertyType != SerializedPropertyType.Enum)
+            {
+                EditorGUI.PropertyField(position, property, label);
+                return;
+            }
+
+            int selectedIndex = Mathf.Clamp(property.enumValueIndex, 0, property.enumDisplayNames.Length - 1);
+            int nextIndex = LoogaGUI.Popup(position, label, selectedIndex, property.enumDisplayNames);
+            if (nextIndex != selectedIndex)
+                property.enumValueIndex = nextIndex;
         }
     }
 }
