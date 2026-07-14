@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -1207,7 +1207,7 @@ namespace LoogaSoft.Inspector.Editor
             if (e.type == EventType.MouseMove && fullRect.Contains(e.mousePosition))
                 Repaint();
 
-            HandleListDragAndDrop(property, fullRect, field);
+            HandleListDragAndDrop(property, boxRect, field);
             DrawListHeaderBackground(boxRect, toggleRect);
 
             bool isExpanded = alwaysExpanded || property.isExpanded;
@@ -1817,10 +1817,12 @@ namespace LoogaSoft.Inspector.Editor
                 return;
 
             SerializedProperty element = property.GetArrayElementAtIndex(index);
-            bool deleteAgain = element.propertyType == SerializedPropertyType.ObjectReference && element.objectReferenceValue != null;
+            bool objectReferenceWithValue = element.propertyType == SerializedPropertyType.ObjectReference && element.objectReferenceValue != null;
             property.DeleteArrayElementAtIndex(index);
 
-            if (deleteAgain)
+            // Object reference arrays can require a second delete: the first clears the reference, the second removes the slot.
+            // Unity may remove immediately in some cases, so re-check the index before the second call.
+            if (objectReferenceWithValue && index < property.arraySize)
                 property.DeleteArrayElementAtIndex(index);
         }
 
@@ -2273,6 +2275,7 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
     }
 }
+
 
 
 
