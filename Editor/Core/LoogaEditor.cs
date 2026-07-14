@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -1816,14 +1816,30 @@ namespace LoogaSoft.Inspector.Editor
             if (index < 0 || index >= property.arraySize)
                 return;
 
+            int previousSize = property.arraySize;
             SerializedProperty element = property.GetArrayElementAtIndex(index);
-            bool objectReferenceWithValue = element.propertyType == SerializedPropertyType.ObjectReference && element.objectReferenceValue != null;
-            property.DeleteArrayElementAtIndex(index);
+            bool objectReferenceElement = element.propertyType == SerializedPropertyType.ObjectReference;
 
-            // Object reference arrays can require a second delete: the first clears the reference, the second removes the slot.
-            // Unity may remove immediately in some cases, so re-check the index before the second call.
-            if (objectReferenceWithValue && index < property.arraySize)
-                property.DeleteArrayElementAtIndex(index);
+            property.DeleteArrayElementAtIndex(index);
+            if (property.arraySize < previousSize)
+                return;
+
+            if (!objectReferenceElement)
+            {
+                property.arraySize = Mathf.Max(0, previousSize - 1);
+                return;
+            }
+
+            // Unity object-reference arrays can clear the clicked slot instead of shrinking the list.
+            // Shift later references left so the row the user clicked is removed, not the row below it.
+            for (int i = index; i < previousSize - 1; i++)
+            {
+                SerializedProperty current = property.GetArrayElementAtIndex(i);
+                SerializedProperty next = property.GetArrayElementAtIndex(i + 1);
+                current.objectReferenceValue = next.objectReferenceValue;
+            }
+
+            property.arraySize = Mathf.Max(0, previousSize - 1);
         }
 
         private void CancelListDrag(string key)
@@ -2275,6 +2291,7 @@ namespace LoogaSoft.Inspector.Editor
         #endregion
     }
 }
+
 
 
 
