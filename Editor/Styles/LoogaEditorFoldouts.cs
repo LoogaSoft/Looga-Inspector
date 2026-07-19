@@ -38,10 +38,19 @@ namespace LoogaSoft.Inspector.Editor
         private static GUIStyle _alternateSmallLayoutFoldoutBox;
         private static Texture2D _flatBoxTexture;
         private static Texture2D _alternateFlatBoxTexture;
+        private static readonly List<Texture2D> GeneratedTextures = new();
         private static EditorWindow _trackedMouseMoveWindow;
         private static bool _mouseMoveUpdateRegistered;
         private static int _boxDepth;
         private static int _containedFoldoutDepth;
+
+        static LoogaEditorFoldouts()
+        {
+            AssemblyReloadEvents.beforeAssemblyReload -= DisposeGeneratedTextures;
+            AssemblyReloadEvents.beforeAssemblyReload += DisposeGeneratedTextures;
+            EditorApplication.quitting -= DisposeGeneratedTextures;
+            EditorApplication.quitting += DisposeGeneratedTextures;
+        }
 
         public static GUIStyle SmallBoxStyle
         {
@@ -1225,7 +1234,25 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             texture.Apply();
+            GeneratedTextures.Add(texture);
             return texture;
+        }
+
+        private static void DisposeGeneratedTextures()
+        {
+            EditorApplication.update -= RepaintTrackedMouseMoveWindow;
+            _mouseMoveUpdateRegistered = false;
+            _trackedMouseMoveWindow = null;
+
+            for (int i = 0; i < GeneratedTextures.Count; i++)
+            {
+                if (GeneratedTextures[i] != null)
+                    UnityEngine.Object.DestroyImmediate(GeneratedTextures[i]);
+            }
+
+            GeneratedTextures.Clear();
+            _flatBoxTexture = null;
+            _alternateFlatBoxTexture = null;
         }
 
         private static Color GetAccentRailColor()

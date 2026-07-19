@@ -56,6 +56,19 @@ namespace LoogaSoft.Inspector.Editor
         {
             EditorApplication.update -= RefreshInspectorButtons;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
+            DestroyGeneratedTexture(ref _generatedPasteIcon);
+            DestroyGeneratedTexture(ref _checkIcon);
+            ScratchElements.Clear();
+            CandidateByComponent.Clear();
+        }
+
+        private static void DestroyGeneratedTexture(ref Texture2D texture)
+        {
+            if (texture == null)
+                return;
+
+            Object.DestroyImmediate(texture);
+            texture = null;
         }
 
         private static void RefreshInspectorButtons()
