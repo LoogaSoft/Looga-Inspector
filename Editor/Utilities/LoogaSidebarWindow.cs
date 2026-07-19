@@ -36,8 +36,11 @@ namespace LoogaSoft.Inspector.Editor
         {
             ApplyMinimumSize();
             EnsureSidebarPages();
-            DrawToolbar();
-            Rect toolbarRect = GUILayoutUtility.GetLastRect();
+            float toolbarHeight = Mathf.Max(
+                EditorGUIUtility.singleLineHeight + EditorGUIUtility.standardVerticalSpacing,
+                EditorStyles.toolbar.fixedHeight);
+            Rect toolbarRect = new(0f, 0f, position.width, toolbarHeight);
+            DrawToolbar(toolbarRect);
             Rect bodyRect = new(
                 0f,
                 toolbarRect.yMax,
@@ -119,15 +122,23 @@ namespace LoogaSoft.Inspector.Editor
             position = current;
         }
 
-        private void DrawToolbar()
+        private void DrawToolbar(Rect toolbarRect)
         {
-            using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
+            GUILayout.BeginArea(toolbarRect);
+            try
             {
-                if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(70f)))
-                    RefreshSelectedPage();
+                using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar, GUILayout.ExpandHeight(true)))
+                {
+                    if (GUILayout.Button("Refresh", EditorStyles.toolbarButton, GUILayout.Width(70f)))
+                        RefreshSelectedPage();
 
-                GUILayout.FlexibleSpace();
-                GUILayout.Label(ModeLabel, EditorStyles.miniLabel);
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(ModeLabel, EditorStyles.miniLabel);
+                }
+            }
+            finally
+            {
+                GUILayout.EndArea();
             }
         }
 
