@@ -572,6 +572,53 @@ Use table lists for compact data rows. Complex preview tools, filtering, or deep
 [SerializeField] private List<RewardEntry> _rewards;
 ```
 
+## Sidebar Workspaces
+
+Use `SidebarLayoutAttribute` and `SidebarSectionAttribute` when one root asset owns several
+configuration areas that should be easy to scan without nested foldouts. Looga Inspector caches
+the field metadata and continues to draw each value through Unity's normal serialized-property
+pipeline, so existing property attributes and drawers still work.
+
+```csharp
+[SidebarLayout]
+public sealed class GameConfiguration : ScriptableObject
+{
+    [SerializeField, ExposeScriptable, SidebarSection("Account", 10)]
+    private AccountConfiguration _account;
+
+    [SerializeField, ExposeScriptable, SidebarSection("Combat", 20)]
+    private CombatConfiguration _combat;
+}
+```
+
+Custom editor windows can use `LoogaSidebarWindow` for feature-owned pages. Each page registers
+with a workspace ID, which lets separate editor assemblies contribute tools without the host
+window knowing their concrete types.
+
+```csharp
+public sealed class OperationsWindow : LoogaSidebarWindow
+{
+    protected override string WorkspaceId => "my-game.operations";
+}
+
+[LoogaSidebarPage("my-game.operations")]
+public sealed class RuntimePage : EditorWindow, ILoogaSidebarPage
+{
+    public string PageId => "runtime";
+    public string DisplayName => "Runtime";
+    public string Description => "Inspect running services.";
+    public int Order => 100;
+
+    public void Attach(EditorWindow host) { }
+    public void DrawPage() { }
+    public void RefreshPage() { }
+}
+```
+
+Sidebar workspaces organize heterogeneous configuration or tooling. `LoogaCatalogAttribute`
+remains the appropriate feature for homogeneous definition lists with add, rename, delete, and
+sub-asset ownership workflows.
+
 ## Assets And Catalogs
 
 ### Scriptable Object Fields

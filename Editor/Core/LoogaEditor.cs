@@ -23,6 +23,7 @@ namespace LoogaSoft.Inspector.Editor
         private double _listDropAnimationStartTime;
         private string _hoveredListKey = string.Empty;
         private int _hoveredListIndex = -1;
+        private LoogaSidebarSerializedView _sidebarView;
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
         private static readonly Dictionary<Type, NoticeAttribute[]> _noticeCache = new();
@@ -63,6 +64,15 @@ namespace LoogaSoft.Inspector.Editor
             DrawHeaderAttributes(target.GetType());
             
             DrawButtons(layout, true);
+
+            if (LoogaSidebarSerializedView.Supports(target.GetType()))
+            {
+                _sidebarView ??= new LoogaSidebarSerializedView();
+                _sidebarView.Draw(serializedObject);
+                DrawButtons(layout, false);
+                serializedObject.ApplyModifiedProperties();
+                return;
+            }
 
             DrawPropertiesScope(rootProperties, target.GetType(), "");
             DrawUnmatchedSerializedProperties(rootProperties, layout);
