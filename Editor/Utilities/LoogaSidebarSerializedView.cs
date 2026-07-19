@@ -19,7 +19,7 @@ namespace LoogaSoft.Inspector.Editor
         private Vector2 _contentScroll;
         private int _selectedSection;
 
-        public bool Draw(SerializedObject serializedObject, float minimumHeight = 240f)
+        public bool Draw(SerializedObject serializedObject, float height = 240f)
         {
             if (serializedObject?.targetObject == null)
                 return false;
@@ -29,13 +29,14 @@ namespace LoogaSoft.Inspector.Editor
                 return false;
 
             _selectedSection = Mathf.Clamp(_selectedSection, 0, sections.Length - 1);
-            using (new EditorGUILayout.HorizontalScope(GUILayout.MinHeight(minimumHeight), GUILayout.ExpandHeight(true)))
+            height = Mathf.Max(1f, height);
+            using (new EditorGUILayout.HorizontalScope(GUILayout.Height(height)))
             {
                 Rect navigationRect = GUILayoutUtility.GetRect(
                     LoogaSidebarGUI.DefaultWidth,
-                    minimumHeight,
+                    height,
                     GUILayout.Width(LoogaSidebarGUI.DefaultWidth),
-                    GUILayout.ExpandHeight(true));
+                    GUILayout.Height(height));
 
                 int previousSelection = _selectedSection;
                 _selectedSection = LoogaSidebarGUI.Navigation(
@@ -51,9 +52,9 @@ namespace LoogaSoft.Inspector.Editor
 
                 Rect divider = GUILayoutUtility.GetRect(
                     LoogaSidebarGUI.DividerWidth,
-                    minimumHeight,
+                    height,
                     GUILayout.Width(LoogaSidebarGUI.DividerWidth),
-                    GUILayout.ExpandHeight(true));
+                    GUILayout.Height(height));
                 LoogaSidebarGUI.Divider(divider);
                 DrawSection(serializedObject, sections[_selectedSection]);
             }

@@ -28,15 +28,26 @@ namespace LoogaSoft.Inspector.Editor
             EnsureStyles();
             EditorGUI.DrawRect(rect, LoogaEditorStyle.BoxColor);
 
-            float contentHeight = itemCount * DefaultRowHeight + 1f;
-            Rect contentRect = new(0f, 0f, rect.width, Mathf.Max(rect.height, contentHeight));
-            nextScroll = GUI.BeginScrollView(rect, scroll, contentRect, false, false);
+            float contentHeight = Mathf.Max(rect.height, itemCount * DefaultRowHeight);
+            bool needsVerticalScrollbar = contentHeight > rect.height;
+            float scrollbarWidth = needsVerticalScrollbar ? GUI.skin.verticalScrollbar.fixedWidth : 0f;
+            float contentWidth = Mathf.Max(1f, rect.width - scrollbarWidth);
+            Rect contentRect = new(0f, 0f, contentWidth, contentHeight);
+            nextScroll = GUI.BeginScrollView(
+                rect,
+                new Vector2(0f, scroll.y),
+                contentRect,
+                false,
+                needsVerticalScrollbar,
+                GUIStyle.none,
+                GUI.skin.verticalScrollbar,
+                GUIStyle.none);
 
             int nextSelection = selectedIndex;
             Event current = Event.current;
             for (int i = 0; i < itemCount; i++)
             {
-                Rect row = LoogaEditorStyle.PixelSnap(new Rect(0f, i * DefaultRowHeight, rect.width, DefaultRowHeight));
+                Rect row = LoogaEditorStyle.PixelSnap(new Rect(0f, i * DefaultRowHeight, contentWidth, DefaultRowHeight));
                 bool selected = i == selectedIndex;
                 bool hovered = row.Contains(current.mousePosition);
                 EditorGUI.DrawRect(row, selected
@@ -66,7 +77,7 @@ namespace LoogaSoft.Inspector.Editor
                 new Rect(0f, 0f, LoogaEditorStyle.Pixels(1f), contentRect.height),
                 LoogaEditorStyle.SeparatorColor);
             EditorGUI.DrawRect(
-                new Rect(rect.width - LoogaEditorStyle.Pixels(1f), 0f, LoogaEditorStyle.Pixels(1f), contentRect.height),
+                new Rect(contentWidth - LoogaEditorStyle.Pixels(1f), 0f, LoogaEditorStyle.Pixels(1f), contentRect.height),
                 LoogaEditorStyle.SeparatorColor);
             GUI.EndScrollView();
             return nextSelection;

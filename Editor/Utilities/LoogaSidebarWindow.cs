@@ -6,21 +6,17 @@ using UnityEngine;
 namespace LoogaSoft.Inspector.Editor
 {
     /// <summary>
-    /// Base editor workspace with an overview and discoverable, feature-owned sidebar pages.
+    /// Base editor workspace with discoverable, feature-owned sidebar pages.
     /// Pages are isolated hidden editor objects, so their normal editor lifecycle remains intact.
     /// </summary>
     public abstract class LoogaSidebarWindow : EditorWindow
     {
-        public const string OverviewPageId = "overview";
-
         private readonly List<ILoogaSidebarPage> _pages = new();
         private readonly List<EditorWindow> _pageObjects = new();
         private Vector2 _navigationScroll;
-        private Vector2 _overviewScroll;
         private int _selectedPage;
 
         protected abstract string WorkspaceId { get; }
-        protected virtual string OverviewDescription => "Open a workspace page from the navigation on the left.";
         protected virtual string ModeLabel => EditorApplication.isPlaying ? "Play Mode" : "Edit Mode";
 
         protected virtual void OnEnable()
@@ -38,15 +34,17 @@ namespace LoogaSoft.Inspector.Editor
         {
             EnsureSidebarPages();
             DrawToolbar();
+            Rect toolbarRect = GUILayoutUtility.GetLastRect();
+            float bodyHeight = Mathf.Max(1f, position.height - toolbarRect.yMax);
 
-            using (new EditorGUILayout.HorizontalScope())
+            using (new EditorGUILayout.HorizontalScope(GUILayout.Height(bodyHeight)))
             {
-                DrawNavigation();
+                DrawNavigation(bodyHeight);
                 Rect divider = GUILayoutUtility.GetRect(
                     LoogaSidebarGUI.DividerWidth,
-                    0f,
+                    bodyHeight,
                     GUILayout.Width(LoogaSidebarGUI.DividerWidth),
-                    GUILayout.ExpandHeight(true));
+                    GUILayout.Height(bodyHeight));
                 LoogaSidebarGUI.Divider(divider);
                 DrawSelectedPage();
             }
@@ -79,13 +77,13 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             _pages.Sort(ComparePages);
-            _selectedPage = Mathf.Clamp(_selectedPage, 0, _pages.Count);
+            _selectedPage = Mathf.Clamp(_selectedPage, 0, Mathf.Max(0, _pages.Count - 1));
         }
 
         protected void SelectSidebarPage(string pageId)
         {
             _selectedPage = 0;
-            if (string.IsNullOrWhiteSpace(pageId) || pageId == OverviewPageId)
+            if (string.IsNullOrWhiteSpace(pageId))
                 return;
 
             for (int i = 0; i < _pages.Count; i++)
@@ -93,7 +91,7 @@ namespace LoogaSoft.Inspector.Editor
                 if (!string.Equals(_pages[i].PageId, pageId, StringComparison.Ordinal))
                     continue;
 
-                _selectedPage = i + 1;
+                _selectedPage = i;
                 return;
             }
         }
@@ -109,31 +107,6 @@ namespace LoogaSoft.Inspector.Editor
             position = current;
         }
 
-        protected virtual void DrawOverview()
-        {
-            _overviewScroll = EditorGUILayout.BeginScrollView(_overviewScroll);
-            EditorGUILayout.LabelField(OverviewDescription, EditorStyles.wordWrappedLabel);
-            GUILayout.Space(10f);
-
-            for (int i = 0; i < _pages.Count; i++)
-            {
-                ILoogaSidebarPage page = _pages[i];
-                LoogaGUILayout.BoxSmall(page.DisplayName, () =>
-                {
-                    using (new EditorGUILayout.HorizontalScope())
-                    {
-                        EditorGUILayout.LabelField(page.Description, EditorStyles.wordWrappedMiniLabel);
-                        GUILayout.Space(8f);
-                        if (GUILayout.Button("Open", EditorStyles.miniButton, GUILayout.Width(64f)))
-                            _selectedPage = i + 1;
-                    }
-                });
-                GUILayout.Space(5f);
-            }
-
-            EditorGUILayout.EndScrollView();
-        }
-
         private void DrawToolbar()
         {
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
@@ -146,20 +119,20 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private void DrawNavigation()
+        private void DrawNavigation(float height)
         {
             Rect navigationRect = GUILayoutUtility.GetRect(
                 LoogaSidebarGUI.DefaultWidth,
-                0f,
+                height,
                 GUILayout.Width(LoogaSidebarGUI.DefaultWidth),
-                GUILayout.ExpandHeight(true));
+                GUILayout.Height(height));
 
             _selectedPage = LoogaSidebarGUI.Navigation(
                 navigationRect,
                 _navigationScroll,
                 _selectedPage,
-                _pages.Count + 1,
-                index => index == 0 ? "Overview" : _pages[index - 1].DisplayName,
+                _pages.Count,
+                index => _pages[index].DisplayName,
                 out _navigationScroll);
         }
 
@@ -168,15 +141,15 @@ namespace LoogaSoft.Inspector.Editor
             using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
             {
                 GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                if (_selectedPage <= 0 || _pages.Count == 0)
+                if (_pages.Count == 0)
                 {
-                    EditorGUILayout.LabelField("Overview", LoogaSidebarGUI.HeaderStyle);
+                    EditorGUILayout.LabelField("No Pages", LoogaSidebarGUI.HeaderStyle);
                     GUILayout.Space(8f);
-                    DrawOverview();
+                    EditorGUILayout.HelpBox("No sidebar pages are registered for this workspace.", MessageType.Info);
                     return;
                 }
 
-                int index = Mathf.Clamp(_selectedPage - 1, 0, _pages.Count - 1);
+                int index = Mathf.Clamp(_selectedPage, 0, _pages.Count - 1);
                 ILoogaSidebarPage page = _pages[index];
                 EditorGUILayout.LabelField(page.DisplayName, LoogaSidebarGUI.HeaderStyle);
                 GUILayout.Space(2f);
@@ -188,15 +161,8 @@ namespace LoogaSoft.Inspector.Editor
 
         private void RefreshSelectedPage()
         {
-            if (_selectedPage <= 0)
-            {
-                for (int i = 0; i < _pages.Count; i++)
-                    _pages[i].RefreshPage();
-            }
-            else
-            {
-                _pages[Mathf.Clamp(_selectedPage - 1, 0, _pages.Count - 1)].RefreshPage();
-            }
+            if (_pages.Count > 0)
+                _pages[Mathf.Clamp(_selectedPage, 0, _pages.Count - 1)].RefreshPage();
 
             Repaint();
         }
