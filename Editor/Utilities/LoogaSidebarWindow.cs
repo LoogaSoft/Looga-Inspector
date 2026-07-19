@@ -18,10 +18,12 @@ namespace LoogaSoft.Inspector.Editor
 
         protected abstract string WorkspaceId { get; }
         protected virtual string ModeLabel => EditorApplication.isPlaying ? "Play Mode" : "Edit Mode";
+        private static readonly Vector2 MinimumWindowSize = new(980f, 520f);
 
         protected virtual void OnEnable()
         {
             wantsMouseMove = true;
+            ApplyMinimumSize();
             EnsureSidebarPages();
         }
 
@@ -32,22 +34,31 @@ namespace LoogaSoft.Inspector.Editor
 
         protected virtual void OnGUI()
         {
+            ApplyMinimumSize();
             EnsureSidebarPages();
             DrawToolbar();
             Rect toolbarRect = GUILayoutUtility.GetLastRect();
-            float bodyHeight = Mathf.Max(1f, position.height - toolbarRect.yMax);
+            Rect bodyRect = new(
+                0f,
+                toolbarRect.yMax,
+                position.width,
+                Mathf.Max(1f, position.height - toolbarRect.yMax));
+            float navigationWidth = Mathf.Min(LoogaSidebarGUI.DefaultWidth, bodyRect.width);
+            Rect navigationRect = new(bodyRect.x, bodyRect.y, navigationWidth, bodyRect.height);
+            Rect dividerRect = new(
+                navigationRect.xMax,
+                bodyRect.y,
+                LoogaSidebarGUI.DividerWidth,
+                bodyRect.height);
+            Rect contentRect = new(
+                dividerRect.xMax,
+                bodyRect.y,
+                Mathf.Max(1f, bodyRect.xMax - dividerRect.xMax),
+                bodyRect.height);
 
-            using (new EditorGUILayout.HorizontalScope(GUILayout.Height(bodyHeight)))
-            {
-                DrawNavigation(bodyHeight);
-                Rect divider = GUILayoutUtility.GetRect(
-                    LoogaSidebarGUI.DividerWidth,
-                    bodyHeight,
-                    GUILayout.Width(LoogaSidebarGUI.DividerWidth),
-                    GUILayout.Height(bodyHeight));
-                LoogaSidebarGUI.Divider(divider);
-                DrawSelectedPage();
-            }
+            DrawNavigation(navigationRect);
+            LoogaSidebarGUI.Divider(dividerRect);
+            DrawSelectedPage(contentRect);
         }
 
         protected void EnsureSidebarPages()
@@ -98,10 +109,11 @@ namespace LoogaSoft.Inspector.Editor
 
         protected void CenterOnMainEditorWindow(Vector2 minimumSize)
         {
+            minSize = Vector2.Max(MinimumWindowSize, minimumSize);
             Rect mainWindow = EditorGUIUtility.GetMainWindowPosition();
             Rect current = position;
-            current.width = Mathf.Max(current.width, minimumSize.x);
-            current.height = Mathf.Max(current.height, minimumSize.y);
+            current.width = Mathf.Max(current.width, minSize.x);
+            current.height = Mathf.Max(current.height, minSize.y);
             current.x = mainWindow.x + (mainWindow.width - current.width) * 0.5f;
             current.y = mainWindow.y + (mainWindow.height - current.height) * 0.5f;
             position = current;
@@ -119,14 +131,8 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private void DrawNavigation(float height)
+        private void DrawNavigation(Rect navigationRect)
         {
-            Rect navigationRect = GUILayoutUtility.GetRect(
-                LoogaSidebarGUI.DefaultWidth,
-                height,
-                GUILayout.Width(LoogaSidebarGUI.DefaultWidth),
-                GUILayout.Height(height));
-
             _selectedPage = LoogaSidebarGUI.Navigation(
                 navigationRect,
                 _navigationScroll,
@@ -136,27 +142,42 @@ namespace LoogaSoft.Inspector.Editor
                 out _navigationScroll);
         }
 
-        private void DrawSelectedPage()
+        private void DrawSelectedPage(Rect contentRect)
         {
-            using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
+            GUILayout.BeginArea(contentRect);
+            try
             {
-                GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                if (_pages.Count == 0)
+                using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
                 {
-                    EditorGUILayout.LabelField("No Pages", LoogaSidebarGUI.HeaderStyle);
-                    GUILayout.Space(8f);
-                    EditorGUILayout.HelpBox("No sidebar pages are registered for this workspace.", MessageType.Info);
-                    return;
-                }
+                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
+                    if (_pages.Count == 0)
+                    {
+                        EditorGUILayout.LabelField("No Pages", LoogaSidebarGUI.HeaderStyle);
+                        GUILayout.Space(8f);
+                        EditorGUILayout.HelpBox("No sidebar pages are registered for this workspace.", MessageType.Info);
+                        return;
+                    }
 
-                int index = Mathf.Clamp(_selectedPage, 0, _pages.Count - 1);
-                ILoogaSidebarPage page = _pages[index];
-                EditorGUILayout.LabelField(page.DisplayName, LoogaSidebarGUI.HeaderStyle);
-                GUILayout.Space(2f);
-                EditorGUILayout.LabelField(page.Description, EditorStyles.wordWrappedMiniLabel);
-                GUILayout.Space(8f);
-                page.DrawPage();
+                    int index = Mathf.Clamp(_selectedPage, 0, _pages.Count - 1);
+                    ILoogaSidebarPage page = _pages[index];
+                    EditorGUILayout.LabelField(page.DisplayName, LoogaSidebarGUI.HeaderStyle);
+                    GUILayout.Space(2f);
+                    EditorGUILayout.LabelField(page.Description, EditorStyles.wordWrappedMiniLabel);
+                    GUILayout.Space(8f);
+                    page.DrawPage();
+                }
             }
+            finally
+            {
+                GUILayout.EndArea();
+            }
+        }
+
+        private void ApplyMinimumSize()
+        {
+            Vector2 minimum = MinimumWindowSize;
+            if (minSize.x < minimum.x || minSize.y < minimum.y)
+                minSize = Vector2.Max(minSize, minimum);
         }
 
         private void RefreshSelectedPage()

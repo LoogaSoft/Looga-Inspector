@@ -30,34 +30,38 @@ namespace LoogaSoft.Inspector.Editor
 
             _selectedSection = Mathf.Clamp(_selectedSection, 0, sections.Length - 1);
             height = Mathf.Max(1f, height);
-            using (new EditorGUILayout.HorizontalScope(GUILayout.Height(height)))
-            {
-                Rect navigationRect = GUILayoutUtility.GetRect(
-                    LoogaSidebarGUI.DefaultWidth,
-                    height,
-                    GUILayout.Width(LoogaSidebarGUI.DefaultWidth),
-                    GUILayout.Height(height));
+            Rect workspaceRect = GUILayoutUtility.GetRect(
+                1f,
+                height,
+                GUILayout.ExpandWidth(true),
+                GUILayout.Height(height));
+            float navigationWidth = Mathf.Min(LoogaSidebarGUI.DefaultWidth, workspaceRect.width);
+            Rect navigationRect = new(workspaceRect.x, workspaceRect.y, navigationWidth, workspaceRect.height);
+            Rect dividerRect = new(
+                navigationRect.xMax,
+                workspaceRect.y,
+                LoogaSidebarGUI.DividerWidth,
+                workspaceRect.height);
+            Rect contentRect = new(
+                dividerRect.xMax,
+                workspaceRect.y,
+                Mathf.Max(1f, workspaceRect.xMax - dividerRect.xMax),
+                workspaceRect.height);
 
-                int previousSelection = _selectedSection;
-                _selectedSection = LoogaSidebarGUI.Navigation(
-                    navigationRect,
-                    _navigationScroll,
-                    _selectedSection,
-                    sections.Length,
-                    index => sections[index].Name,
-                    out _navigationScroll);
+            int previousSelection = _selectedSection;
+            _selectedSection = LoogaSidebarGUI.Navigation(
+                navigationRect,
+                _navigationScroll,
+                _selectedSection,
+                sections.Length,
+                index => sections[index].Name,
+                out _navigationScroll);
 
-                if (_selectedSection != previousSelection)
-                    _contentScroll = Vector2.zero;
+            if (_selectedSection != previousSelection)
+                _contentScroll = Vector2.zero;
 
-                Rect divider = GUILayoutUtility.GetRect(
-                    LoogaSidebarGUI.DividerWidth,
-                    height,
-                    GUILayout.Width(LoogaSidebarGUI.DividerWidth),
-                    GUILayout.Height(height));
-                LoogaSidebarGUI.Divider(divider);
-                DrawSection(serializedObject, sections[_selectedSection]);
-            }
+            LoogaSidebarGUI.Divider(dividerRect);
+            DrawSection(serializedObject, sections[_selectedSection], contentRect);
 
             return true;
         }
@@ -69,34 +73,45 @@ namespace LoogaSoft.Inspector.Editor
                    GetSections(type).Length > 0;
         }
 
-        private void DrawSection(SerializedObject serializedObject, Section section)
+        private void DrawSection(SerializedObject serializedObject, Section section, Rect contentRect)
         {
-            using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
+            GUILayout.BeginArea(contentRect);
+            try
             {
-                GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                EditorGUILayout.LabelField(section.Name, LoogaSidebarGUI.HeaderStyle);
-                GUILayout.Space(8f);
-
-                float previousLabelWidth = EditorGUIUtility.labelWidth;
-                float availableWidth = Mathf.Max(
-                    120f,
-                    EditorGUIUtility.currentViewWidth - LoogaSidebarGUI.DefaultWidth -
-                    LoogaSidebarGUI.DividerWidth - (LoogaSidebarGUI.ContentPadding * 2f));
-                EditorGUIUtility.labelWidth = availableWidth * 0.5f;
-
-                _contentScroll = EditorGUILayout.BeginScrollView(_contentScroll);
-                for (int i = 0; i < section.PropertyNames.Length; i++)
+                using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
                 {
-                    SerializedProperty property = serializedObject.FindProperty(section.PropertyNames[i]);
-                    if (property == null)
-                        continue;
+                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
+                    EditorGUILayout.LabelField(section.Name, LoogaSidebarGUI.HeaderStyle);
+                    GUILayout.Space(8f);
 
-                    EditorGUILayout.PropertyField(property, includeChildren: true);
-                    EditorGUILayout.Space(4f);
+                    float previousLabelWidth = EditorGUIUtility.labelWidth;
+                    float availableWidth = Mathf.Max(
+                        120f,
+                        contentRect.width - (LoogaSidebarGUI.ContentPadding * 2f));
+                    EditorGUIUtility.labelWidth = availableWidth * 0.5f;
+
+                    _contentScroll = EditorGUILayout.BeginScrollView(
+                        _contentScroll,
+                        GUILayout.ExpandWidth(true),
+                        GUILayout.ExpandHeight(true));
+                    for (int i = 0; i < section.PropertyNames.Length; i++)
+                    {
+                        SerializedProperty property = serializedObject.FindProperty(section.PropertyNames[i]);
+                        if (property == null)
+                            continue;
+
+                        EditorGUILayout.PropertyField(property, includeChildren: true);
+                        EditorGUILayout.Space(4f);
+                    }
+
+                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
+                    EditorGUILayout.EndScrollView();
+                    EditorGUIUtility.labelWidth = previousLabelWidth;
                 }
-
-                EditorGUILayout.EndScrollView();
-                EditorGUIUtility.labelWidth = previousLabelWidth;
+            }
+            finally
+            {
+                GUILayout.EndArea();
             }
         }
 
