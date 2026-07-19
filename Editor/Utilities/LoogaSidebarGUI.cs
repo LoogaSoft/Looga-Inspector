@@ -40,8 +40,7 @@ namespace LoogaSoft.Inspector.Editor
                 false,
                 needsVerticalScrollbar,
                 GUIStyle.none,
-                GUI.skin.verticalScrollbar,
-                GUIStyle.none);
+                GUI.skin.verticalScrollbar);
 
             int nextSelection = selectedIndex;
             Event current = Event.current;
