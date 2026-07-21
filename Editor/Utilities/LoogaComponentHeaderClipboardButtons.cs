@@ -26,6 +26,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float IconSize = 11f;
         private const float ButtonGap = 2f;
         private const double CopySuccessSeconds = 1.0d;
+        private const double MaintenanceInterval = 1.0d;
+        private const double CopyFeedbackRefreshInterval = 0.1d;
         private static readonly Color ButtonIdleColor = new(0f, 0f, 0f, 0f);
         private static readonly Color IconTintColor = new(0.78f, 0.78f, 0.78f, 1f);
         private static readonly Color SuccessIconTintColor = new(0.38f, 0.82f, 0.42f, 1f);
@@ -37,17 +39,26 @@ namespace LoogaSoft.Inspector.Editor
         private static readonly FieldInfo AllInspectorsField = InspectorWindowType?.GetField("m_AllInspectors", BindingFlags.NonPublic | BindingFlags.Static);
         private static readonly List<VisualElement> ScratchElements = new();
         private static readonly Dictionary<int, HeaderCandidate> CandidateByComponent = new();
+        private static readonly Dictionary<Type, MemberInfo[]> EditorMembersByElementType = new();
         private static Object _copyIcon;
         private static Object _pasteIcon;
         private static Texture2D _generatedPasteIcon;
         private static Texture2D _checkIcon;
         private static int _copySuccessComponentId;
         private static double _copySuccessUntil;
+        private static double _nextRefreshTime;
+        private static bool _refreshRequested = true;
 
         static LoogaComponentHeaderClipboardButtons()
         {
             EditorApplication.update -= RefreshInspectorButtons;
             EditorApplication.update += RefreshInspectorButtons;
+            Selection.selectionChanged -= RequestRefresh;
+            Selection.selectionChanged += RequestRefresh;
+            EditorApplication.hierarchyChanged -= RequestRefresh;
+            EditorApplication.hierarchyChanged += RequestRefresh;
+            Undo.undoRedoPerformed -= RequestRefresh;
+            Undo.undoRedoPerformed += RequestRefresh;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             AssemblyReloadEvents.beforeAssemblyReload += Dispose;
         }
@@ -55,11 +66,15 @@ namespace LoogaSoft.Inspector.Editor
         private static void Dispose()
         {
             EditorApplication.update -= RefreshInspectorButtons;
+            Selection.selectionChanged -= RequestRefresh;
+            EditorApplication.hierarchyChanged -= RequestRefresh;
+            Undo.undoRedoPerformed -= RequestRefresh;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             DestroyGeneratedTexture(ref _generatedPasteIcon);
             DestroyGeneratedTexture(ref _checkIcon);
             ScratchElements.Clear();
             CandidateByComponent.Clear();
+            EditorMembersByElementType.Clear();
         }
 
         private static void DestroyGeneratedTexture(ref Texture2D texture)
@@ -73,6 +88,14 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void RefreshInspectorButtons()
         {
+            double now = EditorApplication.timeSinceStartup;
+            bool copyFeedbackActive = _copySuccessComponentId != 0 && now < _copySuccessUntil;
+            if (!_refreshRequested && now < _nextRefreshTime)
+                return;
+
+            _refreshRequested = false;
+            _nextRefreshTime = now + (copyFeedbackActive ? CopyFeedbackRefreshInterval : MaintenanceInterval);
+
             if (AllInspectorsField == null || InspectorWindowType == null)
                 return;
 
@@ -180,45 +203,63 @@ namespace LoogaSoft.Inspector.Editor
         private static bool TryGetEditor(VisualElement element, out UnityEditor.Editor editor)
         {
             editor = null;
-            Type type = element.GetType();
-            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-            while (type != null)
+            MemberInfo[] members = GetEditorMembers(element.GetType());
+            for (int i = 0; i < members.Length; i++)
             {
-                FieldInfo[] fields = type.GetFields(Flags);
-                for (int i = 0; i < fields.Length; i++)
+                try
                 {
-                    if (!typeof(UnityEditor.Editor).IsAssignableFrom(fields[i].FieldType))
-                        continue;
-
-                    editor = fields[i].GetValue(element) as UnityEditor.Editor;
-                    if (editor != null)
-                        return true;
+                    editor = members[i] switch
+                    {
+                        FieldInfo field => field.GetValue(element) as UnityEditor.Editor,
+                        PropertyInfo property => property.GetValue(element) as UnityEditor.Editor,
+                        _ => null
+                    };
+                }
+                catch
+                {
+                    editor = null;
                 }
 
-                PropertyInfo[] properties = type.GetProperties(Flags);
-                for (int i = 0; i < properties.Length; i++)
-                {
-                    if (!typeof(UnityEditor.Editor).IsAssignableFrom(properties[i].PropertyType) || properties[i].GetIndexParameters().Length > 0)
-                        continue;
-
-                    try
-                    {
-                        editor = properties[i].GetValue(element) as UnityEditor.Editor;
-                    }
-                    catch
-                    {
-                        editor = null;
-                    }
-
-                    if (editor != null)
-                        return true;
-                }
-
-                type = type.BaseType;
+                if (editor != null)
+                    return true;
             }
 
             return false;
+        }
+
+        private static MemberInfo[] GetEditorMembers(Type elementType)
+        {
+            if (EditorMembersByElementType.TryGetValue(elementType, out MemberInfo[] cached))
+                return cached;
+
+            const BindingFlags Flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+            List<MemberInfo> members = new();
+            Type currentType = elementType;
+            while (currentType != null)
+            {
+                FieldInfo[] fields = currentType.GetFields(Flags);
+                for (int i = 0; i < fields.Length; i++)
+                {
+                    if (typeof(UnityEditor.Editor).IsAssignableFrom(fields[i].FieldType))
+                        members.Add(fields[i]);
+                }
+
+                PropertyInfo[] properties = currentType.GetProperties(Flags);
+                for (int i = 0; i < properties.Length; i++)
+                {
+                    if (typeof(UnityEditor.Editor).IsAssignableFrom(properties[i].PropertyType)
+                        && properties[i].GetIndexParameters().Length == 0)
+                    {
+                        members.Add(properties[i]);
+                    }
+                }
+
+                currentType = currentType.BaseType;
+            }
+
+            cached = members.ToArray();
+            EditorMembersByElementType[elementType] = cached;
+            return cached;
         }
 
         private static void EnsureButtonContainer(VisualElement editorElement, Component component, Object[] targets)
@@ -355,6 +396,12 @@ namespace LoogaSoft.Inspector.Editor
 
             _copySuccessComponentId = component.GetInstanceID();
             _copySuccessUntil = EditorApplication.timeSinceStartup + CopySuccessSeconds;
+            RequestRefresh();
+        }
+
+        private static void RequestRefresh()
+        {
+            _refreshRequested = true;
         }
 
         private static bool IsCopySuccessActive(Component component)

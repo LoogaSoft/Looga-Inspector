@@ -29,6 +29,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float ComponentButtonHorizontalPadding = 6f;
         private const float ComponentIconSize = 14f;
         private const float ComponentRowsTopPadding = 0f;
+        private const double MaintenanceInterval = 1.0d;
         private const string CopyIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/copy.svg";
         private const string PasteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/clipboard-paste.svg";
         private const string PasteValuesIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/paste-values.svg";
@@ -45,6 +46,8 @@ namespace LoogaSoft.Inspector.Editor
         private static Object _copyIcon;
         private static Object _pasteIcon;
         private static Object _pasteValuesIcon;
+        private static double _nextRefreshTime;
+        private static bool _refreshRequested = true;
 
         static LoogaComponentClipboardToolbar()
         {
@@ -57,6 +60,10 @@ namespace LoogaSoft.Inspector.Editor
             EditorApplication.update += RefreshInspectorWindows;
             Selection.selectionChanged -= MarkInspectorsDirty;
             Selection.selectionChanged += MarkInspectorsDirty;
+            EditorApplication.hierarchyChanged -= MarkInspectorsDirty;
+            EditorApplication.hierarchyChanged += MarkInspectorsDirty;
+            Undo.undoRedoPerformed -= MarkInspectorsDirty;
+            Undo.undoRedoPerformed += MarkInspectorsDirty;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             AssemblyReloadEvents.beforeAssemblyReload += Dispose;
         }
@@ -65,6 +72,8 @@ namespace LoogaSoft.Inspector.Editor
         {
             EditorApplication.update -= RefreshInspectorWindows;
             Selection.selectionChanged -= MarkInspectorsDirty;
+            EditorApplication.hierarchyChanged -= MarkInspectorsDirty;
+            Undo.undoRedoPerformed -= MarkInspectorsDirty;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
 
             for (int i = Containers.Count - 1; i >= 0; i--)
@@ -75,6 +84,13 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void RefreshInspectorWindows()
         {
+            double now = EditorApplication.timeSinceStartup;
+            if (!_refreshRequested && now < _nextRefreshTime)
+                return;
+
+            _refreshRequested = false;
+            _nextRefreshTime = now + MaintenanceInterval;
+
             if (AllInspectorsField == null || InspectorWindowType == null)
                 return;
 
@@ -115,6 +131,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void MarkInspectorsDirty()
         {
+            _refreshRequested = true;
             for (int i = 0; i < Containers.Count; i++)
                 Containers[i].NeedsSelectionRefresh = true;
         }

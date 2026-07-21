@@ -39,8 +39,6 @@ namespace LoogaSoft.Inspector.Editor
         private static Texture2D _flatBoxTexture;
         private static Texture2D _alternateFlatBoxTexture;
         private static readonly List<Texture2D> GeneratedTextures = new();
-        private static EditorWindow _trackedMouseMoveWindow;
-        private static bool _mouseMoveUpdateRegistered;
         private static int _boxDepth;
         private static int _containedFoldoutDepth;
 
@@ -90,7 +88,7 @@ namespace LoogaSoft.Inspector.Editor
 
             Rect hoverRect = show ? headerRect : boxRect;
             bool containsMouse = hoverRect.Contains(Event.current.mousePosition);
-            RequestMouseMoveRepaint(containsMouse);
+            RequestMouseMoveRepaint();
 
             if (containsMouse)
                 DrawHoverRect(hoverRect);
@@ -192,7 +190,7 @@ namespace LoogaSoft.Inspector.Editor
 
                 Event current = Event.current;
                 bool containsMouse = hoverRect.Contains(current.mousePosition);
-                RequestMouseMoveRepaint(containsMouse);
+                RequestMouseMoveRepaint();
 
                 if (containsMouse)
                     DrawHoverRect(hoverRect);
@@ -388,7 +386,7 @@ namespace LoogaSoft.Inspector.Editor
 
             Event current = Event.current;
             bool containsMouse = clickRect.Contains(current.mousePosition);
-            RequestMouseMoveRepaint(containsMouse);
+            RequestMouseMoveRepaint();
 
             if (containsMouse)
                 DrawHoverRect(clickRect);
@@ -438,7 +436,7 @@ namespace LoogaSoft.Inspector.Editor
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : boxRect;
             bool containsMouse = hoverRect.Contains(current.mousePosition);
-            RequestMouseMoveRepaint(containsMouse);
+            RequestMouseMoveRepaint();
 
             if (containsMouse)
                 DrawHoverRect(hoverRect);
@@ -513,7 +511,7 @@ namespace LoogaSoft.Inspector.Editor
             Event current = Event.current;
             Rect hoverRect = show ? headerRect : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
             bool containsMouse = hoverRect.Contains(current.mousePosition);
-            RequestMouseMoveRepaint(containsMouse);
+            RequestMouseMoveRepaint();
 
             if (containsMouse)
                 DrawHoverRect(hoverRect);
@@ -568,16 +566,14 @@ namespace LoogaSoft.Inspector.Editor
 
             return enabled && show;
         }
-        private static void RequestMouseMoveRepaint(bool containsMouse)
+        private static void RequestMouseMoveRepaint()
         {
             EditorWindow window = EditorWindow.mouseOverWindow;
             if (window == null)
                 return;
 
             window.wantsMouseMove = true;
-            TrackMouseMoveWindow(window);
-
-            if (containsMouse && Event.current.type != EventType.Layout)
+            if (Event.current.type == EventType.MouseMove)
             {
                 window.Repaint();
             }
@@ -722,33 +718,6 @@ namespace LoogaSoft.Inspector.Editor
             {
                 _containedFoldoutDepth = Mathf.Max(0, _containedFoldoutDepth - 1);
             }
-        }
-
-        private static void TrackMouseMoveWindow(EditorWindow window)
-        {
-            _trackedMouseMoveWindow = window;
-
-            if (_mouseMoveUpdateRegistered)
-                return;
-
-            EditorApplication.update += RepaintTrackedMouseMoveWindow;
-            _mouseMoveUpdateRegistered = true;
-        }
-
-        private static void RepaintTrackedMouseMoveWindow()
-        {
-            if (_trackedMouseMoveWindow == null)
-            {
-                EditorApplication.update -= RepaintTrackedMouseMoveWindow;
-                _mouseMoveUpdateRegistered = false;
-                return;
-            }
-
-            if (EditorWindow.mouseOverWindow != _trackedMouseMoveWindow)
-                return;
-
-            _trackedMouseMoveWindow.wantsMouseMove = true;
-            _trackedMouseMoveWindow.Repaint();
         }
 
         private static void ShowPropertyContextMenu(SerializedProperty property)
@@ -1240,10 +1209,6 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DisposeGeneratedTextures()
         {
-            EditorApplication.update -= RepaintTrackedMouseMoveWindow;
-            _mouseMoveUpdateRegistered = false;
-            _trackedMouseMoveWindow = null;
-
             for (int i = 0; i < GeneratedTextures.Count; i++)
             {
                 if (GeneratedTextures[i] != null)
