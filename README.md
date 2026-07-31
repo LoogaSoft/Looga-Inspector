@@ -632,6 +632,8 @@ sub-asset ownership workflows.
 
 If the declared field type has multiple concrete ScriptableObject types, the create button opens a type menu first.
 
+When the owning inspector uses `LoogaEditor`, expanded assets use the complete Looga rendering pipeline rather than Unity's raw nested property drawing. Conditional visibility, read-only rules, styled lists, boxes, foldouts, notices, validation, labels, and nested `ExposeScriptable` fields therefore behave the same inline as they do when the asset is selected directly. Circular inline references are detected and stopped with a warning.
+
 `AssetLinkAttribute` keeps an asset reference compact and adds quick Open/Ping controls. Use it for fields where designers often jump to the assigned asset.
 
 ```csharp
@@ -791,3 +793,23 @@ Only enable optional support when the dependency is installed in the project and
 Prefer Looga Inspector attributes for common inspector shaping: grouping, tabs, conditional fields, validation, inline ScriptableObjects, dropdowns, catalog lists, quick links, and simple tables.
 
 Keep a custom editor or editor window when the workflow needs custom previews, graph editing, search/filter-heavy interfaces, drag-and-drop canvases, asset migration tools, or runtime debugging panels.
+
+Custom inspectors for normal serialized targets should inherit `LoogaEditor`, not `UnityEditor.Editor`. Add bespoke content with `DrawBeforeProperties` and `DrawAfterProperties`; the shared renderer will continue to own ordinary fields and lists.
+
+```csharp
+[CustomEditor(typeof(WeaponProfile))]
+public sealed class WeaponProfileEditor : LoogaEditor
+{
+    protected override void DrawBeforeProperties()
+    {
+        EditorGUILayout.LabelField("Weapon Profile", EditorStyles.boldLabel);
+    }
+
+    protected override void DrawAfterProperties()
+    {
+        DrawValidation((WeaponProfile)target);
+    }
+}
+```
+
+If a specialized editor must place an individual field manually, call `DrawLoogaProperty("_fieldName")` so visibility, enabled state, attributes, and list styling are preserved. Reserve direct `EditorGUILayout.PropertyField` calls for genuinely custom controls or third-party inspectors that intentionally own their complete rendering behavior.

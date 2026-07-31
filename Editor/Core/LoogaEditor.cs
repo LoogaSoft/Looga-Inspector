@@ -24,6 +24,8 @@ namespace LoogaSoft.Inspector.Editor
         private string _hoveredListKey = string.Empty;
         private int _hoveredListIndex = -1;
         private LoogaSidebarSerializedView _sidebarView;
+        private SerializedObject _nestedSerializedObject;
+        private readonly HashSet<int> _inlineObjectStack = new();
         private static readonly Dictionary<Type, InspectorLayout> _layoutCache = new();
         private static readonly Dictionary<Type, LoogaInspectorMessageAttribute[]> _messageCache = new();
         private static readonly Dictionary<Type, NoticeAttribute[]> _noticeCache = new();
@@ -42,18 +44,59 @@ namespace LoogaSoft.Inspector.Editor
             _listDropAnimationStartTime = 0d;
             _hoveredListKey = string.Empty;
             _hoveredListIndex = -1;
+            _nestedSerializedObject = null;
+            _inlineObjectStack.Clear();
         }
 
         public override void OnInspectorGUI()
         {
-            serializedObject.Update();
-            
+            DrawInspectorContents(true, true);
+        }
+
+        /// <summary>
+        /// Called immediately before Looga Inspector draws the target's serialized properties.
+        /// Custom editors should add bespoke controls here instead of replacing the shared property pipeline.
+        /// </summary>
+        protected virtual void DrawBeforeProperties()
+        {
+        }
+
+        /// <summary>
+        /// Called after Looga Inspector draws the target's serialized properties and before changes are applied.
+        /// </summary>
+        protected virtual void DrawAfterProperties()
+        {
+        }
+
+        /// <summary>
+        /// Draws one named property through the same visibility, enabled-state, list, and attribute pipeline
+        /// used by the default Looga inspector.
+        /// </summary>
+        protected SerializedProperty DrawLoogaProperty(string propertyName)
+        {
+            SerializedProperty property = InspectedSerializedObject.FindProperty(propertyName);
+            if (property != null)
+                DrawCustomPropertyField(property);
+
+            return property;
+        }
+
+        private SerializedObject InspectedSerializedObject => _nestedSerializedObject ?? serializedObject;
+        private Object InspectedTarget => InspectedSerializedObject.targetObject;
+        private Object[] InspectedTargets => InspectedSerializedObject.targetObjects;
+
+        private void DrawInspectorContents(bool showScriptField, bool invokeCustomHooks)
+        {
+            SerializedObject inspectedObject = InspectedSerializedObject;
+            Object inspectedTarget = InspectedTarget;
+            inspectedObject.Update();
+
             var rootProperties = GetSerializedProperties();
-            
-            InspectorLayout layout = GetLayoutForType(target.GetType());
-            
-            SerializedProperty scriptProperty = serializedObject.FindProperty("m_Script");
-            if (scriptProperty != null)
+
+            InspectorLayout layout = GetLayoutForType(inspectedTarget.GetType());
+
+            SerializedProperty scriptProperty = inspectedObject.FindProperty("m_Script");
+            if (showScriptField && scriptProperty != null)
             {
                 using (new EditorGUI.DisabledScope(true))
                     EditorGUILayout.PropertyField(scriptProperty);
@@ -61,25 +104,65 @@ namespace LoogaSoft.Inspector.Editor
             
             EditorGUILayout.Space(1f);
 
-            DrawHeaderAttributes(target.GetType());
+            DrawHeaderAttributes(inspectedTarget.GetType());
             
             DrawButtons(layout, true);
 
-            if (LoogaSidebarSerializedView.Supports(target.GetType()))
+            if (invokeCustomHooks)
+                DrawBeforeProperties();
+
+            if (invokeCustomHooks && LoogaSidebarSerializedView.Supports(inspectedTarget.GetType()))
             {
                 _sidebarView ??= new LoogaSidebarSerializedView();
-                _sidebarView.Draw(serializedObject);
+                _sidebarView.Draw(inspectedObject);
                 DrawButtons(layout, false);
-                serializedObject.ApplyModifiedProperties();
+                DrawAfterProperties();
+                inspectedObject.ApplyModifiedProperties();
                 return;
             }
 
-            DrawPropertiesScope(rootProperties, target.GetType(), "");
+            DrawPropertiesScope(rootProperties, inspectedTarget.GetType(), "");
             DrawUnmatchedSerializedProperties(rootProperties, layout);
+
+            if (invokeCustomHooks)
+                DrawAfterProperties();
 
             DrawButtons(layout, false);
             
-            serializedObject.ApplyModifiedProperties();
+            inspectedObject.ApplyModifiedProperties();
+        }
+
+        private void DrawEmbeddedObject(Object embeddedObject, bool showScriptField)
+        {
+            if (embeddedObject == null)
+                return;
+
+            int currentTargetId = InspectedTarget != null ? InspectedTarget.GetInstanceID() : 0;
+            int embeddedTargetId = embeddedObject.GetInstanceID();
+            if (embeddedTargetId == currentTargetId || _inlineObjectStack.Contains(embeddedTargetId))
+            {
+                EditorGUILayout.HelpBox(
+                    "This inline asset contains a circular reference and cannot be expanded further.",
+                    MessageType.Warning);
+                return;
+            }
+
+            bool addedCurrentTarget = currentTargetId != 0 && _inlineObjectStack.Add(currentTargetId);
+            _inlineObjectStack.Add(embeddedTargetId);
+
+            SerializedObject previousObject = _nestedSerializedObject;
+            try
+            {
+                _nestedSerializedObject = new SerializedObject(embeddedObject);
+                DrawInspectorContents(showScriptField, false);
+            }
+            finally
+            {
+                _nestedSerializedObject = previousObject;
+                _inlineObjectStack.Remove(embeddedTargetId);
+                if (addedCurrentTarget)
+                    _inlineObjectStack.Remove(currentTargetId);
+            }
         }
         #endregion
         
@@ -110,10 +193,11 @@ namespace LoogaSoft.Inspector.Editor
 
         private bool ShouldDrawInspectorMessage(LoogaInspectorMessageAttribute message)
         {
-            for (int i = 0; i < targets.Length; i++)
+            Object[] inspectedTargets = InspectedTargets;
+            for (int i = 0; i < inspectedTargets.Length; i++)
             {
                 bool condition = string.IsNullOrWhiteSpace(message.Condition)
-                    || ValidateInputDrawer.GetCondition(targets[i], message.Condition);
+                    || ValidateInputDrawer.GetCondition(inspectedTargets[i], message.Condition);
 
                 if (message.Invert)
                     condition = !condition;
@@ -179,12 +263,13 @@ namespace LoogaSoft.Inspector.Editor
             if (notice == null)
                 return false;
 
-            for (int i = 0; i < targets.Length; i++)
+            Object[] inspectedTargets = InspectedTargets;
+            for (int i = 0; i < inspectedTargets.Length; i++)
             {
-                if (!NoticeDrawer.ShouldShow(targets[i], notice))
+                if (!NoticeDrawer.ShouldShow(inspectedTargets[i], notice))
                     continue;
 
-                message = NoticeDrawer.ResolveMessage(targets[i], notice);
+                message = NoticeDrawer.ResolveMessage(inspectedTargets[i], notice);
                 if (!string.IsNullOrWhiteSpace(message))
                     return true;
             }
@@ -443,7 +528,7 @@ namespace LoogaSoft.Inspector.Editor
             if (!PropertyUtils.IsVisible(property))
                 return;
             
-            DecoratorSystem.DrawDecorators(property, target);
+            DecoratorSystem.DrawDecorators(property, InspectedTarget);
             
             bool propertyEnabled = PropertyUtils.IsEnabled(property);
             bool isList = property.isArray && property.propertyType != SerializedPropertyType.String;
@@ -460,9 +545,25 @@ namespace LoogaSoft.Inspector.Editor
                 {
                     EditorGUI.BeginChangeCheck();
 
+                    ExposeScriptableAttribute exposeAttribute = PropertyUtils.GetAttribute<ExposeScriptableAttribute>(property);
+                    FieldInfo exposedField = metadata?.fieldInfo
+                        ?? ReflectionUtils.GetField(InspectedTarget.GetType(), property.name);
+                    bool drewExposedObject = exposeAttribute != null
+                        && ExposeScriptableDrawer.TryGetScriptableObjectType(exposedField, out Type exposedType);
+
+                    if (drewExposedObject)
+                    {
+                        ExposeScriptableDrawer.DrawLayout(
+                            property,
+                            GetPropertyLabel(property, metadata),
+                            exposeAttribute,
+                            exposedType,
+                            DrawEmbeddedObject);
+                    }
+
                     InlineRowAttribute inlineTypeAttribute = GetStructuredInlineRowAttribute(property, metadata);
                     StructBoxAttribute structBoxAttribute = GetStructuredBoxAttribute(property);
-                    bool drewStructuredProperty = inlineTypeAttribute != null
+                    bool drewStructuredProperty = drewExposedObject || inlineTypeAttribute != null
                         && TryDrawInlineTypeProperty(property, GetPropertyLabel(property, metadata));
 
                     if (!drewStructuredProperty && structBoxAttribute != null)
@@ -519,7 +620,7 @@ namespace LoogaSoft.Inspector.Editor
             InspectorPropertyMetadata metadata,
             LoogaCatalogAttribute catalogAttribute)
         {
-            FieldInfo fieldInfo = metadata?.fieldInfo ?? ReflectionUtils.GetField(target.GetType(), property.name);
+            FieldInfo fieldInfo = metadata?.fieldInfo ?? ReflectionUtils.GetField(InspectedTarget.GetType(), property.name);
             Type entryType = LoogaCatalogDrawer.GetEntryType(fieldInfo?.FieldType);
             if (!LoogaCatalogDrawer.CanDraw(property, entryType))
             {
@@ -1149,8 +1250,9 @@ namespace LoogaSoft.Inspector.Editor
                 if (!ShouldInvokeButton(button))
                     return;
 
-                for (int i = 0; i < targets.Length; i++)
-                    button.method.Invoke(targets[i], null);
+                Object[] inspectedTargets = InspectedTargets;
+                for (int i = 0; i < inspectedTargets.Length; i++)
+                    button.method.Invoke(inspectedTargets[i], null);
             }
         }
 
@@ -1177,7 +1279,7 @@ namespace LoogaSoft.Inspector.Editor
 
         private void DrawLoogaList(SerializedProperty property, ExpandedListAttribute expandedListAttribute)
         {
-            FieldInfo field = ReflectionUtils.GetField(target.GetType(), property.name);
+            FieldInfo field = ReflectionUtils.GetField(InspectedTarget.GetType(), property.name);
             DrawListValidation(property, field);
 
             Event e = Event.current;
@@ -1278,7 +1380,7 @@ namespace LoogaSoft.Inspector.Editor
             if (Attribute.GetCustomAttribute(field, typeof(ValidateInputAttribute)) is not ValidateInputAttribute valInputAttr)
                 return;
 
-            bool condition = ValidateInputDrawer.GetCondition(target, valInputAttr.condition);
+            bool condition = ValidateInputDrawer.GetCondition(InspectedTarget, valInputAttr.condition);
             if (!condition)
                 return;
 
@@ -1914,7 +2016,7 @@ namespace LoogaSoft.Inspector.Editor
         {
             List<SerializedProperty> serializedProperties = new List<SerializedProperty>();
 
-            using SerializedProperty iterator = serializedObject.GetIterator();
+            using SerializedProperty iterator = InspectedSerializedObject.GetIterator();
             
             //get visible properties
             if (iterator.NextVisible(true))
@@ -2162,9 +2264,10 @@ namespace LoogaSoft.Inspector.Editor
             if (string.IsNullOrWhiteSpace(button.enableIf))
                 return true;
 
-            for (int i = 0; i < targets.Length; i++)
+            Object[] inspectedTargets = InspectedTargets;
+            for (int i = 0; i < inspectedTargets.Length; i++)
             {
-                if (PropertyUtils.GetConditionValue(targets[i], button.enableIf))
+                if (PropertyUtils.GetConditionValue(inspectedTargets[i], button.enableIf))
                     return true;
             }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using LoogaSoft.Inspector.Runtime;
 using UnityEditor;
 using UnityEngine;
@@ -110,15 +111,112 @@ namespace LoogaSoft.Inspector.Editor
             EditorGUI.EndProperty();
         }
 
+        /// <summary>
+        /// Draws an exposed asset in layout mode and delegates its expanded contents to the owning inspector.
+        /// This keeps nested assets inside the same Looga rendering pipeline as top-level targets.
+        /// </summary>
+        internal static void DrawLayout(
+            SerializedProperty property,
+            GUIContent label,
+            ExposeScriptableAttribute exposeAttribute,
+            Type scriptableObjectType,
+            Action<UnityEngine.Object, bool> drawInlineObject)
+        {
+            bool objectValid = property.objectReferenceValue != null;
+            bool canCreateAsset = !objectValid && scriptableObjectType != null;
+            float createButtonWidth = GetCreateButtonWidth(exposeAttribute);
+
+            if (objectValid)
+            {
+                string expansionTouchedKey = GetExpansionTouchedKey(property);
+                if (exposeAttribute.expandedByDefault && !SessionState.GetBool(expansionTouchedKey, false))
+                    property.isExpanded = true;
+            }
+
+            EditorGUILayout.BeginVertical(LoogaEditorFoldouts.SmallFoldoutBoxStyle);
+            Rect headerRect = EditorGUILayout.GetControlRect(false, HeaderHeight);
+            Rect contentLineRect = CenterVertically(headerRect, LineHeight);
+            contentLineRect.x = headerRect.x + HeaderLeftInset + HeaderAccentRailWidth;
+            contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset - HeaderAccentRailWidth);
+
+            Rect arrowRect = objectValid ? GetHeaderArrowRect(headerRect) : default;
+            Rect createButtonRect = canCreateAsset
+                ? new Rect(
+                    headerRect.xMax - createButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
+                    contentLineRect.y,
+                    Mathf.Max(0f, createButtonWidth - CreateButtonHorizontalInset * 2f),
+                    LineHeight)
+                : default;
+            Rect rightLimitRect = canCreateAsset
+                ? createButtonRect
+                : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
+            float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentLineRect.width * 0.5f);
+            float labelX = objectValid ? arrowRect.xMax + HeaderFieldGap : contentLineRect.x;
+            Rect labelRect = new(labelX, contentLineRect.y, labelWidth, contentLineRect.height);
+            Rect fieldRect = new(
+                labelRect.xMax + HeaderFieldGap,
+                contentLineRect.y,
+                Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
+                contentLineRect.height);
+
+            Event current = Event.current;
+            if (headerRect.Contains(current.mousePosition))
+                LoogaEditorFoldouts.DrawHoverRect(headerRect);
+
+            EditorGUI.BeginProperty(headerRect, label, property);
+            EditorGUI.LabelField(labelRect, label);
+            UnityEngine.Object newValue = EditorGUI.ObjectField(
+                fieldRect,
+                property.objectReferenceValue,
+                scriptableObjectType ?? typeof(ScriptableObject),
+                false);
+
+            if (newValue != property.objectReferenceValue)
+                property.objectReferenceValue = newValue;
+
+            if (canCreateAsset && GUI.Button(createButtonRect, exposeAttribute.createButtonLabel))
+                ShowCreateMenu(property, scriptableObjectType);
+
+            if (objectValid)
+            {
+                bool previousExpanded = property.isExpanded;
+                property.isExpanded = DrawHeaderFoldout(headerRect, fieldRect, arrowRect, property.isExpanded);
+                if (property.isExpanded != previousExpanded)
+                    SessionState.SetBool(GetExpansionTouchedKey(property), true);
+            }
+
+            EditorGUI.EndProperty();
+
+            if (property.isExpanded && property.objectReferenceValue != null)
+            {
+                EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
+                EditorGUILayout.BeginHorizontal();
+                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingX);
+                EditorGUILayout.BeginVertical();
+                drawInlineObject?.Invoke(property.objectReferenceValue, exposeAttribute.showScriptField);
+                EditorGUILayout.EndVertical();
+                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingX);
+                EditorGUILayout.EndHorizontal();
+                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingY);
+            }
+
+            EditorGUILayout.EndVertical();
+        }
+
         private bool TryGetScriptableObjectType(out Type scriptableObjectType)
         {
-            if (fieldInfo == null)
+            return TryGetScriptableObjectType(fieldInfo, out scriptableObjectType);
+        }
+
+        internal static bool TryGetScriptableObjectType(FieldInfo inspectedField, out Type scriptableObjectType)
+        {
+            if (inspectedField == null)
             {
                 scriptableObjectType = null;
                 return false;
             }
 
-            scriptableObjectType = fieldInfo.FieldType;
+            scriptableObjectType = inspectedField.FieldType;
 
             if (scriptableObjectType.IsArray)
                 scriptableObjectType = scriptableObjectType.GetElementType();
