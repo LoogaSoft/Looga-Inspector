@@ -16,10 +16,8 @@ namespace LoogaSoft.Inspector.Editor
         private const float InspectorHorizontalMargins = 38f;
         private const float NestedContentAllowance = 16f;
         private const float IndentWidth = 15f;
-        private const float ToggleGlyphWidth = 18f;
 
         private static GUIStyle _wrappedLabelStyle;
-        private static GUIStyle _wrappedToggleStyle;
 
         public static int Tabs(int selectedIndex, string[] tabNames, string controlId)
         {
@@ -86,15 +84,14 @@ namespace LoogaSoft.Inspector.Editor
 
         /// <summary>
         /// Draws a serialized property using an inline row while it remains readable, then reflows it for
-        /// narrow inspectors. Boolean properties become full-width checkbox rows; other controls stack
-        /// beneath a naturally wrapping label.
+        /// narrow inspectors. The label receives a wrapping row and the original control is drawn beneath it.
         /// </summary>
         public static void PropertyField(
             SerializedProperty property,
             GUIContent label = null,
             bool includeChildren = true)
         {
-            PropertyField(property, label, includeChildren, !CustomDrawerUtil.HasCustomDrawer(property));
+            PropertyField(property, label, includeChildren, allowResponsiveLayout: true);
         }
 
         internal static void PropertyField(
@@ -108,12 +105,6 @@ namespace LoogaSoft.Inspector.Editor
             if (!allowResponsiveLayout || !ShouldReflow(property, label))
             {
                 EditorGUILayout.PropertyField(property, label, includeChildren);
-                return;
-            }
-
-            if (property.propertyType == SerializedPropertyType.Boolean)
-            {
-                DrawWrappedBoolean(property, label);
                 return;
             }
 
@@ -140,33 +131,6 @@ namespace LoogaSoft.Inspector.Editor
 
             return measuredLabelWidth > inlineLabelWidth
                 || controlWidth < GetMinimumControlWidth(property.propertyType);
-        }
-
-        private static void DrawWrappedBoolean(SerializedProperty property, GUIContent label)
-        {
-            float estimatedWidth = GetEstimatedContentWidth();
-            float labelWidth = Mathf.Max(1f, estimatedWidth - ToggleGlyphWidth);
-            float height = Mathf.Max(
-                EditorGUIUtility.singleLineHeight,
-                WrappedLabelStyle.CalcHeight(label, labelWidth));
-
-            Rect rowRect = EditorGUILayout.GetControlRect(false, height);
-            Rect contentRect = EditorGUI.IndentedRect(rowRect);
-            int previousIndent = EditorGUI.indentLevel;
-            bool previousMixedValue = EditorGUI.showMixedValue;
-
-            EditorGUI.indentLevel = 0;
-            EditorGUI.showMixedValue = property.hasMultipleDifferentValues;
-            EditorGUI.BeginProperty(contentRect, label, property);
-            EditorGUI.BeginChangeCheck();
-
-            bool value = EditorGUI.ToggleLeft(contentRect, label, property.boolValue, WrappedToggleStyle);
-            if (EditorGUI.EndChangeCheck())
-                property.boolValue = value;
-
-            EditorGUI.EndProperty();
-            EditorGUI.showMixedValue = previousMixedValue;
-            EditorGUI.indentLevel = previousIndent;
         }
 
         private static void DrawStackedProperty(
@@ -251,11 +215,5 @@ namespace LoogaSoft.Inspector.Editor
             fixedHeight = 0f
         };
 
-        private static GUIStyle WrappedToggleStyle => _wrappedToggleStyle ??= new GUIStyle(EditorStyles.toggle)
-        {
-            wordWrap = true,
-            clipping = TextClipping.Clip,
-            fixedHeight = 0f
-        };
     }
 }

@@ -605,7 +605,7 @@ namespace LoogaSoft.Inspector.Editor
                                     property,
                                     GetPropertyLabel(property, metadata),
                                     includeChildren: false,
-                                    allowResponsiveLayout: !hasCustomDrawer);
+                                    allowResponsiveLayout: true);
 
                                 if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
                                     property.hasVisibleChildren && property.isExpanded)
@@ -712,7 +712,7 @@ namespace LoogaSoft.Inspector.Editor
                 property,
                 GetPropertyLabel(property, metadata),
                 includeChildren: true,
-                allowResponsiveLayout: !hasCustomDrawer);
+                allowResponsiveLayout: true);
         }
 
         private void DrawToggleFoldoutProperty(SerializedProperty property, LoogaToggleFoldoutAttribute toggleFoldoutAttribute, InspectorPropertyMetadata metadata = null)
@@ -769,7 +769,7 @@ namespace LoogaSoft.Inspector.Editor
                 property,
                 GetPropertyLabel(property, metadata),
                 includeChildren: true,
-                allowResponsiveLayout: !hasCustomDrawer);
+                allowResponsiveLayout: true);
         }
 
         private SerializedProperty ResolveToggleProperty(SerializedProperty property, string togglePropertyName)
@@ -816,7 +816,7 @@ namespace LoogaSoft.Inspector.Editor
                 property,
                 GetPropertyLabel(property, metadata),
                 includeChildren: true,
-                allowResponsiveLayout: !hasCustomDrawer);
+                allowResponsiveLayout: true);
         }
 
         private void DrawStyledGroup(
