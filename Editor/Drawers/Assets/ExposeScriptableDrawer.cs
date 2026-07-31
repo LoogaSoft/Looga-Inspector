@@ -133,76 +133,71 @@ namespace LoogaSoft.Inspector.Editor
                     property.isExpanded = true;
             }
 
-            GUIStyle boxStyle = LoogaEditorFoldouts.SmallFoldoutBoxStyle;
-            EditorGUILayout.BeginVertical(boxStyle);
-            Rect headerRect = EditorGUILayout.GetControlRect(false, HeaderHeight);
-            Rect visualHeaderRect = GetLayoutHeaderRect(headerRect, boxStyle);
-            Rect contentLineRect = CenterVertically(headerRect, LineHeight);
-            contentLineRect.x = headerRect.x + HeaderLeftInset + HeaderAccentRailWidth;
-            contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset - HeaderAccentRailWidth);
-
-            Rect arrowRect = objectValid ? GetHeaderArrowRect(headerRect) : default;
-            Rect createButtonRect = canCreateAsset
-                ? new Rect(
-                    headerRect.xMax - createButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
+            using (LoogaEditorFoldouts.BeginSmallFoldoutLayout(
+                       property.isExpanded,
+                       out Rect headerRect,
+                       out Rect clickRect))
+            {
+                Rect contentLineRect = LoogaEditorFoldouts.GetSmallFoldoutHeaderContentRect(
+                    headerRect,
+                    objectValid);
+                Rect arrowRect = objectValid
+                    ? LoogaEditorFoldouts.GetSmallFoldoutArrowRect(headerRect)
+                    : default;
+                Rect createButtonRect = canCreateAsset
+                    ? new Rect(
+                        headerRect.xMax - createButtonWidth - CreateButtonPadding + CreateButtonHorizontalInset,
+                        contentLineRect.y,
+                        Mathf.Max(0f, createButtonWidth - CreateButtonHorizontalInset * 2f),
+                        LineHeight)
+                    : default;
+                Rect rightLimitRect = canCreateAsset
+                    ? createButtonRect
+                    : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
+                float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentLineRect.width * 0.5f);
+                Rect labelRect = new(contentLineRect.x, contentLineRect.y, labelWidth, contentLineRect.height);
+                Rect fieldRect = new(
+                    labelRect.xMax + HeaderFieldGap,
                     contentLineRect.y,
-                    Mathf.Max(0f, createButtonWidth - CreateButtonHorizontalInset * 2f),
-                    LineHeight)
-                : default;
-            Rect rightLimitRect = canCreateAsset
-                ? createButtonRect
-                : new Rect(headerRect.xMax, headerRect.y, 0f, headerRect.height);
-            float labelWidth = Mathf.Clamp(EditorGUIUtility.labelWidth * 0.65f, 90f, contentLineRect.width * 0.5f);
-            float labelX = objectValid ? arrowRect.xMax + HeaderFieldGap : contentLineRect.x;
-            Rect labelRect = new(labelX, contentLineRect.y, labelWidth, contentLineRect.height);
-            Rect fieldRect = new(
-                labelRect.xMax + HeaderFieldGap,
-                contentLineRect.y,
-                Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
-                contentLineRect.height);
+                    Mathf.Max(0f, rightLimitRect.x - labelRect.xMax - GetFieldRightGap(canCreateAsset)),
+                    contentLineRect.height);
 
-            Event current = Event.current;
-            if (visualHeaderRect.Contains(current.mousePosition))
-                LoogaEditorFoldouts.DrawHoverRect(visualHeaderRect);
+                Event current = Event.current;
+                if (clickRect.Contains(current.mousePosition))
+                    LoogaEditorFoldouts.DrawHoverRect(clickRect);
 
-            EditorGUI.BeginProperty(headerRect, label, property);
-            EditorGUI.LabelField(labelRect, label);
-            UnityEngine.Object newValue = EditorGUI.ObjectField(
-                fieldRect,
-                property.objectReferenceValue,
-                scriptableObjectType ?? typeof(ScriptableObject),
-                false);
+                EditorGUI.BeginProperty(headerRect, label, property);
+                EditorGUI.LabelField(labelRect, label);
+                UnityEngine.Object newValue = EditorGUI.ObjectField(
+                    fieldRect,
+                    property.objectReferenceValue,
+                    scriptableObjectType ?? typeof(ScriptableObject),
+                    false);
 
-            if (newValue != property.objectReferenceValue)
-                property.objectReferenceValue = newValue;
+                if (newValue != property.objectReferenceValue)
+                    property.objectReferenceValue = newValue;
 
-            if (canCreateAsset && GUI.Button(createButtonRect, exposeAttribute.createButtonLabel))
-                ShowCreateMenu(property, scriptableObjectType);
+                if (canCreateAsset && GUI.Button(createButtonRect, exposeAttribute.createButtonLabel))
+                    ShowCreateMenu(property, scriptableObjectType);
 
-            if (objectValid)
-            {
-                bool previousExpanded = property.isExpanded;
-                property.isExpanded = DrawHeaderFoldout(visualHeaderRect, fieldRect, arrowRect, property.isExpanded);
-                if (property.isExpanded != previousExpanded)
-                    SessionState.SetBool(GetExpansionTouchedKey(property), true);
+                if (objectValid)
+                {
+                    bool previousExpanded = property.isExpanded;
+                    property.isExpanded = DrawHeaderFoldout(clickRect, fieldRect, arrowRect, property.isExpanded);
+                    if (property.isExpanded != previousExpanded)
+                        SessionState.SetBool(GetExpansionTouchedKey(property), true);
+                }
+
+                EditorGUI.EndProperty();
+
+                if (property.isExpanded && property.objectReferenceValue != null)
+                {
+                    EditorGUILayout.Space(2f);
+                    using (LoogaEditorFoldouts.ContainedFoldoutScope())
+                        drawInlineObject?.Invoke(property.objectReferenceValue, exposeAttribute.showScriptField);
+                    EditorGUILayout.Space(2f);
+                }
             }
-
-            EditorGUI.EndProperty();
-
-            if (property.isExpanded && property.objectReferenceValue != null)
-            {
-                EditorGUILayout.Space(EditorGUIUtility.standardVerticalSpacing);
-                EditorGUILayout.BeginHorizontal();
-                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingX);
-                EditorGUILayout.BeginVertical();
-                drawInlineObject?.Invoke(property.objectReferenceValue, exposeAttribute.showScriptField);
-                EditorGUILayout.EndVertical();
-                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingX);
-                EditorGUILayout.EndHorizontal();
-                GUILayout.Space(LoogaEditorFoldouts.SmallPaddingY);
-            }
-
-            EditorGUILayout.EndVertical();
         }
 
         private bool TryGetScriptableObjectType(out Type scriptableObjectType)
@@ -272,15 +267,6 @@ namespace LoogaSoft.Inspector.Editor
         {
             float y = SnapToPixel(container.y + (container.height - height) * 0.5f);
             return new Rect(container.x, y, container.width, height);
-        }
-
-        private static Rect GetLayoutHeaderRect(Rect contentRect, GUIStyle boxStyle)
-        {
-            Rect headerRect = contentRect;
-            headerRect.xMin -= boxStyle.padding.left;
-            headerRect.xMax += boxStyle.padding.right;
-            headerRect.yMin -= boxStyle.padding.top;
-            return headerRect;
         }
 
         private static float SnapToPixel(float value)

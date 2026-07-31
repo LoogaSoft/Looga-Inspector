@@ -68,6 +68,49 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
+        /// <summary>
+        /// Begins the canonical compact foldout layout while leaving header contents to the caller.
+        /// Use this for foldout headers that contain controls in addition to a label.
+        /// </summary>
+        public static IDisposable BeginSmallFoldoutLayout(
+            bool expanded,
+            out Rect headerRect,
+            out Rect clickRect)
+        {
+            EnsureStyles();
+
+            EditorGUILayout.Space(1f);
+            GUIStyle boxStyle = GetSmallLayoutFoldoutBoxStyle();
+            EditorGUILayout.BeginVertical(boxStyle);
+
+            Rect baseRect = GUILayoutUtility.GetRect(GUIContent.none, _smallHeader);
+            Rect boxRect = ContentToBoxRect(baseRect, boxStyle);
+            headerRect = new Rect(
+                boxRect.x,
+                boxRect.y,
+                boxRect.width,
+                baseRect.height + boxStyle.padding.top + 2f);
+            clickRect = expanded
+                ? headerRect
+                : ExpandRectBottom(boxRect, SmallLayoutHoverBottomBleed);
+
+            return new SmallFoldoutLayoutScopeInstance();
+        }
+
+        public static Rect GetSmallFoldoutHeaderContentRect(Rect headerRect, bool includeArrow)
+        {
+            EnsureStyles();
+            return includeArrow
+                ? GetHeaderTextRect(headerRect, 1f, GetSmallLayoutFoldoutBoxStyle())
+                : GetStaticHeaderTextRect(headerRect, 1f);
+        }
+
+        public static Rect GetSmallFoldoutArrowRect(Rect headerRect)
+        {
+            EnsureStyles();
+            return GetHeaderArrowRect(headerRect, GetSmallLayoutFoldoutBoxStyle());
+        }
+
         public static void LoogaFoldoutLarge(string title, string prefKey, bool defaultShow, Action content)
         {
             EnsureStyles();
@@ -717,6 +760,21 @@ namespace LoogaSoft.Inspector.Editor
             public void Dispose()
             {
                 _containedFoldoutDepth = Mathf.Max(0, _containedFoldoutDepth - 1);
+            }
+        }
+
+        private sealed class SmallFoldoutLayoutScopeInstance : IDisposable
+        {
+            private bool _disposed;
+
+            public void Dispose()
+            {
+                if (_disposed)
+                    return;
+
+                _disposed = true;
+                EditorGUILayout.EndVertical();
+                EditorGUILayout.Space(1f);
             }
         }
 
