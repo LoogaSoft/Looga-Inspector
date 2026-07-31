@@ -133,8 +133,10 @@ namespace LoogaSoft.Inspector.Editor
                     property.isExpanded = true;
             }
 
-            EditorGUILayout.BeginVertical(LoogaEditorFoldouts.SmallFoldoutBoxStyle);
+            GUIStyle boxStyle = LoogaEditorFoldouts.SmallFoldoutBoxStyle;
+            EditorGUILayout.BeginVertical(boxStyle);
             Rect headerRect = EditorGUILayout.GetControlRect(false, HeaderHeight);
+            Rect visualHeaderRect = GetLayoutHeaderRect(headerRect, boxStyle);
             Rect contentLineRect = CenterVertically(headerRect, LineHeight);
             contentLineRect.x = headerRect.x + HeaderLeftInset + HeaderAccentRailWidth;
             contentLineRect.width = Mathf.Max(0f, headerRect.width - HeaderLeftInset - HeaderAccentRailWidth);
@@ -160,8 +162,8 @@ namespace LoogaSoft.Inspector.Editor
                 contentLineRect.height);
 
             Event current = Event.current;
-            if (headerRect.Contains(current.mousePosition))
-                LoogaEditorFoldouts.DrawHoverRect(headerRect);
+            if (visualHeaderRect.Contains(current.mousePosition))
+                LoogaEditorFoldouts.DrawHoverRect(visualHeaderRect);
 
             EditorGUI.BeginProperty(headerRect, label, property);
             EditorGUI.LabelField(labelRect, label);
@@ -180,7 +182,7 @@ namespace LoogaSoft.Inspector.Editor
             if (objectValid)
             {
                 bool previousExpanded = property.isExpanded;
-                property.isExpanded = DrawHeaderFoldout(headerRect, fieldRect, arrowRect, property.isExpanded);
+                property.isExpanded = DrawHeaderFoldout(visualHeaderRect, fieldRect, arrowRect, property.isExpanded);
                 if (property.isExpanded != previousExpanded)
                     SessionState.SetBool(GetExpansionTouchedKey(property), true);
             }
@@ -270,6 +272,15 @@ namespace LoogaSoft.Inspector.Editor
         {
             float y = SnapToPixel(container.y + (container.height - height) * 0.5f);
             return new Rect(container.x, y, container.width, height);
+        }
+
+        private static Rect GetLayoutHeaderRect(Rect contentRect, GUIStyle boxStyle)
+        {
+            Rect headerRect = contentRect;
+            headerRect.xMin -= boxStyle.padding.left;
+            headerRect.xMax += boxStyle.padding.right;
+            headerRect.yMin -= boxStyle.padding.top;
+            return headerRect;
         }
 
         private static float SnapToPixel(float value)
