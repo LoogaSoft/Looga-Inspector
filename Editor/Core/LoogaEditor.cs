@@ -548,8 +548,9 @@ namespace LoogaSoft.Inspector.Editor
                     ExposeScriptableAttribute exposeAttribute = PropertyUtils.GetAttribute<ExposeScriptableAttribute>(property);
                     FieldInfo exposedField = metadata?.fieldInfo
                         ?? ReflectionUtils.GetField(InspectedTarget.GetType(), property.name);
+                    Type exposedType = null;
                     bool drewExposedObject = exposeAttribute != null
-                        && ExposeScriptableDrawer.TryGetScriptableObjectType(exposedField, out Type exposedType);
+                        && ExposeScriptableDrawer.TryGetScriptableObjectType(exposedField, out exposedType);
 
                     if (drewExposedObject)
                     {
