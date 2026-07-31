@@ -68,7 +68,15 @@ LoogaGUILayout.BoxSmall("Runtime", () =>
 {
     EditorGUILayout.LabelField("Ready");
 });
+
+LoogaGUILayout.PropertyField(serializedObject.FindProperty("_longPropertyName"));
 ```
+
+`LoogaEditor` uses `LoogaGUILayout.PropertyField` automatically for ordinary serialized fields. Fields keep
+Unity's compact label-and-control row while enough space is available. In a narrow inspector, a field whose
+label would clip or whose control would become unusably small reflows responsively: booleans become a
+full-width checkbox row and other controls move below a naturally wrapping label. Custom property drawers,
+lists, foldouts, and explicit inline rows keep ownership of their specialized layout.
 
 Use `LoogaGUI` when you own exact rects, similar to `EditorGUI` or `GUI`:
 

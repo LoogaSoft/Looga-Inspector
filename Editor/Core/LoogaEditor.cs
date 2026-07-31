@@ -601,7 +601,11 @@ namespace LoogaSoft.Inspector.Editor
                             }
                             else
                             {
-                                EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), false);
+                                LoogaGUILayout.PropertyField(
+                                    property,
+                                    GetPropertyLabel(property, metadata),
+                                    includeChildren: false,
+                                    allowResponsiveLayout: !hasCustomDrawer);
 
                                 if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
                                     property.hasVisibleChildren && property.isExpanded)
@@ -704,7 +708,11 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+            LoogaGUILayout.PropertyField(
+                property,
+                GetPropertyLabel(property, metadata),
+                includeChildren: true,
+                allowResponsiveLayout: !hasCustomDrawer);
         }
 
         private void DrawToggleFoldoutProperty(SerializedProperty property, LoogaToggleFoldoutAttribute toggleFoldoutAttribute, InspectorPropertyMetadata metadata = null)
@@ -757,7 +765,11 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+            LoogaGUILayout.PropertyField(
+                property,
+                GetPropertyLabel(property, metadata),
+                includeChildren: true,
+                allowResponsiveLayout: !hasCustomDrawer);
         }
 
         private SerializedProperty ResolveToggleProperty(SerializedProperty property, string togglePropertyName)
@@ -800,7 +812,11 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+            LoogaGUILayout.PropertyField(
+                property,
+                GetPropertyLabel(property, metadata),
+                includeChildren: true,
+                allowResponsiveLayout: !hasCustomDrawer);
         }
 
         private void DrawStyledGroup(
