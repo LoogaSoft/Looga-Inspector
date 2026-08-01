@@ -601,11 +601,7 @@ namespace LoogaSoft.Inspector.Editor
                             }
                             else
                             {
-                                LoogaGUILayout.PropertyField(
-                                    property,
-                                    GetPropertyLabel(property, metadata),
-                                    includeChildren: false,
-                                    allowResponsiveLayout: true);
+                                EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), false);
 
                                 if (!hasCustomDrawer && property.propertyType == SerializedPropertyType.Generic &&
                                     property.hasVisibleChildren && property.isExpanded)
@@ -708,11 +704,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            LoogaGUILayout.PropertyField(
-                property,
-                GetPropertyLabel(property, metadata),
-                includeChildren: true,
-                allowResponsiveLayout: true);
+            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
         }
 
         private void DrawToggleFoldoutProperty(SerializedProperty property, LoogaToggleFoldoutAttribute toggleFoldoutAttribute, InspectorPropertyMetadata metadata = null)
@@ -765,11 +757,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            LoogaGUILayout.PropertyField(
-                property,
-                GetPropertyLabel(property, metadata),
-                includeChildren: true,
-                allowResponsiveLayout: true);
+            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
         }
 
         private SerializedProperty ResolveToggleProperty(SerializedProperty property, string togglePropertyName)
@@ -812,11 +800,7 @@ namespace LoogaSoft.Inspector.Editor
                 return;
             }
 
-            LoogaGUILayout.PropertyField(
-                property,
-                GetPropertyLabel(property, metadata),
-                includeChildren: true,
-                allowResponsiveLayout: true);
+            EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
         }
 
         private void DrawStyledGroup(
