@@ -48,6 +48,7 @@ namespace LoogaSoft.Inspector.Editor
         private static Object _pasteValuesIcon;
         private static double _nextRefreshTime;
         private static bool _refreshRequested = true;
+        private static bool _suspended;
 
         static LoogaComponentClipboardToolbar()
         {
@@ -64,6 +65,8 @@ namespace LoogaSoft.Inspector.Editor
             EditorApplication.hierarchyChanged += MarkInspectorsDirty;
             Undo.undoRedoPerformed -= MarkInspectorsDirty;
             Undo.undoRedoPerformed += MarkInspectorsDirty;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             AssemblyReloadEvents.beforeAssemblyReload += Dispose;
         }
@@ -74,8 +77,28 @@ namespace LoogaSoft.Inspector.Editor
             Selection.selectionChanged -= MarkInspectorsDirty;
             EditorApplication.hierarchyChanged -= MarkInspectorsDirty;
             Undo.undoRedoPerformed -= MarkInspectorsDirty;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
 
+            DetachFromInspectors();
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state is PlayModeStateChange.ExitingEditMode or PlayModeStateChange.ExitingPlayMode)
+            {
+                _suspended = true;
+                DetachFromInspectors();
+                return;
+            }
+
+            _suspended = false;
+            _refreshRequested = true;
+            EditorApplication.delayCall += MarkInspectorsDirty;
+        }
+
+        private static void DetachFromInspectors()
+        {
             for (int i = Containers.Count - 1; i >= 0; i--)
                 Containers[i].RemoveToolbar();
 
@@ -84,6 +107,9 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void RefreshInspectorWindows()
         {
+            if (_suspended || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                return;
+
             double now = EditorApplication.timeSinceStartup;
             if (!_refreshRequested && now < _nextRefreshTime)
                 return;

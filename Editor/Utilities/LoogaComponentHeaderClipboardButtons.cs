@@ -48,6 +48,7 @@ namespace LoogaSoft.Inspector.Editor
         private static double _copySuccessUntil;
         private static double _nextRefreshTime;
         private static bool _refreshRequested = true;
+        private static bool _suspended;
 
         static LoogaComponentHeaderClipboardButtons()
         {
@@ -59,6 +60,8 @@ namespace LoogaSoft.Inspector.Editor
             EditorApplication.hierarchyChanged += RequestRefresh;
             Undo.undoRedoPerformed -= RequestRefresh;
             Undo.undoRedoPerformed += RequestRefresh;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
+            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
             AssemblyReloadEvents.beforeAssemblyReload += Dispose;
         }
@@ -69,12 +72,49 @@ namespace LoogaSoft.Inspector.Editor
             Selection.selectionChanged -= RequestRefresh;
             EditorApplication.hierarchyChanged -= RequestRefresh;
             Undo.undoRedoPerformed -= RequestRefresh;
+            EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             AssemblyReloadEvents.beforeAssemblyReload -= Dispose;
+            RemoveInjectedContainers();
             DestroyGeneratedTexture(ref _generatedPasteIcon);
             DestroyGeneratedTexture(ref _checkIcon);
             ScratchElements.Clear();
             CandidateByComponent.Clear();
             EditorMembersByElementType.Clear();
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange state)
+        {
+            if (state is PlayModeStateChange.ExitingEditMode or PlayModeStateChange.ExitingPlayMode)
+            {
+                _suspended = true;
+                RemoveInjectedContainers();
+                return;
+            }
+
+            _suspended = false;
+            _refreshRequested = true;
+            EditorApplication.delayCall += RequestRefresh;
+        }
+
+        private static void RemoveInjectedContainers()
+        {
+            if (AllInspectorsField?.GetValue(null) is not IList windows)
+                return;
+
+            for (int i = 0; i < windows.Count; i++)
+            {
+                if (windows[i] is not EditorWindow inspectorWindow || inspectorWindow.rootVisualElement == null)
+                    continue;
+
+                ScratchElements.Clear();
+                inspectorWindow.rootVisualElement.Query<VisualElement>(name: ButtonContainerName)
+                    .ForEach(element => ScratchElements.Add(element));
+
+                for (int elementIndex = 0; elementIndex < ScratchElements.Count; elementIndex++)
+                    ScratchElements[elementIndex].RemoveFromHierarchy();
+            }
+
+            ScratchElements.Clear();
         }
 
         private static void DestroyGeneratedTexture(ref Texture2D texture)
@@ -88,6 +128,9 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void RefreshInspectorButtons()
         {
+            if (_suspended || EditorApplication.isCompiling || EditorApplication.isUpdating)
+                return;
+
             double now = EditorApplication.timeSinceStartup;
             bool copyFeedbackActive = _copySuccessComponentId != 0 && now < _copySuccessUntil;
             if (!_refreshRequested && now < _nextRefreshTime)
