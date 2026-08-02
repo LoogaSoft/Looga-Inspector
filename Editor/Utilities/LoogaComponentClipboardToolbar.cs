@@ -294,7 +294,7 @@ namespace LoogaSoft.Inspector.Editor
 
                 RefreshSelectionIfNeeded();
                 GameObject gameObject = ResolveGameObject(_inspectingObject);
-                if (gameObject == null)
+                if (gameObject == null || !LoogaInspectorTargetUtility.IsMutable(gameObject))
                 {
                     RemoveToolbar();
                     return;
@@ -375,7 +375,7 @@ namespace LoogaSoft.Inspector.Editor
                 Button copyButton = CreateIconButton(CopyIcon(), "Copy selected components", () =>
                 {
                     GameObject gameObject = ResolveGameObject(_inspectingObject);
-                    if (gameObject == null)
+                    if (gameObject == null || !LoogaInspectorTargetUtility.IsMutable(gameObject))
                         return;
 
                     LoogaComponentClipboard.CopyComponents(gameObject, _selectedComponentIds);
@@ -384,12 +384,18 @@ namespace LoogaSoft.Inspector.Editor
 
                 _pasteButton = CreateIconButton(PasteIcon(), "Paste components", () =>
                 {
+                    if (!LoogaInspectorTargetUtility.IsMutable(_inspectingObject))
+                        return;
+
                     LoogaComponentClipboard.PasteComponents(new[] { _inspectingObject });
                     RefreshActionButtons();
                 });
 
                 _pasteValuesButton = CreateIconButton(PasteValuesIcon(), "Paste values into matching components", () =>
                 {
+                    if (!LoogaInspectorTargetUtility.IsMutable(_inspectingObject))
+                        return;
+
                     LoogaComponentClipboard.PasteValuesIntoMatchingComponents(new[] { _inspectingObject });
                     RefreshActionButtons();
                 });

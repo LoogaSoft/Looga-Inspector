@@ -127,7 +127,8 @@ namespace LoogaSoft.Inspector.Editor
                 if (!IsLikelyEditorContainer(element) || !TryGetEditor(element, out UnityEditor.Editor editor))
                     continue;
 
-                if (editor.target is not Component component)
+                if (editor.target is not Component component
+                    || !LoogaInspectorTargetUtility.AreMutable(editor.targets))
                     continue;
 
                 int instanceId = component.GetInstanceID();
@@ -296,10 +297,17 @@ namespace LoogaSoft.Inspector.Editor
             Color copyTint = showCopySuccess ? SuccessIconTintColor : IconTintColor;
             Button copyButton = CreateHeaderButton(CopyButtonName, copyIcon, "Copy component", () =>
             {
+                if (!LoogaInspectorTargetUtility.IsMutable(component))
+                    return;
+
                 LoogaComponentClipboard.CopyComponent(component);
                 MarkCopySuccess(component);
             }, copyTint, true, GetCopyIcon());
-            Button pasteButton = CreateHeaderButton(PasteButtonName, GetPasteIcon(), "Paste values into this component", () => LoogaComponentClipboard.PasteValuesIntoComponents(targets), IconTintColor);
+            Button pasteButton = CreateHeaderButton(PasteButtonName, GetPasteIcon(), "Paste values into this component", () =>
+            {
+                if (LoogaInspectorTargetUtility.AreMutable(targets))
+                    LoogaComponentClipboard.PasteValuesIntoComponents(targets);
+            }, IconTintColor);
             pasteButton.style.marginLeft = ButtonGap;
 
             container.Add(copyButton);
