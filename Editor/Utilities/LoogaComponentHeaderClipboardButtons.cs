@@ -88,6 +88,7 @@ namespace LoogaSoft.Inspector.Editor
             {
                 _suspended = true;
                 RemoveInjectedContainers();
+                DestroyOrphanedBuiltInEditors();
                 return;
             }
 
@@ -98,8 +99,13 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void RemoveInjectedContainers()
         {
+            CandidateByComponent.Clear();
+
             if (AllInspectorsField?.GetValue(null) is not IList windows)
+            {
+                ScratchElements.Clear();
                 return;
+            }
 
             for (int i = 0; i < windows.Count; i++)
             {
@@ -115,6 +121,51 @@ namespace LoogaSoft.Inspector.Editor
             }
 
             ScratchElements.Clear();
+        }
+
+        private static void DestroyOrphanedBuiltInEditors()
+        {
+            UnityEditor.Editor[] editors = Resources.FindObjectsOfTypeAll<UnityEditor.Editor>();
+            for (int editorIndex = 0; editorIndex < editors.Length; editorIndex++)
+            {
+                UnityEditor.Editor editor = editors[editorIndex];
+                if (editor == null || !IsBuiltInComponentEditor(editor.GetType()))
+                    continue;
+
+                Object[] targets;
+                try
+                {
+                    targets = editor.targets;
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (targets == null || targets.Length == 0)
+                    continue;
+
+                bool hasLiveTarget = false;
+                for (int targetIndex = 0; targetIndex < targets.Length; targetIndex++)
+                {
+                    if (targets[targetIndex] != null)
+                    {
+                        hasLiveTarget = true;
+                        break;
+                    }
+                }
+
+                if (!hasLiveTarget)
+                    Object.DestroyImmediate(editor);
+            }
+        }
+
+        private static bool IsBuiltInComponentEditor(Type editorType)
+        {
+            string typeName = editorType?.FullName;
+            return typeName is "UnityEditor.GameObjectInspector"
+                or "UnityEditor.TransformInspector"
+                or "UnityEngine.InputSystem.UI.Editor.InputSystemUIInputModuleEditor";
         }
 
         private static void DestroyGeneratedTexture(ref Texture2D texture)
@@ -160,30 +211,41 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void InjectIntoEditorTree(VisualElement root)
         {
-            ScratchElements.Clear();
-            CandidateByComponent.Clear();
-            CollectElements(root, ScratchElements);
-
-            for (int i = 0; i < ScratchElements.Count; i++)
+            try
             {
-                VisualElement element = ScratchElements[i];
-                if (!IsLikelyEditorContainer(element) || !TryGetEditor(element, out UnityEditor.Editor editor))
-                    continue;
+                ScratchElements.Clear();
+                CandidateByComponent.Clear();
+                CollectElements(root, ScratchElements);
 
-                if (editor.target is not Component component
-                    || !LoogaInspectorTargetUtility.AreMutable(editor.targets))
-                    continue;
+                for (int i = 0; i < ScratchElements.Count; i++)
+                {
+                    VisualElement element = ScratchElements[i];
+                    if (!IsLikelyEditorContainer(element) || !TryGetEditor(element, out UnityEditor.Editor editor))
+                        continue;
 
-                int instanceId = component.GetInstanceID();
-                HeaderCandidate candidate = new(element, component, editor.targets, HeaderY(element), IsPreferredEditorElement(element));
-                if (!CandidateByComponent.TryGetValue(instanceId, out HeaderCandidate current) || IsBetterCandidate(candidate, current))
-                    CandidateByComponent[instanceId] = candidate;
+                    if (editor.target is not Component component
+                        || !LoogaInspectorTargetUtility.AreMutable(editor.targets))
+                        continue;
+
+                    int instanceId = component.GetInstanceID();
+                    HeaderCandidate candidate = new(element, component, editor.targets, HeaderY(element), IsPreferredEditorElement(element));
+                    if (!CandidateByComponent.TryGetValue(instanceId, out HeaderCandidate current) || IsBetterCandidate(candidate, current))
+                        CandidateByComponent[instanceId] = candidate;
+                }
+
+                RemoveStaleInjectedContainers(root);
+
+                foreach (HeaderCandidate candidate in CandidateByComponent.Values)
+                    EnsureButtonContainer(candidate.Element, candidate.Component, candidate.Targets);
             }
-
-            RemoveStaleInjectedContainers(root);
-
-            foreach (HeaderCandidate candidate in CandidateByComponent.Values)
-                EnsureButtonContainer(candidate.Element, candidate.Component, candidate.Targets);
+            finally
+            {
+                // EditorElement instances retain their Unity Editor and target array. Never keep
+                // them in static scratch state after this refresh or destroyed scene targets can
+                // survive until the next Play Mode domain reload.
+                ScratchElements.Clear();
+                CandidateByComponent.Clear();
+            }
         }
 
         private static void RemoveStaleInjectedContainers(VisualElement root)
@@ -200,6 +262,8 @@ namespace LoogaSoft.Inspector.Editor
                 if (!activeElements.Contains(container.parent))
                     container.RemoveFromHierarchy();
             }
+
+            ScratchElements.Clear();
         }
 
         private static bool IsBetterCandidate(HeaderCandidate candidate, HeaderCandidate current)
