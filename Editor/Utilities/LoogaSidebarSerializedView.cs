@@ -75,43 +75,62 @@ namespace LoogaSoft.Inspector.Editor
 
         private void DrawSection(SerializedObject serializedObject, Section section, Rect contentRect)
         {
-            GUILayout.BeginArea(contentRect);
+            float padding = LoogaSidebarGUI.ContentPadding;
+            float headerHeight = LoogaSidebarGUI.HeaderStyle.CalcHeight(
+                new GUIContent(section.Name),
+                Mathf.Max(1f, contentRect.width - (padding * 2f)));
+            Rect headerRect = new(
+                contentRect.x,
+                contentRect.y + padding,
+                contentRect.width,
+                headerHeight);
+            GUI.Label(headerRect, section.Name, LoogaSidebarGUI.HeaderStyle);
+
+            float scrollTop = headerRect.yMax + 8f;
+            Rect scrollRect = new(
+                contentRect.x + padding,
+                scrollTop,
+                Mathf.Max(1f, contentRect.width - (padding * 2f)),
+                Mathf.Max(1f, contentRect.yMax - scrollTop));
+
+            float contentHeight = padding;
+            for (int i = 0; i < section.PropertyNames.Length; i++)
+            {
+                SerializedProperty property = serializedObject.FindProperty(section.PropertyNames[i]);
+                if (property == null)
+                    continue;
+
+                contentHeight += EditorGUI.GetPropertyHeight(property, includeChildren: true) + 4f;
+            }
+
+            float contentWidth = Mathf.Max(1f, scrollRect.width -
+                (contentHeight > scrollRect.height ? GUI.skin.verticalScrollbar.fixedWidth : 0f));
+            Rect viewRect = new(0f, 0f, contentWidth, Mathf.Max(scrollRect.height, contentHeight));
+
+            _contentScroll = GUI.BeginScrollView(scrollRect, _contentScroll, viewRect);
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
             try
             {
-                using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
+                EditorGUIUtility.labelWidth = Mathf.Max(60f, contentWidth * 0.5f);
+                float y = 0f;
+                for (int i = 0; i < section.PropertyNames.Length; i++)
                 {
-                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                    EditorGUILayout.LabelField(section.Name, LoogaSidebarGUI.HeaderStyle);
-                    GUILayout.Space(8f);
+                    SerializedProperty property = serializedObject.FindProperty(section.PropertyNames[i]);
+                    if (property == null)
+                        continue;
 
-                    float previousLabelWidth = EditorGUIUtility.labelWidth;
-                    float availableWidth = Mathf.Max(
-                        120f,
-                        contentRect.width - (LoogaSidebarGUI.ContentPadding * 2f));
-                    EditorGUIUtility.labelWidth = availableWidth * 0.5f;
-
-                    _contentScroll = EditorGUILayout.BeginScrollView(
-                        _contentScroll,
-                        GUILayout.ExpandWidth(true),
-                        GUILayout.ExpandHeight(true));
-                    for (int i = 0; i < section.PropertyNames.Length; i++)
-                    {
-                        SerializedProperty property = serializedObject.FindProperty(section.PropertyNames[i]);
-                        if (property == null)
-                            continue;
-
-                        EditorGUILayout.PropertyField(property, includeChildren: true);
-                        EditorGUILayout.Space(4f);
-                    }
-
-                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                    EditorGUILayout.EndScrollView();
-                    EditorGUIUtility.labelWidth = previousLabelWidth;
+                    float propertyHeight = EditorGUI.GetPropertyHeight(property, includeChildren: true);
+                    EditorGUI.PropertyField(
+                        new Rect(0f, y, contentWidth, propertyHeight),
+                        property,
+                        includeChildren: true);
+                    y += propertyHeight + 4f;
                 }
             }
             finally
             {
-                GUILayout.EndArea();
+                EditorGUIUtility.labelWidth = previousLabelWidth;
+                GUI.EndScrollView();
             }
         }
 

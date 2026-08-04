@@ -43,11 +43,12 @@ namespace LoogaSoft.Inspector.Editor
                 GUI.skin.verticalScrollbar);
 
             int nextSelection = selectedIndex;
+            Event current = Event.current;
             for (int i = 0; i < itemCount; i++)
             {
                 Rect row = LoogaEditorStyle.PixelSnap(new Rect(0f, i * DefaultRowHeight, contentWidth, DefaultRowHeight));
                 bool selected = i == selectedIndex;
-                bool hovered = row.Contains(Event.current.mousePosition);
+                bool hovered = row.Contains(current.mousePosition);
                 EditorGUI.DrawRect(row, selected
                     ? LoogaEditorStyle.AlternateBoxColor
                     : hovered ? LoogaEditorStyle.HoverColor : LoogaEditorStyle.BoxColor);
@@ -64,10 +65,11 @@ namespace LoogaSoft.Inspector.Editor
                     new Rect(row.x, row.yMax - LoogaEditorStyle.Pixels(1f), row.width, LoogaEditorStyle.Pixels(1f)),
                     LoogaEditorStyle.SeparatorColor);
 
-                // Use an IMGUI control so Unity handles scroll-view coordinates,
-                // clipping, focus, and input consumption for the navigation row.
-                if (GUI.Button(row, GUIContent.none, GUIStyle.none))
+                if (current.type == EventType.MouseDown && current.button == 0 && hovered)
+                {
                     nextSelection = i;
+                    current.Use();
+                }
             }
 
             EditorGUI.DrawRect(
