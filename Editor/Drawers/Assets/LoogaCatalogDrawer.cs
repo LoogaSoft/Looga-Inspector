@@ -175,7 +175,7 @@ namespace LoogaSoft.Inspector.Editor
                 IconButtonSize));
             using (new EditorGUI.DisabledScope(definition == null))
             {
-                if (DrawIconButton(editRect, GetEditIcon(), "Edit", EditorStyles.miniButtonLeft))
+                if (DrawIconButton(editRect, GetEditIcon(), "Edit"))
                     ToggleEditing(definition);
             }
 
@@ -186,7 +186,7 @@ namespace LoogaSoft.Inspector.Editor
                 IconButtonSize));
             using (new EditorGUI.DisabledScope(!catalog.AllowDelete))
             {
-                if (DrawIconButton(deleteRect, GetDeleteIcon(), "Delete", EditorStyles.miniButtonRight))
+                if (DrawIconButton(deleteRect, GetDeleteIcon(), "Delete"))
                 {
                     DeleteEntry(property, index, definition, catalog);
                 }
@@ -240,9 +240,39 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private static bool DrawIconButton(Rect rect, Texture2D icon, string tooltip, GUIStyle style)
+        private static bool DrawIconButton(Rect rect, Texture2D icon, string tooltip)
         {
-            bool clicked = GUI.Button(rect, new GUIContent(string.Empty, tooltip), style);
+            int controlId = GUIUtility.GetControlID(FocusType.Passive, rect);
+            Event current = Event.current;
+            bool enabled = GUI.enabled;
+            bool hovering = rect.Contains(current.mousePosition);
+            bool clicked = false;
+
+            switch (current.GetTypeForControl(controlId))
+            {
+                case EventType.MouseDown when enabled && hovering && current.button == 0:
+                    GUIUtility.hotControl = controlId;
+                    current.Use();
+                    break;
+
+                case EventType.MouseDrag when GUIUtility.hotControl == controlId:
+                    current.Use();
+                    break;
+
+                case EventType.MouseUp when GUIUtility.hotControl == controlId:
+                    GUIUtility.hotControl = 0;
+                    clicked = enabled && hovering && current.button == 0;
+                    current.Use();
+                    break;
+            }
+
+            bool pressed = enabled && hovering && GUIUtility.hotControl == controlId;
+            DrawIconButtonFrame(rect, enabled, hovering, pressed);
+            EditorGUIUtility.AddCursorRect(rect, enabled ? MouseCursor.Link : MouseCursor.Arrow);
+
+            if (hovering)
+                GUI.Label(rect, new GUIContent(string.Empty, tooltip), GUIStyle.none);
+
             if (icon == null)
                 return clicked;
 
@@ -259,6 +289,28 @@ namespace LoogaSoft.Inspector.Editor
             GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
             GUI.color = previousColor;
             return clicked;
+        }
+
+        private static void DrawIconButtonFrame(Rect rect, bool enabled, bool hovering, bool pressed)
+        {
+            Color fill = LoogaEditorStyle.AccentRailColor;
+            if (!enabled)
+                fill = Color.Lerp(fill, RowColor, 0.55f);
+            else if (pressed)
+                fill = Color.Lerp(fill, Color.black, 0.22f);
+            else if (hovering)
+                fill = Color.Lerp(fill, Color.white, 0.12f);
+
+            Rect frameRect = LoogaEditorStyle.PixelSnap(rect);
+            EditorGUI.DrawRect(frameRect, LoogaEditorStyle.SeparatorColor);
+
+            float border = LoogaEditorStyle.Pixels(1f);
+            Rect fillRect = LoogaEditorStyle.PixelSnap(Rect.MinMaxRect(
+                frameRect.xMin + border,
+                frameRect.yMin + border,
+                frameRect.xMax - border,
+                frameRect.yMax - border));
+            EditorGUI.DrawRect(fillRect, fill);
         }
 
         private static Texture2D GetEditIcon()
