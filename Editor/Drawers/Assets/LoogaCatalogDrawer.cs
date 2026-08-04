@@ -301,21 +301,8 @@ namespace LoogaSoft.Inspector.Editor
             else if (hovering)
                 fill = LoogaEditorStyle.HoverColor;
 
-            float borderBlend = hovering && enabled ? 0.16f : 0.10f;
-            Color borderColor = Color.Lerp(fill, LoogaEditorStyle.TextColor, borderBlend);
-            if (!enabled)
-                borderColor = Color.Lerp(borderColor, RowColor, 0.5f);
-
             Rect frameRect = LoogaEditorStyle.PixelSnap(rect);
-            EditorGUI.DrawRect(frameRect, borderColor);
-
-            float border = LoogaEditorStyle.Pixels(1f);
-            Rect fillRect = LoogaEditorStyle.PixelSnap(Rect.MinMaxRect(
-                frameRect.xMin + border,
-                frameRect.yMin + border,
-                frameRect.xMax - border,
-                frameRect.yMax - border));
-            EditorGUI.DrawRect(fillRect, fill);
+            EditorGUI.DrawRect(frameRect, fill);
         }
 
         private static Texture2D GetEditIcon()

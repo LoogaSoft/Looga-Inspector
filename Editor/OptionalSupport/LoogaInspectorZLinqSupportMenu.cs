@@ -3,9 +3,8 @@ using UnityEngine;
 
 namespace LoogaSoft.Inspector.Editor
 {
-    internal static class LoogaInspectorZLinqSupportMenu
+    internal static class LoogaInspectorZLinqSupportProvider
     {
-        private const string MenuPath = "LoogaSoft/Inspector/Enable ZLinq Support";
         private const string DefineSymbol = "LOOGA_INSPECTOR_ZLINQ_SUPPORT";
 
         private static readonly string[] RequiredAssemblies =
@@ -13,34 +12,29 @@ namespace LoogaSoft.Inspector.Editor
             "ZLinq"
         };
 
-        [MenuItem(MenuPath, priority = 204)]
-        private static void ToggleZLinqSupport()
-        {
-            if (IsEnabled())
-            {
-                Disable();
-                return;
-            }
+        public static string ProviderId => "looga-inspector.zlinq";
+        public static string PackageName => "Looga Inspector";
+        public static string IntegrationName => "ZLinq";
+        public static string Description => "Uses ZLinq for allocation-conscious editor collection queries.";
 
-            if (!LoogaInspectorOptionalSupportUtility.AllAssembliesAreAvailable(RequiredAssemblies, out string missingAssemblies))
-            {
-                EditorUtility.DisplayDialog("ZLinq Not Found", "Install ZLinq before enabling Looga Inspector ZLinq support.\n\nMissing: " + missingAssemblies, "OK");
-                return;
-            }
-
-            Enable();
-        }
-
-        [MenuItem(MenuPath, true)]
-        private static bool ValidateToggle()
-        {
-            UnityEditor.Menu.SetChecked(MenuPath, IsEnabled());
-            return true;
-        }
-
-        private static bool IsEnabled()
+        public static bool IsEnabled()
         {
             return LoogaInspectorOptionalSupportUtility.DefineIsEnabled(DefineSymbol);
+        }
+
+        public static string GetUnavailableReason()
+        {
+            return LoogaInspectorOptionalSupportUtility.AllAssembliesAreAvailable(RequiredAssemblies, out string missingAssemblies)
+                ? string.Empty
+                : "Install ZLinq. Missing assemblies: " + missingAssemblies;
+        }
+
+        public static void SetEnabled(bool enabled)
+        {
+            if (enabled)
+                Enable();
+            else
+                Disable();
         }
 
         private static void Enable()
