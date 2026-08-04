@@ -1,7 +1,10 @@
 ﻿# Third-Party Notices
 
-The component clipboard icons use Remix Icon assets.
+The component clipboard and catalog action icons use Remix Icon assets.
 
 - Source: https://remixicon.com
 - Repository: https://github.com/Remix-Design/RemixIcon
-- License: Apache License 2.0 / Remix Icon License. Remix Icon allows free use for personal and commercial projects; attribution is appreciated but not required.
+- License: Remix Icon License v1.0
+- License text: https://github.com/Remix-Design/RemixIcon/blob/master/License
+
+Remix Icon permits personal and commercial use. Attribution is appreciated but not required.

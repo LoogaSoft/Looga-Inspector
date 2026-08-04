@@ -14,6 +14,7 @@ namespace LoogaSoft.Inspector.Editor
         private const float RowHeight = 24f;
         private const float ButtonHeight = 24f;
         private const float IconButtonSize = 22f;
+        private const float IconGlyphSize = 14f;
         private const float IconButtonGap = 3f;
         private const float AccentWidth = LoogaEditorStyle.AccentRailWidth;
         private const float TreeStep = 12f;
@@ -23,6 +24,11 @@ namespace LoogaSoft.Inspector.Editor
         private const string ActiveAddingKey = "LoogaCatalog_ActiveAddingKey";
         private const string ActivePendingNameKey = "LoogaCatalog_ActivePendingNameKey";
         private const string ActiveOwnerKey = "LoogaCatalog_ActiveOwner";
+        private const string EditIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/edit-fill.png";
+        private const string DeleteIconPath = "Packages/com.loogasoft.loogainspector/Editor/Icons/Remix/delete-bin-6-fill.png";
+
+        private static Texture2D _editIcon;
+        private static Texture2D _deleteIcon;
 
         private static Color CatalogColor => LoogaEditorStyle.BoxColor;
         private static Color RowColor => LoogaEditorStyle.ListRowColor;
@@ -169,7 +175,7 @@ namespace LoogaSoft.Inspector.Editor
                 IconButtonSize));
             using (new EditorGUI.DisabledScope(definition == null))
             {
-                if (GUI.Button(editRect, GetEditContent(), EditorStyles.miniButtonLeft))
+                if (DrawIconButton(editRect, GetEditIcon(), "Edit", EditorStyles.miniButtonLeft))
                     ToggleEditing(definition);
             }
 
@@ -180,7 +186,7 @@ namespace LoogaSoft.Inspector.Editor
                 IconButtonSize));
             using (new EditorGUI.DisabledScope(!catalog.AllowDelete))
             {
-                if (GUI.Button(deleteRect, GetDeleteContent(), EditorStyles.miniButtonRight))
+                if (DrawIconButton(deleteRect, GetDeleteIcon(), "Delete", EditorStyles.miniButtonRight))
                 {
                     DeleteEntry(property, index, definition, catalog);
                 }
@@ -234,24 +240,39 @@ namespace LoogaSoft.Inspector.Editor
             }
         }
 
-        private static GUIContent GetEditContent()
+        private static bool DrawIconButton(Rect rect, Texture2D icon, string tooltip, GUIStyle style)
         {
-            GUIContent content = EditorGUIUtility.IconContent("editicon.sml");
-            content.tooltip = "Edit";
-            if (content.image == null && string.IsNullOrEmpty(content.text))
-                content.text = "E";
+            bool clicked = GUI.Button(rect, new GUIContent(string.Empty, tooltip), style);
+            if (icon == null)
+                return clicked;
 
-            return content;
+            Rect iconRect = LoogaEditorStyle.PixelSnap(new Rect(
+                rect.center.x - IconGlyphSize * 0.5f,
+                rect.center.y - IconGlyphSize * 0.5f,
+                IconGlyphSize,
+                IconGlyphSize));
+
+            Color previousColor = GUI.color;
+            if (!GUI.enabled)
+                GUI.color = new Color(previousColor.r, previousColor.g, previousColor.b, previousColor.a * 0.4f);
+
+            GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+            GUI.color = previousColor;
+            return clicked;
         }
 
-        private static GUIContent GetDeleteContent()
+        private static Texture2D GetEditIcon()
         {
-            GUIContent content = EditorGUIUtility.IconContent("TreeEditor.Trash");
-            content.tooltip = "Delete";
-            if (content.image == null && string.IsNullOrEmpty(content.text))
-                content.text = "X";
+            return _editIcon != null
+                ? _editIcon
+                : _editIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(EditIconPath);
+        }
 
-            return content;
+        private static Texture2D GetDeleteIcon()
+        {
+            return _deleteIcon != null
+                ? _deleteIcon
+                : _deleteIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(DeleteIconPath);
         }
 
         private static bool IsEditing(ScriptableObject definition)
