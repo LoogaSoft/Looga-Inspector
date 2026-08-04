@@ -161,14 +161,23 @@ namespace LoogaSoft.Inspector.Editor
             Rect labelRect = new(rect.x + 8f, rect.y, rect.width - actionsWidth - 8f, rect.height);
             DrawEntryContent(labelRect, property, definition, catalog, entryType);
 
-            Rect editRect = new(rect.xMax - IconButtonSize * 2f - IconButtonGap - 4f, rect.y + 1f, IconButtonSize, IconButtonSize);
+            float buttonY = LoogaEditorStyle.PixelSnapValue(rect.center.y - IconButtonSize * 0.5f);
+            Rect editRect = LoogaEditorStyle.PixelSnap(new Rect(
+                rect.xMax - IconButtonSize * 2f - IconButtonGap - 4f,
+                buttonY,
+                IconButtonSize,
+                IconButtonSize));
             using (new EditorGUI.DisabledScope(definition == null))
             {
                 if (GUI.Button(editRect, GetEditContent(), EditorStyles.miniButtonLeft))
                     ToggleEditing(definition);
             }
 
-            Rect deleteRect = new(editRect.xMax + IconButtonGap, rect.y + 1f, IconButtonSize, IconButtonSize);
+            Rect deleteRect = LoogaEditorStyle.PixelSnap(new Rect(
+                editRect.xMax + IconButtonGap,
+                buttonY,
+                IconButtonSize,
+                IconButtonSize));
             using (new EditorGUI.DisabledScope(!catalog.AllowDelete))
             {
                 if (GUI.Button(deleteRect, GetDeleteContent(), EditorStyles.miniButtonRight))
