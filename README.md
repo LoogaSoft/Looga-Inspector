@@ -591,6 +591,22 @@ public sealed class GameConfiguration : ScriptableObject
 }
 ```
 
+Sidebar sections that reference domain configuration assets use an accordion navigation layout. Each
+section is independently expandable. ScriptableObject references in the assigned domain asset appear
+as indented child pages, and selecting a child draws its complete Looga inspector in the content pane.
+Catalog pages therefore keep their normal `[LoogaCatalog]` authoring controls instead of falling back
+to Unity's default nested-list rendering.
+
+The section field remains the domain root and does not need additional navigation attributes:
+
+```csharp
+[SerializeField, ExposeScriptable, SidebarSection("Account", 10)]
+private AccountConfiguration _account;
+```
+
+Use this layout for a small number of domain roots that each own related profiles, databases, or
+catalogs. Do not use it to turn arbitrary object graphs into navigation trees.
+
 Custom editor windows can use `LoogaSidebarWindow` for feature-owned pages. Each page registers
 with a workspace ID, which lets separate editor assemblies contribute tools without the host
 window knowing their concrete types.

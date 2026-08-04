@@ -34,6 +34,8 @@ namespace LoogaSoft.Inspector.Editor
         #region Built-In
         private void OnDisable()
         {
+            _sidebarView?.Dispose();
+            _sidebarView = null;
             _listSelectedIndices.Clear();
             _listSelectionAnchors.Clear();
             _draggingListKey = string.Empty;
