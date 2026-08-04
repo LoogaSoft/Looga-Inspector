@@ -293,16 +293,21 @@ namespace LoogaSoft.Inspector.Editor
 
         private static void DrawIconButtonFrame(Rect rect, bool enabled, bool hovering, bool pressed)
         {
-            Color fill = LoogaEditorStyle.AccentRailColor;
+            Color fill = LoogaEditorStyle.TabBarColor;
             if (!enabled)
-                fill = Color.Lerp(fill, RowColor, 0.55f);
+                fill = Color.Lerp(fill, RowColor, 0.45f);
             else if (pressed)
-                fill = Color.Lerp(fill, Color.black, 0.22f);
+                fill = Color.Lerp(fill, Color.black, 0.18f);
             else if (hovering)
-                fill = Color.Lerp(fill, Color.white, 0.12f);
+                fill = LoogaEditorStyle.HoverColor;
+
+            float borderBlend = hovering && enabled ? 0.16f : 0.10f;
+            Color borderColor = Color.Lerp(fill, LoogaEditorStyle.TextColor, borderBlend);
+            if (!enabled)
+                borderColor = Color.Lerp(borderColor, RowColor, 0.5f);
 
             Rect frameRect = LoogaEditorStyle.PixelSnap(rect);
-            EditorGUI.DrawRect(frameRect, LoogaEditorStyle.SeparatorColor);
+            EditorGUI.DrawRect(frameRect, borderColor);
 
             float border = LoogaEditorStyle.Pixels(1f);
             Rect fillRect = LoogaEditorStyle.PixelSnap(Rect.MinMaxRect(
