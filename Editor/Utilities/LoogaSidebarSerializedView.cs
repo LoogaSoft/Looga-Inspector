@@ -21,6 +21,7 @@ namespace LoogaSoft.Inspector.Editor
         private Vector2 _navigationScroll;
         private Vector2 _contentScroll;
         private string _selectedPageId = string.Empty;
+        private int _rootInstanceId;
         private UnityEditor.Editor _pageEditor;
         private Object _pageEditorTarget;
 
@@ -33,56 +34,58 @@ namespace LoogaSoft.Inspector.Editor
             if (sections.Length == 0)
                 return false;
 
-            if (_expandedSections.Count == 0)
-                _expandedSections.Add(sections[0].Name);
+            EnsureRootState(serializedObject.targetObject, sections);
 
             List<Page> pages = new();
             List<LoogaSidebarGUI.AccordionGroup> groups = BuildNavigation(serializedObject, sections, pages);
-            EnsureInitialState(groups, pages);
+            EnsureInitialState(pages);
 
             height = Mathf.Max(1f, height);
-            Rect workspaceRect = GUILayoutUtility.GetRect(
-                1f,
-                height,
-                GUILayout.ExpandWidth(true),
-                GUILayout.Height(height));
-            float navigationWidth = Mathf.Min(LoogaSidebarGUI.DefaultWidth, workspaceRect.width);
-            Rect navigationRect = new(workspaceRect.x, workspaceRect.y, navigationWidth, workspaceRect.height);
-            Rect dividerRect = new(
-                navigationRect.xMax,
-                workspaceRect.y,
-                LoogaSidebarGUI.DividerWidth,
-                workspaceRect.height);
-            Rect contentRect = new(
-                dividerRect.xMax,
-                workspaceRect.y,
-                Mathf.Max(1f, workspaceRect.xMax - dividerRect.xMax),
-                workspaceRect.height);
-
-            LoogaSidebarGUI.AccordionNavigation(
-                navigationRect,
-                _navigationScroll,
-                groups,
-                _selectedPageId,
-                out _navigationScroll,
-                out string nextPageId,
-                out string toggledSectionId);
-
-            if (!string.IsNullOrEmpty(toggledSectionId))
+            using (new EditorGUILayout.HorizontalScope(GUILayout.Height(height)))
             {
-                if (!_expandedSections.Add(toggledSectionId))
-                    _expandedSections.Remove(toggledSectionId);
+                Rect navigationRect = GUILayoutUtility.GetRect(
+                    LoogaSidebarGUI.DefaultWidth,
+                    LoogaSidebarGUI.DefaultWidth,
+                    height,
+                    height,
+                    GUILayout.Width(LoogaSidebarGUI.DefaultWidth),
+                    GUILayout.Height(height));
+
+                LoogaSidebarGUI.AccordionNavigation(
+                    navigationRect,
+                    _navigationScroll,
+                    groups,
+                    _selectedPageId,
+                    out _navigationScroll,
+                    out string nextPageId,
+                    out string toggledSectionId);
+
+                if (!string.IsNullOrEmpty(toggledSectionId))
+                {
+                    if (!_expandedSections.Add(toggledSectionId))
+                        _expandedSections.Remove(toggledSectionId);
+                }
+
+                if (!string.Equals(nextPageId, _selectedPageId, StringComparison.Ordinal))
+                {
+                    _selectedPageId = nextPageId;
+                    _contentScroll = Vector2.zero;
+                    ReleasePageEditor();
+                }
+
+                Rect dividerRect = GUILayoutUtility.GetRect(
+                    LoogaSidebarGUI.DividerWidth,
+                    LoogaSidebarGUI.DividerWidth,
+                    height,
+                    height,
+                    GUILayout.Width(LoogaSidebarGUI.DividerWidth),
+                    GUILayout.Height(height));
+                LoogaSidebarGUI.Divider(dividerRect);
+
+                using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.Height(height)))
+                    DrawSelectedPage(pages);
             }
 
-            if (!string.Equals(nextPageId, _selectedPageId, StringComparison.Ordinal))
-            {
-                _selectedPageId = nextPageId;
-                _contentScroll = Vector2.zero;
-                ReleasePageEditor();
-            }
-
-            LoogaSidebarGUI.Divider(dividerRect);
-            DrawSelectedPage(pages, contentRect);
             return true;
         }
 
@@ -90,6 +93,9 @@ namespace LoogaSoft.Inspector.Editor
         {
             ReleasePageEditor();
             _serializedObjectCache.Clear();
+            _expandedSections.Clear();
+            _selectedPageId = string.Empty;
+            _rootInstanceId = 0;
         }
 
         public static bool Supports(Type type)
@@ -188,9 +194,25 @@ namespace LoogaSoft.Inspector.Editor
             items.Add(new LoogaSidebarGUI.AccordionItem(page.Id, page.DisplayName));
         }
 
-        private void EnsureInitialState(
-            IReadOnlyList<LoogaSidebarGUI.AccordionGroup> groups,
-            IReadOnlyList<Page> pages)
+        private void EnsureRootState(Object root, IReadOnlyList<Section> sections)
+        {
+            int instanceId = root.GetInstanceID();
+            if (_rootInstanceId == instanceId)
+                return;
+
+            ReleasePageEditor();
+            _serializedObjectCache.Clear();
+            _expandedSections.Clear();
+            _selectedPageId = string.Empty;
+            _navigationScroll = Vector2.zero;
+            _contentScroll = Vector2.zero;
+            _rootInstanceId = instanceId;
+
+            // Open the first group once so a new workspace has an immediate starting point.
+            _expandedSections.Add(sections[0].Name);
+        }
+
+        private void EnsureInitialState(IReadOnlyList<Page> pages)
         {
             for (int i = 0; i < pages.Count; i++)
             {
@@ -203,7 +225,7 @@ namespace LoogaSoft.Inspector.Editor
             ReleasePageEditor();
         }
 
-        private void DrawSelectedPage(IReadOnlyList<Page> pages, Rect contentRect)
+        private void DrawSelectedPage(IReadOnlyList<Page> pages)
         {
             Page selectedPage = null;
             for (int i = 0; i < pages.Count; i++)
@@ -215,50 +237,46 @@ namespace LoogaSoft.Inspector.Editor
                 break;
             }
 
-            GUILayout.BeginArea(contentRect);
+            GUILayout.Space(LoogaSidebarGUI.ContentPadding);
+            if (selectedPage == null)
+            {
+                EditorGUILayout.LabelField("Configuration", LoogaSidebarGUI.HeaderStyle);
+                GUILayout.Space(8f);
+                EditorGUILayout.HelpBox("Select a configuration asset from the sidebar.", MessageType.Info);
+                return;
+            }
+
+            EditorGUILayout.LabelField(selectedPage.DisplayName, LoogaSidebarGUI.HeaderStyle);
+            GUILayout.Space(4f);
+            DrawReferenceField(selectedPage);
+            GUILayout.Space(6f);
+
+            _contentScroll = EditorGUILayout.BeginScrollView(_contentScroll, GUILayout.ExpandHeight(true));
             try
             {
-                using (new EditorGUILayout.VerticalScope(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true)))
+                Object target = selectedPage.Target;
+                if (target == null)
                 {
-                    GUILayout.Space(LoogaSidebarGUI.ContentPadding);
-                    if (selectedPage == null)
-                    {
-                        EditorGUILayout.LabelField("Configuration", LoogaSidebarGUI.HeaderStyle);
-                        GUILayout.Space(8f);
-                        EditorGUILayout.HelpBox("Select a configuration asset from the sidebar.", MessageType.Info);
-                        return;
-                    }
+                    EditorGUILayout.HelpBox(
+                        $"Assign a {ObjectNames.NicifyVariableName(selectedPage.ReferenceType.Name)} asset to edit it here.",
+                        MessageType.Info);
+                    ReleasePageEditor();
+                    return;
+                }
 
-                    EditorGUILayout.LabelField(selectedPage.DisplayName, LoogaSidebarGUI.HeaderStyle);
-                    GUILayout.Space(4f);
-                    DrawReferenceField(selectedPage);
-                    GUILayout.Space(6f);
-
-                    _contentScroll = EditorGUILayout.BeginScrollView(_contentScroll);
-                    try
-                    {
-                        Object target = selectedPage.Target;
-                        if (target == null)
-                        {
-                            EditorGUILayout.HelpBox(
-                                $"Assign a {ObjectNames.NicifyVariableName(selectedPage.ReferenceType.Name)} asset to edit it here.",
-                                MessageType.Info);
-                            ReleasePageEditor();
-                            return;
-                        }
-
-                        EnsurePageEditor(target);
-                        _pageEditor?.OnInspectorGUI();
-                    }
-                    finally
-                    {
-                        EditorGUILayout.EndScrollView();
-                    }
+                EnsurePageEditor(target);
+                if (_pageEditor != null)
+                {
+                    _pageEditor.OnInspectorGUI();
+                }
+                else
+                {
+                    EditorGUILayout.HelpBox("Unity could not create an editor for this asset.", MessageType.Warning);
                 }
             }
             finally
             {
-                GUILayout.EndArea();
+                EditorGUILayout.EndScrollView();
             }
         }
 
