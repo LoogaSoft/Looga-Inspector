@@ -19,6 +19,9 @@ namespace LoogaSoft.Inspector.Editor
         private const float ContentPadding = 12f;
 
         private readonly List<PackageSupportPage> _pages = new();
+        private GUIStyle _availableStatusStyle;
+        private GUIStyle _enabledStatusStyle;
+        private GUIStyle _unavailableStatusStyle;
         private Vector2 _navigationScroll;
         private Vector2 _contentScroll;
         private int _selectedPage;
@@ -150,9 +153,8 @@ namespace LoogaSoft.Inspector.Editor
                 cardRect.y + 8f,
                 cardRect.width - 24f,
                 cardRect.height - 16f);
-            bool enabled = provider.IsEnabled();
-            string unavailableReason = provider.GetUnavailableReason();
-            bool available = string.IsNullOrEmpty(unavailableReason);
+            bool enabled = provider.Enabled;
+            bool available = provider.Available;
 
             Rect titleRect = new(innerRect.x, innerRect.y, innerRect.width - 100f, 20f);
             EditorGUI.LabelField(titleRect, provider.IntegrationName, EditorStyles.boldLabel);
@@ -167,20 +169,29 @@ namespace LoogaSoft.Inspector.Editor
 
             string status = enabled ? "Enabled" : available ? "Available" : "Unavailable";
             Rect statusRect = new(innerRect.x, innerRect.y + 22f, innerRect.width, 18f);
-            GUIStyle statusStyle = new(EditorStyles.miniLabel)
-            {
-                normal =
-                {
-                    textColor = enabled
-                        ? new Color(0.45f, 0.78f, 0.48f)
-                        : available ? LoogaEditorStyle.TextColor : new Color(0.88f, 0.58f, 0.30f)
-                }
-            };
-            EditorGUI.LabelField(statusRect, status, statusStyle);
+            EditorGUI.LabelField(statusRect, status, GetStatusStyle(enabled, available));
 
-            string detail = available ? provider.Description : unavailableReason;
+            string detail = available ? provider.Description : provider.UnavailableReason;
             Rect detailRect = new(innerRect.x, innerRect.y + 41f, innerRect.width, 28f);
             EditorGUI.LabelField(detailRect, detail, EditorStyles.wordWrappedMiniLabel);
+        }
+
+        private GUIStyle GetStatusStyle(bool enabled, bool available)
+        {
+            _enabledStatusStyle ??= CreateStatusStyle(new Color(0.45f, 0.78f, 0.48f));
+            _availableStatusStyle ??= CreateStatusStyle(LoogaEditorStyle.TextColor);
+            _unavailableStatusStyle ??= CreateStatusStyle(new Color(0.88f, 0.58f, 0.30f));
+
+            return enabled
+                ? _enabledStatusStyle
+                : available ? _availableStatusStyle : _unavailableStatusStyle;
+        }
+
+        private static GUIStyle CreateStatusStyle(Color textColor)
+        {
+            GUIStyle style = new(EditorStyles.miniLabel);
+            style.normal.textColor = textColor;
+            return style;
         }
 
         private void SetProviderEnabled(OptionalSupportProvider provider, bool enabled)
@@ -188,6 +199,7 @@ namespace LoogaSoft.Inspector.Editor
             try
             {
                 provider.SetEnabled(enabled);
+                provider.RefreshState();
                 Repaint();
             }
             catch (Exception exception)
@@ -251,16 +263,27 @@ namespace LoogaSoft.Inspector.Editor
                 _isEnabled = type.GetMethod("IsEnabled", StaticPublic);
                 _getUnavailableReason = type.GetMethod("GetUnavailableReason", StaticPublic);
                 _setEnabled = type.GetMethod("SetEnabled", StaticPublic, null, new[] { typeof(bool) }, null);
+                RefreshState();
             }
 
             public string ProviderId { get; }
             public string PackageName { get; }
             public string IntegrationName { get; }
             public string Description { get; }
+            public bool Enabled { get; private set; }
+            public string UnavailableReason { get; private set; }
+            public bool Available => string.IsNullOrEmpty(UnavailableReason);
 
-            public bool IsEnabled() => (bool)_isEnabled.Invoke(null, null);
-            public string GetUnavailableReason() => (string)_getUnavailableReason.Invoke(null, null);
             public void SetEnabled(bool enabled) => _setEnabled.Invoke(null, new object[] { enabled });
+
+            /// <summary>
+            /// Refreshes checks that can scan packages or compiled assemblies. Do not call this from OnGUI.
+            /// </summary>
+            public void RefreshState()
+            {
+                Enabled = (bool)_isEnabled.Invoke(null, null);
+                UnavailableReason = (string)_getUnavailableReason.Invoke(null, null) ?? string.Empty;
+            }
 
             public static IEnumerable<OptionalSupportProvider> Discover()
             {
