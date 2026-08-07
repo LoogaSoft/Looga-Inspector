@@ -529,20 +529,33 @@ namespace LoogaSoft.Inspector.Editor
         {
             if (!PropertyUtils.IsVisible(property))
                 return;
-            
-            DecoratorSystem.DrawDecorators(property, InspectedTarget);
-            
+
             bool propertyEnabled = PropertyUtils.IsEnabled(property);
             bool isList = property.isArray && property.propertyType != SerializedPropertyType.String;
             LoogaCatalogAttribute catalogAttribute = PropertyUtils.GetAttribute<LoogaCatalogAttribute>(property);
+            ExpandedListAttribute expandedListAttribute = PropertyUtils.GetAttribute<ExpandedListAttribute>(property);
+            bool useLoogaList = isList && (expandedListAttribute != null
+                || PropertyUtils.GetAttribute<LoogaListAttribute>(property) != null);
+
+            // Unity draws decorators for native lists. Looga draws them only when it owns the collection UI.
+            if (isList && (useLoogaList || catalogAttribute != null))
+                DecoratorSystem.DrawDecorators(property, InspectedTarget);
               
-            //disable GUI (making the field readonly) if enabled is false
+            // Keep visibility and callbacks consistent for native and Looga-styled collections.
             using (new EditorGUI.DisabledScope(disabled: !propertyEnabled))
             {
                 if (catalogAttribute != null && TryDrawCatalogProperty(property, metadata, catalogAttribute))
                     return;
+                else if (useLoogaList)
+                    DrawLoogaList(property, expandedListAttribute);
                 else if (isList)
-                    DrawLoogaList(property, PropertyUtils.GetAttribute<ExpandedListAttribute>(property));
+                {
+                    EditorGUI.BeginChangeCheck();
+                    EditorGUILayout.PropertyField(property, GetPropertyLabel(property, metadata), true);
+
+                    if (EditorGUI.EndChangeCheck())
+                        PropertyUtils.CallOnFieldChangedCallbacks(property);
+                }
                 else
                 {
                     EditorGUI.BeginChangeCheck();
